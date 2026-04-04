@@ -1,0 +1,13 @@
+# NetSearch — Node.js Dependencies
+# Install with: npm install
+#
+# Runtime dependencies
+express@^4.18.2        # HTTP server and static file serving
+cors@^2.8.5            # Cross-Origin Resource Sharing middleware
+node-cron@^3.0.3       # Cron-based scheduled config reload
+
+# Development dependencies (none required — uses Node.js built-ins)
+# node --watch (Node 18+) is used for auto-restart in dev mode
+
+# Runtime requirement
+# Node.js >= 18.0.0
