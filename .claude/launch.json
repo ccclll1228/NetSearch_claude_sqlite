@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "NetSearch — Python HTTP Server",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8080", "--directory", "C:/Users/chris/Desktop"],
+      "port": 8080
+    },
+    {
+      "name": "NetSearch — Node HTTP Server (npx serve)",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "C:/Users/chris/Desktop", "-p", "8081", "--no-clipboard"],
+      "port": 8081
+    }
+  ]
+}

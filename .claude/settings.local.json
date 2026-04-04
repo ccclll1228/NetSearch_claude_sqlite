@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Bash(find C:UserschrisDocumentsAI_Agentclaude-codeFQDN -name package.json -o -name *.html -o -name requirements.txt -o -name Pipfile -o -name pyproject.toml -o -name Makefile)",
+      "Bash(npm --version)",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__context7__resolve-library-id",
+      "Bash(npx @smithery/cli@latest skill add DennisLiuCk/frontend-design --agent claude-code)",
+      "Bash(npm install:*)",
+      "Bash(node -e \"const { parseConfig } = require\\('./lib/parser'\\); const result = parseConfig\\('set deviceconfig system hostname TEST-FW01'\\); console.log\\('type:', result.type, '| hostname:', result.hostname\\);\")",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(timeout 8 node server.js)"
+    ]
+  }
+}
