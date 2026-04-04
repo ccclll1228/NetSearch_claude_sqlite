@@ -2061,6 +2061,11 @@ function renderPills(list, parsed, type='object', ctx='') {
     const isExpanded = expandedPills.has('__ALL__') || expandedPills.has(pid);
     const isMatched = state.highlightEnabled && state.searchAST && (() => {
       if(!parsed) return false;
+      const terms = extractTerms(state.searchAST);
+      // Fast path: check pill name directly — avoids resolveObject for name searches
+      if(terms.some(t => item.toLowerCase().includes(t.toLowerCase()))) return true;
+      // Only resolve members for IP/CIDR searches (needed to highlight which group contains searched IP)
+      if(!terms.some(t => isCIDR(t) || isExactIP(t) || isIPish(t))) return false;
       const resolved = type==='service' ? resolveService(item, parsed.services, parsed.serviceGroups) : resolveObject(item, parsed.addresses, parsed.groups);
       return resolved.some(r => checkSingleResolvedMatch(r, type));
     })();

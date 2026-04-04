@@ -130,9 +130,20 @@ app.post('/api/reload', async (req, res) => {
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 const PORT = settings.port || 3000;
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   console.log(`[server] NetSearch running at http://localhost:${PORT}`);
   readCache();
   loadAllConfigs();
   startScheduler(loadAllConfigs, settings.cronSchedule || []);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[server] Port ${PORT} is already in use.`);
+    console.error(`[server] Run this in PowerShell to free it:`);
+    console.error(`[server]   Get-Process -Id (Get-NetTCPConnection -LocalPort ${PORT}).OwningProcess | Stop-Process -Force`);
+    process.exit(1);
+  } else {
+    throw err;
+  }
 });

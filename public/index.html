@@ -222,6 +222,24 @@ input,textarea { font-family:inherit; }
   border-left-color:var(--yellow);
   background:linear-gradient(135deg, rgba(255,211,42,0.03) 0%, var(--bg-card) 40%);
 }
+/* Disabled rule — ghost/withdrawn: recedes into background, hover reveals detail */
+.rule-card.rule-disabled {
+  opacity: 0.38;
+  filter: grayscale(0.7) brightness(0.8);
+  border-left-color: #1e2e3e;
+  transition: opacity .25s ease, filter .25s ease, border-left-color .25s ease;
+}
+.rule-card.rule-disabled:hover {
+  opacity: 0.78;
+  filter: grayscale(0.15) brightness(0.95);
+  border-left-color: #2e4a5e;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+.rule-card.rule-disabled .rule-name {
+  text-decoration: line-through;
+  text-decoration-color: rgba(100,122,150,0.5);
+  text-decoration-thickness: 1px;
+}
 
 .chain-pill {
   display:inline-flex; align-items:center; gap:3px; padding:1px 6px;
@@ -231,6 +249,16 @@ input,textarea { font-family:inherit; }
 .chain-pill.fqdn { background:rgba(0,230,118,0.15); color:var(--green); }
 .chain-pill.nat { background:rgba(68,138,255,0.15); color:var(--blue); }
 .chain-pill.dnat { background:rgba(255,211,42,0.15); color:var(--yellow); }
+
+.rule-tag-chip {
+  display:inline-flex; align-items:center;
+  padding:1px 4px; border-radius:2px;
+  font-size:6.5px; font-family:var(--font-mono); font-weight:700;
+  letter-spacing:0.07em; text-transform:uppercase;
+  background:rgba(160,130,255,0.1); color:rgba(160,130,255,0.65);
+  border:1px solid rgba(160,130,255,0.18);
+  white-space:nowrap; line-height:1.6;
+}
 
 .rule-name {
   font-weight:600; font-size:13px; font-family:var(--font-mono);
@@ -270,6 +298,37 @@ input,textarea { font-family:inherit; }
 .rule-field:first-child { padding-left:12px; }
 .rule-field + .rule-field { border-left:1px solid rgba(255,255,255,0.03); }
 .rule-field-label { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; font-family:var(--font-ui); letter-spacing:0.06em; }
+
+/* ── NAT resizable columns ── */
+.nat-col-header-row {
+  display:grid; align-items:stretch;
+  position:sticky; top:0; z-index:2;
+  background:var(--bg-elevated);
+  border-top:1px solid var(--border); border-bottom:2px solid var(--border);
+}
+.nat-col-head {
+  position:relative; padding:5px 8px 5px 12px;
+  font-size:10px; font-weight:700; color:var(--text-muted);
+  text-transform:uppercase; letter-spacing:0.08em; font-family:var(--font-ui);
+  overflow:hidden; white-space:nowrap; user-select:none;
+}
+.nat-resize-handle {
+  position:absolute; right:-3px; top:0; bottom:0; width:8px;
+  cursor:col-resize; z-index:3;
+  display:flex; align-items:center; justify-content:center;
+}
+.nat-resize-handle::after {
+  content:''; width:2px; height:50%; border-radius:1px;
+  background:var(--border);
+  transition:background .15s, height .15s, box-shadow .15s;
+}
+.nat-resize-handle:hover::after, .nat-resize-handle.dragging::after {
+  background:var(--accent); height:80%;
+  box-shadow:0 0 6px var(--accent-glow);
+}
+.nat-rule-body { display:grid; gap:0; align-items:start; }
+.nat-rule-body .rule-field { overflow:hidden; }
+.nat-rule-body .pill { max-width:none; }
 
 /* ── Pills ── */
 .pills { display:flex; flex-wrap:wrap; gap:3px; }
@@ -767,11 +826,7 @@ const TABS = [
 // ===== UTILITY =====
 let _idCounter = 0;
 const genId = () => 'id_' + (++_idCounter) + '_' + Math.random().toString(36).slice(2,8);
-const esc = (s) => {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-};
+const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const displayHostname = (hostname) => String(hostname).split('.')[0];
 
 // Search UI helpers
@@ -996,13 +1051,18 @@ const matchObject = (name, value, search, isExact, ignoreCIDR=false) => {
 };
 
 // Fast name-only match for non-IP keyword searches (avoids full group resolution)
+const _matchNameOnlyCache = new Map();
 const _matchNameOnly = (name, s, groups, isExact, depth=0) => {
   if(depth>10) return false;
   if(!name) return false;
   const n=String(name).toLowerCase();
   if(isExact?n===s:n.includes(s)) return true;
-  if(groups&&groups[name]) return groups[name].some(m=>_matchNameOnly(m,s,groups,isExact,depth+1));
-  return false;
+  if(!groups||!groups[name]) return false;
+  const ck=`${name}|${s}|${isExact?1:0}`;
+  if(_matchNameOnlyCache.has(ck)) return _matchNameOnlyCache.get(ck);
+  const r=groups[name].some(m=>_matchNameOnly(m,s,groups,isExact,depth+1));
+  _matchNameOnlyCache.set(ck,r);
+  return r;
 };
 
 const objectListMatchesSearch = (nameList, search, addresses, groups, searchMode, ignoreCIDR=false) => {
@@ -1532,6 +1592,7 @@ const parseConfig = (text) => {
 
 // ===== FILTERING ENGINE =====
 function getFilteredData() {
+  _matchNameOnlyCache.clear();
   const { appliedSearch, searchAST, searchMode, ignoreCIDR, filters } = state;
   let configs = state.parsedConfigs.map(c=>c.parsed);
   // Source Device filter — disabledHosts toggle
@@ -1605,6 +1666,10 @@ function getFilteredData() {
   });
   const allRuleIps=new Set();
   Object.values(termRuleIpsMap).forEach(a=>a.forEach(ip=>allRuleIps.add(ip)));
+  // Searching a large address group (e.g. 243 members) populates allRuleIps with hundreds of IPs.
+  // Chaining every address/route/FQDN against that many IPs is O(N×M) and freezes the browser.
+  // Cap: if the set is too large the chaining would be too broad anyway, so skip it.
+  if(allRuleIps.size > 50) allRuleIps.clear();
 
   const result = { secRules:[], natRules:[], routes:[], addresses:[], groups:[], f5Virtuals:[], f5Pools:[], fqdnList:[] };
 
@@ -1662,6 +1727,9 @@ function getFilteredData() {
     (parsed.natRules||[]).forEach(r => {
       if(filters.natHideDisabled && r.disabled) return;
       if(filters.natShowDisabledOnly && !r.disabled) return;
+      if(filters.fromZone && !(r.from||[]).includes(filters.fromZone)) return;
+      if(filters.toZone && !(r.to||[]).includes(filters.toZone)) return;
+      if(filters.tag && !(r.tag||[]).includes(filters.tag)) return;
       let match=true;
       let chainedFromFqdn=false;
       if(searchAST){
@@ -2063,6 +2131,11 @@ function renderPills(list, parsed, type='object', ctx='') {
     const isExpanded = expandedPills.has('__ALL__') || expandedPills.has(pid);
     const isMatched = state.highlightEnabled && state.searchAST && (() => {
       if(!parsed) return false;
+      const terms = extractTerms(state.searchAST);
+      // Fast path: check pill name directly — avoids resolveObject for name searches
+      if(terms.some(t => item.toLowerCase().includes(t.toLowerCase()))) return true;
+      // Only resolve members for IP/CIDR searches (needed to highlight which group contains searched IP)
+      if(!terms.some(t => isCIDR(t) || isExactIP(t) || isIPish(t))) return false;
       const resolved = type==='service' ? resolveService(item, parsed.services, parsed.serviceGroups) : resolveObject(item, parsed.addresses, parsed.groups);
       return resolved.some(r => checkSingleResolvedMatch(r, type));
     })();
@@ -2188,10 +2261,11 @@ function renderSecRules(rules) {
       const expandableItems = [...(r.source||[]), ...(r.destination||[]), ...(r.from||[]), ...(r.to||[]), ...(r.service||[]), ...(r.application||[])];
       _ruleExpandMap[ruleKey] = { hostname: hn, items: expandableItems, ctx: ruleKey };
       return `
-    <div class="rule-card ${r._chainedFromFqdn||r._chainedFromNat?'chained':''}">
+    <div class="rule-card ${r.disabled?'rule-disabled':''} ${r._chainedFromFqdn||r._chainedFromNat?'chained':''}">
       <div class="rule-body">
         <div class="rule-field" style="display:flex;flex-direction:column;gap:5px">
           <span class="rule-name">${esc(r.name)}</span>
+          ${r.tag&&r.tag.length>0?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:1px">${r.tag.map(t=>`<span class="rule-tag-chip">${esc(t)}</span>`).join('')}</div>`:''}
           <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
             <span class="rule-action ${r.action}">${esc(r.action)}</span>
             <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredSecRules[${globalIdx}])" title="Copy this rule as TSV">📋</button>
@@ -2216,34 +2290,85 @@ function renderSecRules(rules) {
   }).join('');
 }
 
+// ── NAT column resize state ──
+const _natColDefs = [
+  {key:'from', label:'From',        default:12},
+  {key:'to',   label:'To',          default:12},
+  {key:'src',  label:'Source',      default:21},
+  {key:'dst',  label:'Destination', default:21},
+  {key:'svc',  label:'Service',     default:10},
+  {key:'snat', label:'SNAT →',      default:12},
+  {key:'dnat', label:'→ DNAT',      default:12},
+];
+const natColWidths = {};
+_natColDefs.forEach(c => natColWidths[c.key] = c.default);
+let _natActiveCols = ['from','to','src','dst','svc'];
+
+function _natTpl() { return _natActiveCols.map(k=>natColWidths[k]+'fr').join(' '); }
+function _updateNatCols() {
+  const tpl = _natTpl();
+  document.querySelectorAll('.nat-rule-body,.nat-col-header-row').forEach(el=>el.style.gridTemplateColumns=tpl);
+}
+function startNatColResize(e, key) {
+  e.preventDefault();
+  const container = e.target.closest('.nat-col-header-row');
+  const containerW = container ? container.offsetWidth : 1200;
+  const totalFr = _natActiveCols.reduce((s,k)=>s+natColWidths[k], 0);
+  const startX=e.clientX, startFr=natColWidths[key];
+  const frToPx = containerW / totalFr;
+  e.target.classList.add('dragging');
+  const mv=me=>{natColWidths[key]=Math.max(3,startFr+(me.clientX-startX)/frToPx);_updateNatCols();};
+  const up=()=>{e.target.classList.remove('dragging');document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+  document.addEventListener('mousemove',mv);
+  document.addEventListener('mouseup',up);
+}
+
 function renderNatRules(rules) {
   if(rules.length===0) return '<div class="empty-state">No matching NAT rules found.</div>';
   const groups = groupByDevice(rules);
   const stats = `<div class="stats-bar">Total: ${rules.length} matching NAT rule(s), from ${groups.length} device(s)</div>`;
   _lastFilteredNatRules = rules;
+
+  // Determine active columns
+  const hasSnat = rules.some(r=>r.sourceTranslation&&r.sourceTranslation.length>0);
+  const hasDnat = rules.some(r=>r.destinationTranslation&&r.destinationTranslation.length>0);
+  _natActiveCols = ['from','to','src','dst','svc'];
+  if(hasSnat) _natActiveCols.push('snat');
+  if(hasDnat) _natActiveCols.push('dnat');
+  const tpl = _natTpl();
+  const colLabels = {from:'From',to:'To',src:'Source',dst:'Destination',svc:'Service',snat:'SNAT →',dnat:'→ DNAT'};
+
+  const headerRow = `<div class="nat-col-header-row" style="grid-template-columns:${tpl}">
+    ${_natActiveCols.map((k,i)=>`<div class="nat-col-head">${esc(colLabels[k])}${i<_natActiveCols.length-1?`<div class="nat-resize-handle" onmousedown="startNatColResize(event,'${k}')"></div>`:''}</div>`).join('')}
+  </div>`;
+
   return stats + groups.map(group => {
     const gid = `grp_nat_${group.hostname}`;
     const isCollapsed = collapsedGroups.has(gid);
     const cards = group.items.slice(0,500).map(r => {
       const globalIdx = _lastFilteredNatRules.indexOf(r);
+      const cells = [
+        `<div class="rule-field"><div class="rule-field-label">From</div>${renderPills(r.from,r._parsed)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">To</div>${renderPills(r.to,r._parsed)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">Source</div>${renderPills(r.source,r._parsed)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">Destination</div>${renderPills(r.destination,r._parsed)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">Service</div>${renderPills(r.service,r._parsed,'service')}</div>`,
+      ];
+      if(hasSnat) cells.push(`<div class="rule-field"><div class="rule-field-label">SNAT →</div>${r.sourceTranslation&&r.sourceTranslation.length>0?renderPills(r.sourceTranslation,r._parsed):'<span style="color:var(--text-muted);font-size:11px">—</span>'}</div>`);
+      if(hasDnat) cells.push(`<div class="rule-field"><div class="rule-field-label">→ DNAT</div>${r.destinationTranslation&&r.destinationTranslation.length>0?renderPills(r.destinationTranslation,r._parsed):'<span style="color:var(--text-muted);font-size:11px">—</span>'}</div>`);
       return `
-    <div class="rule-card ${r._chainedFromFqdn?'chained':''}">
+    <div class="rule-card ${r.disabled?'rule-disabled':''} ${r._chainedFromFqdn?'chained':''}">
       <div class="rule-header">
         <div><span class="rule-name">${esc(r.name)}</span>${r._chainedFromFqdn?'<span class="chain-pill fqdn">FQDN → IP</span>':''}${r.disabled?'<span class="rule-status disabled">Disabled</span>':''}</div>
-        <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredNatRules[${globalIdx}])" title="Copy">📋</button>
+        <div style="display:flex;align-items:center;gap:4px">
+          ${r.tag&&r.tag.length>0?r.tag.map(t=>`<span class="rule-tag-chip">${esc(t)}</span>`).join(''):''}
+          <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredNatRules[${globalIdx}])" title="Copy">📋</button>
+        </div>
       </div>
-      <div class="rule-body">
-        <div class="rule-field"><div class="rule-field-label">From</div>${renderPills(r.from,r._parsed)}</div>
-        <div class="rule-field"><div class="rule-field-label">To</div>${renderPills(r.to,r._parsed)}</div>
-        <div class="rule-field"><div class="rule-field-label">Source</div>${renderPills(r.source,r._parsed)}</div>
-        <div class="rule-field"><div class="rule-field-label">Destination</div>${renderPills(r.destination,r._parsed)}</div>
-        <div class="rule-field"><div class="rule-field-label">Service</div>${renderPills(r.service,r._parsed,'service')}</div>
-        ${r.sourceTranslation&&r.sourceTranslation.length>0?`<div class="rule-field"><div class="rule-field-label">SNAT</div>${renderPills(r.sourceTranslation,r._parsed)}</div>`:''}
-        ${r.destinationTranslation&&r.destinationTranslation.length>0?`<div class="rule-field"><div class="rule-field-label">DNAT</div>${renderPills(r.destinationTranslation,r._parsed)}</div>`:''}
-      </div>
+      <div class="nat-rule-body" style="grid-template-columns:${tpl}">${cells.join('')}</div>
     </div>`;}).join('');
     return `<div class="device-group">${renderDeviceGroupHeader(group)}
-      <div class="device-group-body ${isCollapsed?'collapsed':''}">${cards}</div></div>`;
+      <div class="device-group-body ${isCollapsed?'collapsed':''}">${headerRow}${cards}</div></div>`;
   }).join('');
 }
 
@@ -2319,7 +2444,7 @@ function renderF5Virtuals(virtuals) {
   const stats = `<div class="stats-bar">Total: ${filtered.length} Virtual Server(s), from ${groups.length} device(s)${state.filters.showDisabledMembersOnly?' (showing disabled members only)':''}</div>`;
   const arrow=(k)=>f5LtmSort.key===k?`<span class="sort-arrow">${f5LtmSort.dir==='asc'?'▲':'▼'}</span>`:'';
   return stats + groups.map(group => {
-    const gid = `grp_f5vs_${group.hostname}`;
+    const gid = `grp_${group.hostname}`;
     const isCollapsed = collapsedGroups.has(gid);
     // Sort
     const sorted=[...group.items].sort((a,b)=>smartSort(a,b,f5LtmSort.key,f5LtmSort.dir));
@@ -2376,7 +2501,7 @@ function renderF5Pools(pools) {
   const groups = groupByDevice(filtered);
   const stats = `<div class="stats-bar">Total: ${filtered.length} Pool(s), from ${groups.length} device(s)${state.filters.showDisabledMembersOnly?' (showing disabled members only)':''}</div>`;
   return stats + groups.map(group => {
-    const gid = `grp_f5p_${group.hostname}`;
+    const gid = `grp_${group.hostname}`;
     const isCollapsed = collapsedGroups.has(gid);
     const cards = group.items.map(p=>{
       const disabledCount=(p.members||[]).filter(m=>m.status==='disabled').length;
@@ -2932,14 +3057,25 @@ function doConfirm() {
 }
 
 // ===== FILTER OPTIONS =====
+function updateTagFilter() {
+  const tags=new Set();
+  const src = state.activeTab==='nat' ? 'natRules' : 'secRules';
+  state.parsedConfigs.forEach(c=>(c.parsed[src]||[]).forEach(r=>(r.tag||[]).forEach(t=>tags.add(t))));
+  const cur=state.filters.tag;
+  fillSelect('tagFilter','TAG (All)',tags);
+  if(cur&&tags.has(cur)) document.getElementById('tagFilter').value=cur;
+  else if(cur) state.filters.tag='';
+}
+
 function updateFilterOptions() {
-  const zones=new Set(), tags=new Set();
+  const zones=new Set();
   state.parsedConfigs.forEach(c=>{
-    (c.parsed.secRules||[]).forEach(r=>{(r.from||[]).forEach(z=>zones.add(z));(r.to||[]).forEach(z=>zones.add(z));(r.tag||[]).forEach(t=>tags.add(t));});
+    (c.parsed.secRules||[]).forEach(r=>{(r.from||[]).forEach(z=>zones.add(z));(r.to||[]).forEach(z=>zones.add(z));});
+    (c.parsed.natRules||[]).forEach(r=>{(r.from||[]).forEach(z=>zones.add(z));(r.to||[]).forEach(z=>zones.add(z));});
   });
   fillSelect('fromZoneFilter','FROM ZONE (All)',zones);
   fillSelect('toZoneFilter','TO ZONE (All)',zones);
-  fillSelect('tagFilter','TAG (All)',tags);
+  updateTagFilter();
   renderDeviceToggleBar();
 }
 
@@ -3035,7 +3171,7 @@ async function triggerReload() {
 }
 
 // ===== EVENT HANDLERS =====
-function switchTab(id){state.activeTab=id;renderContent();}
+function switchTab(id){state.activeTab=id;updateTagFilter();renderContent();}
 function toggleSearchMode(){state.searchMode=state.searchMode==='keyword'?'exact':'keyword';document.getElementById('searchModeBtn').textContent=state.searchMode==='keyword'?'Keyword':'Exact';renderContent();}
 function toggleHighlight(){state.highlightEnabled=!state.highlightEnabled;const btn=document.getElementById('searchHlBtn');if(btn){btn.classList.toggle('on',state.highlightEnabled);btn.title=state.highlightEnabled?'Highlight ON — click to disable':'Highlight OFF — click to enable';}renderContent();}
 function toggleSearchHelp(){const el=document.getElementById('searchHelpPopup');el.classList.toggle('hidden');}
@@ -3058,8 +3194,24 @@ document.getElementById('secHideDisabled').addEventListener('change',e=>{state.f
 document.getElementById('secShowDisabledOnly').addEventListener('change',e=>{state.filters.secShowDisabledOnly=e.target.checked;state.filters.natShowDisabledOnly=e.target.checked;if(e.target.checked){state.filters.secHideDisabled=false;state.filters.natHideDisabled=false;}document.getElementById('secHideDisabled').checked=false;renderContent();});
 document.getElementById('showDisabledMembersOnly').addEventListener('change',e=>{state.filters.showDisabledMembersOnly=e.target.checked;renderContent();});
 
-function expandAllPills(){expandedPills=new Set(['__ALL__']);renderContent();}
-function collapseAllPills(){expandedPills=new Set();renderContent();}
+function expandAllPills(){
+  if(state.activeTab==='f5_vs'){
+    if(_cachedFilterData) _cachedFilterData.f5Virtuals.forEach(vs=>f5LtmExpandedRows.add(vs.name));
+    renderContent(true);
+  } else {
+    expandedPills=new Set(['__ALL__']);
+    renderContent();
+  }
+}
+function collapseAllPills(){
+  if(state.activeTab==='f5_vs'){
+    f5LtmExpandedRows.clear();
+    renderContent(true);
+  } else {
+    expandedPills=new Set();
+    renderContent();
+  }
+}
 
 function clearAllFilters(){
   state.filters={sourceDevice:'',fromZone:'',toZone:'',tag:'',filterSource:false,filterDest:false,secHideDisabled:false,secShowDisabledOnly:false,natHideDisabled:false,natShowDisabledOnly:false,showDisabledMembersOnly:false,fqdnTypeFilter:'',fqdnOwnerFilter:'',fqdnGeoFilter:''};
