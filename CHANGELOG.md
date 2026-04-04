@@ -4,7 +4,21 @@ All notable changes to NetSearch are documented here.
 
 ---
 
-## [Unreleased]
+## [1.2.0] - 2026-04-05
+
+### Added
+- **Sticky column headers** — all tabs (Sec Rules, NAT Rules, Routes, FQDN, LTM, Pools) now freeze their column header row at `top:0` while scrolling through results. Backgrounds use solid `#141b2d` to prevent content bleed-through.
+- **Objects tab: copy buttons** — each address row has a 📋 button (copies `name\tvalue`); each address group header has a 📋 button (copies group name + all members, one per line); each group member row has an individual 📋 button on hover.
+- **Objects tab: full recursive tree** — expanding an address group now shows all nested sub-groups and their members in a fully-expanded tree (no additional clicks required). Uses `renderGroupTreeFull()` with circular reference guard (`_seen` Set, max depth 12).
+
+### Changed
+- **Expand / Collapse icons** — replaced `⊞`/`⊟` math symbols with SVG icons (four-corner expand / four-corner collapse) across all three locations: filter bar global buttons (`Expand` / `Collapse` labels added), per-rule buttons in Sec Rules card, and URL Category pill toggles. Previously used `➕`/`➖` emoji for URL Category.
+- **Objects tab: address group members** — members now render in a vertical list (one per line) instead of horizontal pill wrap.
+- **Objects tab: group expansion** — outer group toggle converted from DOM `classList.toggle` to `togglePill()` so that sub-group expansion (which calls `renderContent`) correctly preserves the outer group's open state.
+
+### Fixed
+- Sticky headers no longer overlap content — reverted accidental sticky on `.device-group-header` (device title bar) which caused z-index conflicts; only column header rows are sticky.
+- `config/settings.json` Windows backslash paths replaced with forward slashes to fix `SyntaxError: Bad escaped character in JSON`.
 
 ---
 

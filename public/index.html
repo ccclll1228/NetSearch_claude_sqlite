@@ -135,6 +135,8 @@ input,textarea { font-family:inherit; }
 .btn-primary:hover { background:var(--accent-hover); box-shadow:0 0 18px rgba(0,212,255,0.45); }
 .btn-sm { padding:4px 10px; font-size:11px; }
 .btn-icon { padding:6px 10px; display:flex; align-items:center; gap:5px; }
+.btn-expand-collapse { display:inline-flex; align-items:center; gap:4px; letter-spacing:0.04em; }
+.rule-expand-btn { display:inline-flex; align-items:center; justify-content:center; padding:2px 5px; }
 
 /* ── Source Device Bar ── */
 .filter-bar {
@@ -289,6 +291,8 @@ input,textarea { font-family:inherit; }
 .rule-body-header {
   display:grid; grid-template-columns:12% 12% 21% 21% 10% 8% 16%;
   gap:0; padding:5px 12px;
+  position:sticky; top:0; z-index:3;
+  background:#141b2d; border-bottom:2px solid var(--border);
   background:rgba(255,255,255,0.02);
   border-bottom:1px solid var(--border);
   font-size:10px; font-weight:700; color:var(--text-muted);
@@ -302,7 +306,7 @@ input,textarea { font-family:inherit; }
 /* ── NAT resizable columns ── */
 .nat-col-header-row {
   display:grid; align-items:stretch;
-  position:sticky; top:0; z-index:2;
+  position:sticky; top:0; z-index:3;
   background:var(--bg-elevated);
   border-top:1px solid var(--border); border-bottom:2px solid var(--border);
 }
@@ -400,10 +404,10 @@ input,textarea { font-family:inherit; }
 }
 .route-table th, .fqdn-table th, .f5-ltm-table th {
   text-align:left; padding:7px 12px;
-  background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border);
+  background:#141b2d; border-bottom:2px solid var(--border);
   font-size:10px; font-weight:700; color:var(--text-muted);
   text-transform:uppercase; letter-spacing:0.08em; font-family:var(--font-ui);
-  position:sticky; top:0; z-index:1;
+  position:sticky; top:0; z-index:3;
 }
 .fqdn-table th { cursor:pointer; user-select:none; }
 .route-table th:hover, .fqdn-table th:hover, .f5-ltm-table th:hover { color:var(--text); }
@@ -425,7 +429,12 @@ input,textarea { font-family:inherit; }
 .obj-group-header { display:flex; align-items:center; gap:8px; cursor:pointer; }
 .obj-group-name { font-weight:700; font-size:13px; font-family:var(--font-mono); }
 .obj-group-count { font-size:11px; color:var(--text-muted); font-family:var(--font-mono); }
-.obj-group-members { margin-top:8px; display:flex; flex-wrap:wrap; gap:4px; }
+.obj-group-members { margin-top:6px; display:flex; flex-direction:column; gap:2px; }
+.obj-group-member-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:2px 6px; border-radius:3px; font-size:11px; font-family:var(--font-mono); }
+.obj-group-member-row:hover { background:var(--bg-hover); }
+.obj-group-member-row .mem-label { color:var(--text); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.obj-group-member-row .mem-copy { opacity:0; transition:opacity .12s; flex-shrink:0; }
+.obj-group-member-row:hover .mem-copy { opacity:1; }
 
 /* ── F5 Cards ── */
 .f5-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:7px; }
@@ -671,8 +680,14 @@ input,textarea { font-family:inherit; }
     <label class="filter-toggle"><input type="checkbox" id="secShowDisabledOnly" /> Disabled Only</label>
     <span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>
     <label class="filter-toggle"><input type="checkbox" id="showDisabledMembersOnly" /> F5 Disabled</label>
-    <button class="btn btn-sm" onclick="expandAllPills()" title="Expand All">⊞</button>
-    <button class="btn btn-sm" onclick="collapseAllPills()" title="Collapse All">⊟</button>
+    <button class="btn btn-sm btn-expand-collapse" onclick="expandAllPills()" title="Expand All">
+      <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>
+      Expand
+    </button>
+    <button class="btn btn-sm btn-expand-collapse" onclick="collapseAllPills()" title="Collapse All">
+      <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>
+      Collapse
+    </button>
     <button class="btn btn-sm" onclick="clearAllFilters()" style="color:var(--red)" title="Clear all filters">✕ Clear</button>
   </div>
 
@@ -2105,6 +2120,26 @@ function pillCopyText(item, hostname, type) {
 function copyPillText(text){navigator.clipboard.writeText(text).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);});showCopyFeedback();}
 function copyF5VsRow(name,ip,port,pool){copyPillText(`${name}\t${ip}\t${port}\t${pool}`);}
 
+// Fully-expanded tree (no per-node toggle) — used in Objects tab
+function renderGroupTreeFull(name, addresses, groups, depth, _seen) {
+  if(depth > 12) return '';
+  if(!_seen) _seen = new Set();
+  if(_seen.has(name)) return ''; // circular guard
+  const pad = depth * 14;
+  const padStyle = `padding-left:${pad}px`;
+  if(name==='any'||name==='all')
+    return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">* ${esc(name)}</span></div>`;
+  if(groups && groups[name]) {
+    const members = groups[name];
+    const seen2 = new Set(_seen); seen2.add(name);
+    const subHtml = members.map(m => renderGroupTreeFull(m, addresses, groups, depth+1, seen2)).join('');
+    return `<div class="pill-expand-member" style="${padStyle}"><span style="margin-right:4px;font-size:9px;color:var(--accent)">▼</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>${subHtml}`;
+  }
+  const addr = addresses && addresses[name];
+  const val = addr && addr.value && addr.value !== name ? addr.value : '';
+  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>`;
+}
+
 function renderGroupTree(name, addresses, groups, pathId, depth) {
   const pad = depth * 14;
   const padStyle = `padding-left:${pad}px`;
@@ -2181,11 +2216,11 @@ function renderUrlCategoryPill(name, parsed) {
   if(isExp) {
     const memberHtml = members.map(m=>`<div style="padding:2px 8px;font-size:11px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;margin:1px 0">${esc(m)}</div>`).join('');
     return `<div style="display:inline-block;vertical-align:top;margin:2px">
-      <span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer">➖ ${esc(name)} (${members.length})<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></span>
+      <span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></span>
       <div style="padding-left:12px;border-left:2px solid var(--border);margin-left:8px;margin-top:4px">${memberHtml}</div>
     </div>`;
   }
-  return `<span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer">➕ ${esc(name)} (${members.length})<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></span>`;
+  return `<span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></span>`;
 }
 function toggleUrlCat(ucid){if(expandedUrlCats.has(ucid))expandedUrlCats.delete(ucid);else expandedUrlCats.add(ucid);renderContent(true);}
 
@@ -2269,8 +2304,12 @@ function renderSecRules(rules) {
           <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
             <span class="rule-action ${r.action}">${esc(r.action)}</span>
             <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredSecRules[${globalIdx}])" title="Copy this rule as TSV">📋</button>
-            <button class="rule-copy-btn" onclick="event.stopPropagation();expandAllRulePills('${ruleKey}')" title="展開所有物件">⊞</button>
-            <button class="rule-copy-btn" onclick="event.stopPropagation();collapseAllRulePills('${ruleKey}')" title="收合所有物件">⊟</button>
+            <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();expandAllRulePills('${ruleKey}')" title="展開所有物件">
+              <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>
+            </button>
+            <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();collapseAllRulePills('${ruleKey}')" title="收合所有物件">
+              <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>
+            </button>
             ${r._chainedFromFqdn?'<span class="chain-pill fqdn">FQDN→IP</span>':''}
             ${r._chainedFromNat?'<span class="chain-pill nat">NAT→Rule</span>':''}
             ${r.disabled?'<span class="rule-status disabled">Disabled</span>':''}
@@ -2412,14 +2451,41 @@ function renderObjects(addresses, groups) {
     // Addresses table
     if(devAddrs.length>0){
       html+=`<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Addresses <span class="tab-count">${devAddrs.length}</span></h4>
-        <table class="route-table"><thead><tr><th>Name</th><th>Type</th><th>Value</th></tr></thead>
-        <tbody>${devAddrs.map(a=>`<tr${a._chained?' style="border-left:3px solid var(--yellow)"':''}><td style="font-weight:600;color:${a._chained?'var(--accent)':'var(--text)'}">${esc(a.name)}</td><td><span class="obj-card-type">${esc(a.type)}</span></td><td>${esc(a.value)}</td></tr>`).join('')}</tbody></table></div>`;
+        <table class="route-table"><thead><tr><th>Name</th><th>Type</th><th>Value</th><th style="width:32px"></th></tr></thead>
+        <tbody>${devAddrs.map(a=>`<tr${a._chained?' style="border-left:3px solid var(--yellow)"':''}>
+          <td style="font-weight:600;color:${a._chained?'var(--accent)':'var(--text)'}">${esc(a.name)}</td>
+          <td><span class="obj-card-type">${esc(a.type)}</span></td>
+          <td>${esc(a.value)}</td>
+          <td><button class="rule-copy-btn" onclick="navigator.clipboard.writeText('${esc(a.name)}\\t${esc(a.value)}')" title="Copy name + value">📋</button></td>
+        </tr>`).join('')}</tbody></table></div>`;
     }
-    
+
     // Groups cards
     if(devGrps.length>0){
       html+=`<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Address Groups <span class="tab-count">${devGrps.length}</span></h4>`;
-      html+=devGrps.map(g=>`<div class="obj-group-card${g._chained?' chained':''}"><div class="obj-group-header" onclick="this.nextElementSibling.classList.toggle('hidden')"><span style="margin-right:4px">▶</span><span class="obj-group-name">${esc(g.name)}</span><span class="obj-group-count">(${g.members.length})</span></div><div class="obj-group-members hidden">${g.members.map(m=>`<span class="pill">${esc(m)}</span>`).join('')}</div></div>`).join('');
+      html+=devGrps.map(g=>{
+        const safeGName = g.name.replace(/'/g,"\\'");
+        const outerPid = `obj_grp_${g.name}_${hn}`;
+        const isGrpExp = expandedPills.has(outerPid);
+        const addresses_dict = g._parsed?.addresses || {};
+        const groups_dict    = g._parsed?.groups    || {};
+        const membersText = g.name+'\\n'+g.members.join('\\n');
+        const memberRows = isGrpExp
+          ? g.members.map(m => renderGroupTreeFull(m, addresses_dict, groups_dict, 1)).join('')
+          : '';
+        const arrow = isGrpExp
+          ? `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>`
+          : `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>`;
+        return `<div class="obj-group-card${g._chained?' chained':''}">
+          <div class="obj-group-header" onclick="event.stopPropagation();togglePill('${outerPid}')">
+            <span style="display:inline-flex;align-items:center;margin-right:6px;color:var(--accent)">${arrow}</span>
+            <span class="obj-group-name">${esc(g.name)}</span>
+            <span class="obj-group-count">(${g.members.length})</span>
+            <button class="rule-copy-btn" onclick="event.stopPropagation();navigator.clipboard.writeText('${esc(membersText)}')" title="Copy group name + all members" style="margin-left:auto">📋</button>
+          </div>
+          <div class="obj-group-members">${memberRows}</div>
+        </div>`;
+      }).join('');
       html+=`</div>`;
     }
     
