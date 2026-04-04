@@ -1,0 +1,3504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSearch — Config Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e1a;
+  --bg-card: #0d1225;
+  --bg-hover: #111827;
+  --bg-elevated: #141b2d;
+  --border: #1a2640;
+  --border-focus: #00d4ff;
+  --text: #e8edf8;
+  --text-secondary: #a8bcd4;
+  --text-muted: #647a96;
+  --accent: #00d4ff;
+  --accent-light: rgba(0,212,255,0.08);
+  --accent-hover: #00b8d9;
+  --accent-glow: rgba(0,212,255,0.3);
+  --orange: #ff6b35;
+  --orange-bg: rgba(255,107,53,0.12);
+  --green: #00e676;
+  --green-bg: rgba(0,230,118,0.1);
+  --red: #ff4757;
+  --red-bg: rgba(255,71,87,0.1);
+  --yellow: #ffd32a;
+  --yellow-bg: rgba(255,211,42,0.1);
+  --blue: #448aff;
+  --blue-bg: rgba(68,138,255,0.1);
+  --pill-bg: #0f1929;
+  --pill-match: rgba(0,212,255,0.15);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.5);
+  --shadow-md: 0 4px 24px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 16px rgba(0,212,255,0.2);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'Fira Code', monospace;
+  --font-ui: 'DM Sans', system-ui, sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--font-ui); background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; }
+button { cursor:pointer; font-family:inherit; }
+input,textarea { font-family:inherit; }
+
+/* ── Layout ── */
+.app { display:flex; flex-direction:column; height:100vh; overflow:hidden; background:var(--bg); }
+
+/* ── Header ── */
+.header {
+  display:flex; align-items:center; gap:12px; padding:10px 20px;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg, #0c1120 0%, #0a0e1a 100%);
+  flex-shrink:0;
+}
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-title {
+  font-weight:700; font-size:17px; line-height:1.15;
+  letter-spacing:-0.3px; color:#e8f0fe;
+}
+.logo-sub { font-size:11px; color:var(--text-muted); font-weight:400; font-family:var(--font-mono); letter-spacing:0.05em; }
+.logo-icon {
+  width:36px; height:36px; border-radius:8px;
+  background:linear-gradient(135deg, #00d4ff22 0%, #00d4ff44 100%);
+  border:1px solid rgba(0,212,255,0.3);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  box-shadow:0 0 12px rgba(0,212,255,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.header-search { flex:1; display:flex; gap:8px; align-items:center; }
+
+/* Search mode button */
+.search-mode-btn {
+  background:transparent; border:1px solid var(--border);
+  border-radius:var(--radius-sm); font-size:10px; font-weight:700;
+  color:var(--accent); padding:5px 10px; min-width:64px;
+  font-family:var(--font-mono); letter-spacing:0.08em; text-transform:uppercase;
+  transition:all .2s;
+}
+.search-mode-btn:hover { border-color:var(--accent); background:var(--accent-light); box-shadow:0 0 8px var(--accent-glow); }
+
+/* Search input */
+.search-input-wrap { position:relative; flex:1; }
+.search-input {
+  width:100%; padding:10px 68px 10px 40px !important;
+  border:1px solid var(--border); border-radius:var(--radius);
+  font-size:14px; outline:none; color:var(--text);
+  background:var(--bg-card);
+  font-family:var(--font-mono);
+  transition:border-color .2s, box-shadow .3s;
+  box-shadow:0 0 0px transparent;
+}
+.search-input:focus {
+  border-color:var(--accent);
+  box-shadow:0 0 12px rgba(0,212,255,0.25), 0 0 0 1px rgba(0,212,255,0.15);
+}
+.search-input::placeholder { color:var(--text-muted); }
+.search-icon { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--text-muted); pointer-events:none; }
+.search-clear { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer; padding:2px 4px; line-height:1; display:none; transition:color .15s; }
+.search-clear:hover { color:var(--accent); }
+.search-input:not(:placeholder-shown) ~ .search-clear { display:block; }
+.search-hint { position:absolute; bottom:-20px; left:14px; font-size:10px; color:var(--text-muted); white-space:nowrap; font-family:var(--font-mono); }
+.search-hint .hint-mode { color:var(--accent); }
+.search-spinner { position:absolute; right:68px !important; top:50%; transform:translateY(-50%); width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .6s linear infinite; display:none; }
+.search-spinner.active { display:block; }
+@keyframes spin { to { transform:translateY(-50%) rotate(360deg); } }
+
+/* Highlight toggle */
+.search-hl-btn { position:absolute; right:38px; top:50%; transform:translateY(-50%); background:none; border:1px solid transparent; border-radius:5px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; transition:all .15s; color:var(--text-muted); line-height:1; }
+.search-hl-btn.on { background:rgba(255,211,42,0.12); border-color:rgba(255,211,42,0.4); color:var(--yellow); box-shadow:0 0 6px rgba(255,211,42,0.2); }
+.search-hl-btn:hover:not(.on) { background:var(--bg-hover); color:var(--accent); }
+
+/* Quick search pill button */
+.pill-quick-search { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:3px; font-size:9px; cursor:pointer; opacity:0; transition:opacity .15s; margin-left:2px; background:rgba(0,212,255,0.12); color:var(--accent); flex-shrink:0; }
+.pill:hover .pill-quick-search, .pill-detail:hover .pill-quick-search { opacity:1; }
+.pill-quick-search:hover { background:var(--accent); color:#000; }
+
+/* Header actions */
+.header-actions { display:flex; gap:8px; align-items:center; }
+.btn {
+  padding:7px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:600;
+  border:1px solid var(--border); background:var(--bg-elevated); color:var(--text);
+  transition:all .2s; font-family:var(--font-ui);
+}
+.btn:hover { background:var(--bg-hover); border-color:var(--text-muted); }
+.btn-primary {
+  background:var(--accent); color:#000; border-color:var(--accent);
+  font-weight:700; letter-spacing:0.02em;
+  box-shadow:0 0 12px rgba(0,212,255,0.3);
+}
+.btn-primary:hover { background:var(--accent-hover); box-shadow:0 0 18px rgba(0,212,255,0.45); }
+.btn-sm { padding:4px 10px; font-size:11px; }
+.btn-icon { padding:6px 10px; display:flex; align-items:center; gap:5px; }
+
+/* ── Source Device Bar ── */
+.filter-bar {
+  display:flex; gap:6px; padding:6px 20px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg-card); flex-wrap:wrap; align-items:center; flex-shrink:0;
+}
+.filter-select {
+  padding:4px 10px; border:1px solid var(--border); border-radius:16px;
+  font-size:11px; background:var(--bg-elevated); color:var(--text); outline:none;
+  font-family:var(--font-ui); cursor:pointer; transition:border-color .15s;
+  appearance:none; -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%233d5070'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 8px center; padding-right:22px;
+}
+.filter-select:focus { border-color:var(--accent); }
+.filter-toggle {
+  display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-secondary);
+  cursor:pointer; user-select:none; padding:3px 8px; border-radius:12px;
+  border:1px solid transparent; transition:all .15s;
+}
+.filter-toggle:hover { border-color:var(--border); background:var(--bg-hover); }
+.filter-toggle input { accent-color:var(--accent); }
+
+/* Device toggle chips */
+.device-toggle-btn {
+  padding:3px 10px; border-radius:12px; font-size:10px; font-weight:700;
+  border:1px solid var(--border); background:var(--bg-elevated); color:var(--text-muted);
+  cursor:pointer; transition:all .15s; white-space:nowrap; font-family:var(--font-mono);
+  letter-spacing:0.05em;
+}
+.device-toggle-btn:hover { background:var(--bg-hover); border-color:var(--text-muted); color:var(--text); }
+.device-toggle-btn.active { color:#000; border-color:transparent; font-weight:700; }
+.device-toggle-btn.active.pa { background:#a78bfa; box-shadow:0 0 8px rgba(167,139,250,0.4); }
+.device-toggle-btn.active.fortigate { background:#f87171; box-shadow:0 0 8px rgba(248,113,113,0.4); }
+.device-toggle-btn.active.f5 { background:#60a5fa; box-shadow:0 0 8px rgba(96,165,250,0.4); }
+.device-toggle-btn.active.srx { background:#34d399; box-shadow:0 0 8px rgba(52,211,153,0.4); }
+.device-toggle-btn.active.all { background:var(--accent); box-shadow:0 0 8px rgba(0,212,255,0.4); }
+.device-toggle-btn.disabled { opacity:0.4; text-decoration:line-through; }
+
+/* ── Tab Bar ── */
+.tab-bar {
+  display:flex; gap:0; padding:0 16px;
+  background:var(--bg-card); border-bottom:1px solid var(--border);
+  overflow-x:auto; flex-shrink:0;
+}
+.tab-bar::-webkit-scrollbar { height:0; }
+.tab-btn {
+  padding:10px 14px; font-size:12px; font-weight:600; color:var(--text-secondary);
+  border:none; background:none; border-bottom:2px solid transparent;
+  transition:color .2s, border-color .2s; white-space:nowrap;
+  font-family:var(--font-ui); letter-spacing:0.02em; position:relative;
+}
+.tab-btn:hover { color:var(--text); }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-btn.active::after {
+  content:''; position:absolute; bottom:-1px; left:0; right:0; height:2px;
+  background:var(--accent); box-shadow:0 0 8px var(--accent-glow);
+  border-radius:2px 2px 0 0;
+}
+.tab-count {
+  background:rgba(255,255,255,0.06); padding:1px 6px; border-radius:10px;
+  font-size:10px; font-weight:700; margin-left:4px; font-family:var(--font-mono);
+}
+.tab-btn.active .tab-count { background:rgba(0,212,255,0.15); color:var(--accent); }
+
+/* ── Content ── */
+.content { flex:1; overflow:auto; padding:14px 20px; }
+.empty-state { text-align:center; padding:60px 20px; color:var(--text-muted); font-size:13px; }
+.empty-state svg { margin-bottom:12px; opacity:0.2; }
+.stats-bar { font-size:11px; color:var(--text-muted); padding:4px 0 10px; font-family:var(--font-mono); }
+
+/* ── Rule Cards ── */
+.rule-card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:0; margin-bottom:6px;
+  transition:border-color .2s, box-shadow .2s;
+  border-left:3px solid var(--border);
+  overflow:hidden;
+}
+.rule-card:hover { border-color:rgba(0,212,255,0.2); box-shadow:0 2px 16px rgba(0,0,0,0.4); }
+.rule-card.allow-rule { border-left-color:var(--accent); }
+.rule-card.deny-rule { border-left-color:var(--orange); }
+.rule-card.chained {
+  border-left-color:var(--yellow);
+  background:linear-gradient(135deg, rgba(255,211,42,0.03) 0%, var(--bg-card) 40%);
+}
+
+.chain-pill {
+  display:inline-flex; align-items:center; gap:3px; padding:1px 6px;
+  border-radius:3px; font-size:9px; font-weight:700; margin-left:6px;
+  font-family:var(--font-mono); letter-spacing:0.05em; text-transform:uppercase;
+}
+.chain-pill.fqdn { background:rgba(0,230,118,0.15); color:var(--green); }
+.chain-pill.nat { background:rgba(68,138,255,0.15); color:var(--blue); }
+.chain-pill.dnat { background:rgba(255,211,42,0.15); color:var(--yellow); }
+
+.rule-name {
+  font-weight:600; font-size:13px; font-family:var(--font-mono);
+  color:var(--text); letter-spacing:0.02em;
+}
+.rule-action {
+  padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700;
+  text-transform:uppercase; font-family:var(--font-mono); letter-spacing:0.08em;
+}
+.rule-action.allow {
+  background:transparent; color:var(--accent);
+  border:1px solid rgba(0,212,255,0.4);
+}
+.rule-action.deny {
+  background:var(--orange); color:#fff;
+  border:1px solid var(--orange);
+  box-shadow:0 0 6px rgba(255,107,53,0.3);
+}
+.rule-device { font-size:10px; color:var(--text-muted); margin-left:8px; font-family:var(--font-mono); }
+.rule-status { font-size:10px; padding:2px 6px; border-radius:3px; font-family:var(--font-mono); }
+.rule-status.enabled { background:var(--green-bg); color:var(--green); }
+.rule-status.disabled { background:var(--red-bg); color:var(--red); }
+
+.rule-body {
+  display:grid; grid-template-columns:12% 12% 21% 21% 10% 8% 16%;
+  gap:0; align-items:start;
+}
+.rule-body-header {
+  display:grid; grid-template-columns:12% 12% 21% 21% 10% 8% 16%;
+  gap:0; padding:5px 12px;
+  background:rgba(255,255,255,0.02);
+  border-bottom:1px solid var(--border);
+  font-size:10px; font-weight:700; color:var(--text-muted);
+  text-transform:uppercase; letter-spacing:0.08em; font-family:var(--font-ui);
+}
+.rule-field { padding:8px 6px 8px 12px; min-height:36px; min-width:0; }
+.rule-field:first-child { padding-left:12px; }
+.rule-field + .rule-field { border-left:1px solid rgba(255,255,255,0.03); }
+.rule-field-label { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; font-family:var(--font-ui); letter-spacing:0.06em; }
+
+/* ── Pills ── */
+.pills { display:flex; flex-wrap:wrap; gap:3px; }
+.rule-field .pills { flex-direction:column; flex-wrap:nowrap; }
+.pill {
+  display:inline-flex; align-items:center; padding:2px 7px; border-radius:4px;
+  font-size:11px; font-family:var(--font-mono);
+  background:var(--pill-bg); color:var(--text);
+  border:1px solid rgba(255,255,255,0.06);
+  cursor:default; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  transition:all .15s;
+}
+.pill.matched { background:var(--pill-match); color:var(--accent); border-color:rgba(0,212,255,0.25); font-weight:600; }
+.pill.expandable { cursor:pointer; }
+.pill.expandable:hover { background:var(--bg-hover); border-color:rgba(0,212,255,0.2); color:var(--text); }
+.pill-expanded { max-width:none; white-space:normal; }
+.pill-group { border-style:dashed; }
+.pill-value { color:var(--text-secondary); margin-left:4px; font-size:10px; }
+.pill-detail { display:inline-flex; flex-direction:column; gap:1px; padding:4px 8px; border-radius:4px; background:var(--pill-bg); font-size:11px; max-width:none; white-space:normal; border:1px solid rgba(255,255,255,0.06); }
+.pill-detail .pill-detail-name { font-weight:600; color:var(--text); font-family:var(--font-mono); }
+.pill-detail .pill-detail-val { color:var(--text-secondary); font-family:var(--font-mono); }
+.pill-detail.matched { background:var(--pill-match); }
+
+/* Pill expanded (vertical list) */
+.pill-expand-container { display:flex; flex-direction:column; gap:2px; vertical-align:top; margin:2px; min-width:0; width:calc(100% - 4px); }
+.pill-expand-header { display:flex; align-items:center; gap:4px; padding:3px 8px; border-radius:4px; font-size:11px; background:var(--accent); color:#000; cursor:pointer; font-weight:700; font-family:var(--font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pill-expand-header:hover { background:var(--accent-hover); }
+.pill-expand-body { padding-left:10px; border-left:1px solid rgba(0,212,255,0.2); margin-left:6px; display:flex; flex-direction:column; gap:1px; overflow:visible; min-width:max-content; }
+.pill-expand-member { display:flex; align-items:baseline; gap:6px; padding:2px 6px; border-radius:3px; font-size:11px; font-family:var(--font-mono); white-space:nowrap; }
+.pill-expand-member:hover { background:var(--bg-hover); }
+.pill-expand-member .mem-name { font-weight:600; color:var(--text); }
+.pill-expand-member .mem-value { color:var(--text-muted); font-size:10px; }
+.pill-expand-member.matched { background:var(--pill-match); }
+.pill-expand-member.matched .mem-name { color:var(--accent); }
+
+/* ── Device Group ── */
+.device-group { margin-bottom:14px; }
+.device-group-header {
+  display:flex; align-items:center; gap:10px; padding:8px 14px;
+  background:var(--bg-elevated);
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  margin-bottom:6px; cursor:pointer; user-select:none;
+  transition:border-color .15s, box-shadow .15s;
+}
+.device-group-header:hover { border-color:rgba(0,212,255,0.2); box-shadow:0 0 10px rgba(0,212,255,0.05); }
+.device-group-chevron { transition:transform .25s cubic-bezier(.4,0,.2,1); font-size:11px; color:var(--text-muted); }
+.device-group-chevron.collapsed { transform:rotate(-90deg); }
+.device-group-hostname { font-weight:700; font-size:15px; font-family:var(--font-mono); color:var(--text); letter-spacing:-0.02em; }
+.device-group-type { font-size:10px; padding:2px 7px; border-radius:3px; font-weight:700; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.06em; }
+.device-group-type.pa { background:rgba(167,139,250,0.15); color:#a78bfa; border:1px solid rgba(167,139,250,0.2); }
+.device-group-type.fortigate { background:rgba(248,113,113,0.15); color:#f87171; border:1px solid rgba(248,113,113,0.2); }
+.device-group-type.f5 { background:rgba(96,165,250,0.15); color:#60a5fa; border:1px solid rgba(96,165,250,0.2); }
+.device-group-type.srx { background:rgba(52,211,153,0.15); color:#34d399; border:1px solid rgba(52,211,153,0.2); }
+.device-group-count { font-size:11px; color:var(--text-muted); font-family:var(--font-mono); margin-left:auto; }
+.device-group-body { transition:opacity .2s; }
+.device-group-body.collapsed { display:none; }
+
+/* Copy single rule */
+.rule-copy-btn {
+  background:none; border:1px solid var(--border); border-radius:4px;
+  padding:2px 7px; font-size:10px; color:var(--text-muted); transition:all .15s;
+  font-family:var(--font-mono);
+}
+.rule-copy-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); box-shadow:0 0 6px var(--accent-glow); }
+
+/* ── Tables (Route, FQDN, LTM) ── */
+.route-table, .fqdn-table, .f5-ltm-table {
+  width:100%; border-collapse:collapse; font-size:12px;
+}
+.route-table th, .fqdn-table th, .f5-ltm-table th {
+  text-align:left; padding:7px 12px;
+  background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border);
+  font-size:10px; font-weight:700; color:var(--text-muted);
+  text-transform:uppercase; letter-spacing:0.08em; font-family:var(--font-ui);
+  position:sticky; top:0; z-index:1;
+}
+.fqdn-table th { cursor:pointer; user-select:none; }
+.route-table th:hover, .fqdn-table th:hover, .f5-ltm-table th:hover { color:var(--text); }
+.route-table td, .fqdn-table td, .f5-ltm-table td {
+  padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.03);
+  font-family:var(--font-mono); font-size:12px;
+}
+.route-table tr:hover td, .fqdn-table tr:hover td, .f5-ltm-table tr:hover td { background:var(--bg-hover); }
+.f5-ltm-table tr.chained td { border-left:2px solid var(--yellow); }
+.route-device { font-size:10px; color:var(--text-muted); }
+.sort-arrow { margin-left:4px; font-size:10px; color:var(--accent); }
+
+/* ── Objects ── */
+.obj-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 13px; margin-bottom:5px; }
+.obj-card-name { font-weight:700; font-size:12px; font-family:var(--font-mono); color:var(--text); }
+.obj-card-value { font-size:11px; color:var(--text-secondary); margin-left:8px; font-family:var(--font-mono); }
+.obj-card-type { font-size:10px; color:var(--text-muted); padding:1px 6px; border-radius:3px; background:var(--pill-bg); margin-left:6px; font-family:var(--font-mono); }
+.obj-group-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; margin-bottom:7px; }
+.obj-group-header { display:flex; align-items:center; gap:8px; cursor:pointer; }
+.obj-group-name { font-weight:700; font-size:13px; font-family:var(--font-mono); }
+.obj-group-count { font-size:11px; color:var(--text-muted); font-family:var(--font-mono); }
+.obj-group-members { margin-top:8px; display:flex; flex-wrap:wrap; gap:4px; }
+
+/* ── F5 Cards ── */
+.f5-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:7px; }
+.f5-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.f5-name { font-weight:700; font-size:13px; font-family:var(--font-mono); color:var(--text); }
+.f5-dest { font-size:12px; color:var(--text-secondary); font-family:var(--font-mono); }
+.f5-pool-name { font-size:12px; font-weight:600; font-family:var(--font-mono); }
+.f5-member { padding:4px 8px; font-size:11px; font-family:var(--font-mono); }
+.f5-member.disabled { opacity:0.4; text-decoration:line-through; }
+.f5-ltm-expand { cursor:pointer; font-size:11px; color:var(--text-muted); transition:transform .2s; display:inline-block; }
+.f5-ltm-expand.open { transform:rotate(90deg); }
+.f5-ltm-members { background:var(--bg); padding:8px 12px 8px 36px; }
+.f5-pool-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; margin-bottom:7px; }
+.f5-pool-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.f5-pool-member-row { display:flex; align-items:center; gap:12px; padding:4px 0; font-size:12px; font-family:var(--font-mono); }
+.f5-pool-member-row.disabled { opacity:0.4; }
+.f5-pool-member-ip { font-family:var(--font-mono); }
+.f5-pool-member-status { font-size:10px; padding:1px 6px; border-radius:3px; font-family:var(--font-mono); }
+.f5-pool-member-status.enabled { background:var(--green-bg); color:var(--green); }
+.f5-pool-member-status.disabled { background:var(--red-bg); color:var(--red); }
+
+/* ── Copy Tab ── */
+.copy-config { display:flex; gap:20px; margin-bottom:16px; }
+.copy-fields { display:flex; flex-wrap:wrap; gap:5px; }
+.copy-field-btn {
+  padding:3px 10px; border-radius:12px; font-size:11px;
+  border:1px solid var(--border); background:var(--bg-elevated); cursor:pointer;
+  transition:all .15s; user-select:none; color:var(--text-secondary); font-family:var(--font-mono);
+}
+.copy-field-btn.selected { background:rgba(0,212,255,0.15); color:var(--accent); border-color:rgba(0,212,255,0.3); }
+.copy-field-btn.dragging { opacity:0.3; }
+.copy-field-btn.drag-over { border-color:var(--accent); box-shadow:0 0 8px var(--accent-glow); }
+.copy-preview { max-height:500px; overflow:auto; border:1px solid var(--border); border-radius:var(--radius-sm); }
+.copy-preview table { width:100%; border-collapse:collapse; font-size:11px; }
+.copy-preview th { position:sticky; top:0; background:var(--bg-elevated); padding:6px 10px; text-align:left; font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; border-bottom:1px solid var(--border); font-family:var(--font-ui); letter-spacing:0.06em; }
+.copy-preview td { padding:4px 10px; border-bottom:1px solid rgba(255,255,255,0.03); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-mono); }
+
+/* ── Virtual Scroll ── */
+.virtual-scroll-container { overflow-y:auto; position:relative; }
+.virtual-scroll-spacer { width:100%; }
+.virtual-scroll-viewport { position:relative; width:100%; }
+
+/* ── Search History ── */
+.search-history {
+  position:absolute; top:100%; left:0; right:0;
+  background:var(--bg-elevated); border:1px solid var(--border); border-top:none;
+  border-radius:0 0 var(--radius) var(--radius);
+  box-shadow:0 12px 32px rgba(0,0,0,0.6); z-index:50; max-height:260px; overflow-y:auto;
+}
+.search-history-item { padding:8px 16px; font-size:12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-family:var(--font-mono); }
+.search-history-item:hover { background:var(--bg-hover); }
+.search-history-item .remove-btn { color:var(--text-muted); font-size:15px; opacity:0; padding:0 4px; }
+.search-history-item:hover .remove-btn { opacity:1; }
+.search-history-label { font-size:10px; color:var(--text-muted); padding:6px 16px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; border-bottom:1px solid var(--border); font-family:var(--font-ui); }
+
+/* ── Modal ── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:100; }
+.modal { background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); max-width:700px; width:95%; max-height:85vh; overflow:auto; box-shadow:0 24px 64px rgba(0,0,0,0.8); }
+.modal-header { display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid var(--border); }
+.modal-header h2 { font-size:16px; font-weight:700; color:var(--text); }
+.modal-body { padding:20px; }
+.modal-close { background:none; border:none; font-size:18px; color:var(--text-muted); padding:4px; transition:color .15s; }
+.modal-close:hover { color:var(--text); }
+.dropzone {
+  border:1px dashed rgba(0,212,255,0.2); border-radius:var(--radius);
+  padding:36px 20px; text-align:center; color:var(--text-muted); cursor:pointer;
+  transition:all .2s; background:rgba(0,212,255,0.02);
+}
+.dropzone:hover,.dropzone.dragover { border-color:var(--accent); background:var(--accent-light); color:var(--accent); box-shadow:0 0 20px rgba(0,212,255,0.1); }
+.dropzone input { display:none; }
+.device-list { margin-top:16px; }
+.device-item { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:5px; }
+.device-type { font-size:10px; padding:2px 6px; border-radius:3px; font-weight:700; font-family:var(--font-mono); }
+.device-type.pa { background:rgba(167,139,250,0.15); color:#a78bfa; }
+.device-type.fortigate { background:rgba(248,113,113,0.15); color:#f87171; }
+.device-type.f5 { background:rgba(96,165,250,0.15); color:#60a5fa; }
+.device-type.srx { background:rgba(52,211,153,0.15); color:#34d399; }
+
+/* ── Raw Config ── */
+.raw-config-block { margin-bottom:14px; }
+.raw-config-header { font-weight:700; font-size:12px; padding:7px 12px; background:var(--bg-elevated); border-radius:var(--radius-sm) var(--radius-sm) 0 0; border:1px solid var(--border); border-bottom:none; display:flex; justify-content:space-between; font-family:var(--font-mono); color:var(--text-secondary); }
+.raw-config-pre { background:var(--bg-card); border:1px solid var(--border); border-radius:0 0 var(--radius-sm) var(--radius-sm); padding:12px; font-family:var(--font-mono); font-size:11px; max-height:400px; overflow:auto; white-space:pre-wrap; word-break:break-all; color:var(--text-secondary); line-height:1.6; }
+
+/* ── Bulk Search ── */
+.bulk-textarea { width:100%; min-height:150px; padding:10px; border:1px solid var(--border); border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:12px; resize:vertical; background:var(--bg-card); color:var(--text); outline:none; }
+.bulk-textarea:focus { border-color:var(--accent); box-shadow:0 0 8px var(--accent-glow); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--text-muted); }
+
+/* ── Misc utilities ── */
+.flex { display:flex; } .gap-2 { gap:8px; } .gap-1 { gap:4px; }
+.items-center { align-items:center; } .justify-between { justify-content:space-between; }
+.text-sm { font-size:12px; font-family:var(--font-mono); } .text-muted { color:var(--text-muted); }
+.mt-2 { margin-top:8px; } .mt-4 { margin-top:16px; } .mb-2 { margin-bottom:8px; }
+.hidden { display:none; }
+
+.copy-feedback {
+  position:fixed; top:20px; right:20px;
+  background:rgba(0,230,118,0.15); color:var(--green);
+  border:1px solid rgba(0,230,118,0.3);
+  padding:10px 20px; border-radius:var(--radius-sm); font-weight:600; z-index:200;
+  animation:fadeInOut 1.5s ease; font-family:var(--font-mono); font-size:12px;
+  box-shadow:0 0 16px rgba(0,230,118,0.2);
+}
+@keyframes fadeInOut { 0%{opacity:0;transform:translateY(-10px)} 15%{opacity:1;transform:translateY(0)} 85%{opacity:1} 100%{opacity:0;transform:translateY(-10px)} }
+
+/* ── Search Help ── */
+.search-help-wrap { position:relative; flex-shrink:0; }
+.search-help-btn {
+  width:26px; height:26px; border-radius:50%;
+  background:rgba(0,212,255,0.12); color:var(--accent);
+  border:1px solid rgba(0,212,255,0.3); font-size:12px; font-weight:800; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s; line-height:1;
+}
+.search-help-btn:hover { background:rgba(0,212,255,0.2); box-shadow:0 0 10px var(--accent-glow); }
+.search-help-popup {
+  position:absolute; top:calc(100% + 10px); right:0; width:320px;
+  background:var(--bg-elevated); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:0 12px 40px rgba(0,0,0,0.7);
+  padding:16px; z-index:300;
+}
+.search-help-popup h4 { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; margin-bottom:12px; color:var(--text); }
+.search-help-popup h4 .help-icon { width:18px; height:18px; border-radius:50%; background:var(--accent); color:#000; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+.search-help-popup ul { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:9px; }
+.search-help-popup li { font-size:12px; color:var(--text-secondary); line-height:1.55; }
+.search-help-popup li strong { color:var(--accent); }
+.search-help-example { display:inline-block; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:2px 7px; font-family:var(--font-mono); font-size:11px; color:var(--text); margin-top:3px; line-height:1.6; }
+.search-help-kw { display:inline-block; padding:1px 7px; border-radius:3px; font-weight:700; font-size:11px; font-family:var(--font-mono); }
+.search-help-kw.or  { background:rgba(68,138,255,0.15); color:#60a5fa; }
+.search-help-kw.and { background:rgba(0,230,118,0.12); color:var(--green); }
+.search-help-kw.not { background:rgba(255,71,87,0.12); color:var(--red); }
+.search-help-close { position:absolute; top:9px; right:10px; background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-muted); line-height:1; padding:3px 5px; border-radius:4px; }
+.search-help-close:hover { background:var(--bg-hover); color:var(--text); }
+
+/* ── Search History badges ── */
+.sh-badge { display:inline-block; padding:1px 5px; border-radius:3px; font-size:10px; font-weight:700; color:#000; vertical-align:middle; margin-right:4px; font-family:var(--font-mono); }
+.sh-badge.keyword { background:#8899b4; }
+.sh-badge.ip      { background:var(--blue); }
+.sh-badge.cidr    { background:#06b6d4; }
+.sh-badge.fqdn    { background:#a78bfa; }
+.sh-meta { font-size:11px; color:var(--text-muted); font-family:var(--font-mono); }
+.sh-clear-all { display:block; width:100%; padding:7px; text-align:center; font-size:11px; font-weight:600; color:var(--text-muted); background:none; border:none; border-top:1px solid var(--border); cursor:pointer; font-family:var(--font-ui); }
+.sh-clear-all:hover { background:var(--red-bg); color:var(--red); }
+
+/* ── Pill: copy button + match star ── */
+.pill-cb { display:none; cursor:pointer; margin-left:3px; font-size:10px; color:var(--text-muted); vertical-align:middle; border:none; background:none; padding:0 1px; line-height:1; }
+.pill:hover .pill-cb, .pill-expand-header .pill-cb { display:inline-block; }
+.pill-cb:hover { color:var(--accent); }
+.pill-star { color:var(--yellow); margin-left:3px; font-size:9px; vertical-align:middle; }
+
+/* ── LTM status dot ── */
+.ltm-dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px; vertical-align:middle; flex-shrink:0; }
+.ltm-dot.enabled  { background:var(--green); box-shadow:0 0 5px rgba(0,230,118,0.5); }
+.ltm-dot.disabled { background:#3d5070; }
+
+/* ── Confirm Dialog ── */
+#confirmDialog .modal { max-width:420px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+          <rect x="11" y="2" width="10" height="1"/><rect x="11" y="3" width="10" height="1"/>
+          <rect x="11" y="4" width="3" height="1"/><rect x="15" y="4" width="6" height="1"/>
+          <rect x="11" y="5" width="10" height="1"/><rect x="11" y="6" width="10" height="1"/>
+          <rect x="11" y="7" width="10" height="1"/><rect x="11" y="8" width="6" height="1"/>
+          <rect x="11" y="9" width="8" height="1"/><rect x="11" y="10" width="9" height="1"/>
+          <rect x="10" y="11" width="5" height="1"/><rect x="9" y="12" width="6" height="1"/>
+          <rect x="9" y="13" width="8" height="1"/><rect x="9" y="14" width="8" height="1"/>
+          <rect x="8" y="15" width="8" height="1"/><rect x="6" y="16" width="9" height="1"/>
+          <rect x="5" y="17" width="9" height="1"/><rect x="4" y="18" width="9" height="1"/>
+          <rect x="2" y="19" width="10" height="1"/><rect x="1" y="13" width="1" height="6"/>
+          <rect x="2" y="14" width="1" height="5"/><rect x="3" y="16" width="1" height="3"/>
+          <rect x="5" y="20" width="3" height="1"/><rect x="10" y="20" width="3" height="1"/>
+          <rect x="5" y="21" width="3" height="1"/><rect x="10" y="21" width="3" height="1"/>
+          <rect x="5" y="22" width="4" height="1"/><rect x="10" y="22" width="4" height="1"/>
+        </svg>
+      </div>
+      <div class="logo-title">NetSearch<br><span class="logo-sub">Config Visualizer</span></div>
+    </div>
+    <div class="header-search">
+      <button class="search-mode-btn" id="searchModeBtn" onclick="toggleSearchMode()" title="Toggle search mode">Keyword</button>
+      <div class="search-input-wrap" id="searchWrap">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input class="search-input" id="searchInput" placeholder="Enter IP, CIDR, Port, or Keyword, then press Enter..." autocomplete="off" oninput="updateSearchHint()" />
+        <div class="search-spinner" id="searchSpinner"></div>
+        <button class="search-hl-btn on" id="searchHlBtn" onclick="toggleHighlight()" title="Toggle highlight">✦</button>
+        <button class="search-clear" id="searchClear" onclick="clearSearch()" title="Clear search">&times;</button>
+        <div class="search-hint" id="searchHint"></div>
+        <div class="search-history hidden" id="searchHistory"></div>
+      </div>
+      <div class="search-help-wrap">
+        <button class="search-help-btn" id="searchHelpBtn" onclick="toggleSearchHelp()" title="Search syntax help">?</button>
+        <div class="search-help-popup hidden" id="searchHelpPopup">
+          <button class="search-help-close" onclick="toggleSearchHelp()">&times;</button>
+          <h4><span class="help-icon">?</span> Boolean Search</h4>
+          <ul>
+            <li><strong>Implicit AND</strong> :<br>
+              <span class="search-help-example">Space means AND (e.g. 10.0.0.1 NOT AD is 10.0.0.1 AND NOT AD)</span></li>
+            <li><strong>"Quotes"</strong> : Exact match. Use NOT "AD" to avoid matching "application-default"</li>
+            <li><span class="search-help-kw or">OR</span> : Matches either condition. Ex: <span class="search-help-example">192.168.1.1 OR 10.0.0.1</span></li>
+            <li><span class="search-help-kw and">AND</span> : Matches all conditions. Ex: <span class="search-help-example">Untrust AND 192.168.1.1</span></li>
+            <li><span class="search-help-kw not">NOT</span> : Excludes condition. Ex: <span class="search-help-example">NOT 10.0.0.1</span></li>
+            <li>Supports parentheses <strong>()</strong> for precedence.</li>
+          </ul>
+        </div>
+      </div>
+      <label class="filter-toggle"><input type="checkbox" id="ignoreCidr" /> Ignore CIDR</label>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-icon" onclick="openBulkSearch()">📋 Bulk</button>
+      <button class="btn btn-primary btn-icon" onclick="openImportModal()">📥 Import</button>
+      <div id="serverStatusBar" style="font-size:11px;color:var(--text-secondary);font-family:var(--font-mono);white-space:nowrap;">載入中...</div>
+      <button id="reloadBtn" onclick="triggerReload()" class="btn btn-sm" style="font-size:11px;padding:3px 10px;">🔄 重載</button>
+      <button class="btn btn-sm" onclick="toggleLang()" id="langBtn">EN</button>
+    </div>
+  </div>
+
+  <!-- Source Device Toggle Bar -->
+  <div class="filter-bar" id="sourceDeviceBar" style="gap:4px;padding:4px 20px;border-bottom:none">
+    <span class="text-sm text-muted" style="font-weight:700;margin-right:4px">Source:</span>
+    <button class="device-toggle-btn active" id="deviceToggleAll" onclick="toggleAllDevices()">All</button>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar" id="filterBar">
+    <select class="filter-select" id="fromZoneFilter"><option value="">FROM ZONE (All)</option></select>
+    <select class="filter-select" id="toZoneFilter"><option value="">TO ZONE (All)</option></select>
+    <select class="filter-select" id="tagFilter"><option value="">TAG (All)</option></select>
+    <label class="filter-toggle"><input type="checkbox" id="filterSource" /> Src</label>
+    <label class="filter-toggle"><input type="checkbox" id="filterDest" /> Dst</label>
+    <span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>
+    <label class="filter-toggle"><input type="checkbox" id="secHideDisabled" /> Hide Disabled</label>
+    <label class="filter-toggle"><input type="checkbox" id="secShowDisabledOnly" /> Disabled Only</label>
+    <span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>
+    <label class="filter-toggle"><input type="checkbox" id="showDisabledMembersOnly" /> F5 Disabled</label>
+    <button class="btn btn-sm" onclick="expandAllPills()" title="Expand All">⊞</button>
+    <button class="btn btn-sm" onclick="collapseAllPills()" title="Collapse All">⊟</button>
+    <button class="btn btn-sm" onclick="clearAllFilters()" style="color:var(--red)" title="Clear all filters">✕ Clear</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar" id="tabBar"></div>
+
+  <!-- Content -->
+  <div class="content" id="content"></div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-overlay hidden" id="importModal">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <h2 id="importTitle">Import Configs & Data</h2>
+      <button class="modal-close" onclick="closeImportModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Imported Devices -->
+      <div class="device-list" id="deviceList"></div>
+
+      <!-- Auto URL Import -->
+      <div style="margin:16px 0;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <b style="font-size:13px">🌐 Auto URL Import (Today's Backup)</b>
+          <button class="btn btn-sm" id="urlImportBtn" onclick="runUrlImport()">Import</button>
+        </div>
+        <div id="urlImportStatus" class="text-sm text-muted"></div>
+        <div id="urlImportResults"></div>
+      </div>
+
+      <!-- Config Files -->
+      <h3 style="margin:16px 0 8px;">Config Files (Palo Alto / FortiGate / Juniper SRX / F5)</h3>
+      <div class="dropzone" id="configDropzone" onclick="document.getElementById('configFileInput').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleConfigDrop(event)">
+        Click to select configs, or drag & drop
+        <input type="file" id="configFileInput" multiple onchange="stageConfigFiles(this.files)" />
+      </div>
+      <!-- Staged Config Queue -->
+      <div id="stagedConfigQueue" class="hidden" style="margin-top:8px"></div>
+
+      <div style="margin:12px 0;text-align:center;color:var(--text-muted)">— or paste config text —</div>
+      <textarea id="pasteArea" rows="4" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:12px;resize:vertical" placeholder="Paste CLI config text here..."></textarea>
+      <button class="btn btn-sm mt-2" onclick="importPastedText()">Import Pasted Text</button>
+
+      <h3 style="margin:20px 0 8px;">📋 FQDN / Domain List</h3>
+      <div class="dropzone" id="fqdnDropzone" onclick="document.getElementById('fqdnFileInput').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleFqdnDrop(event)">
+        Click to select CSV / TXT, or drag & drop
+        <input type="file" id="fqdnFileInput" multiple onchange="stageFqdnFiles(this.files)" />
+      </div>
+      <!-- Staged FQDN Queue -->
+      <div id="stagedFqdnQueue" class="hidden" style="margin-top:8px"></div>
+
+      <!-- Import Progress -->
+      <div id="importProgress" class="hidden" style="margin-top:12px;padding:8px 12px;background:var(--accent-light);border-radius:var(--radius-sm);font-size:12px;color:var(--accent);font-weight:600">
+        ⏳ Importing...
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-sm" onclick="clearAllConfigs()" style="color:var(--red)">Clear All Configs</button>
+        <button class="btn btn-sm" onclick="clearAllFqdn()" style="color:var(--red)">Clear FQDN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Search Modal -->
+<div class="modal-overlay hidden" id="bulkSearchModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h2>Bulk Search</h2>
+      <button class="modal-close" onclick="closeBulkSearch()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <textarea class="bulk-textarea" id="bulkInput" placeholder="Enter one search term per line (IP, FQDN, keyword)...&#10;&#10;Example:&#10;192.168.1.0/24&#10;example.com&#10;vs_web_prod"></textarea>
+      <div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <span class="text-sm text-muted">Logic:</span>
+        <label class="filter-toggle"><input type="radio" name="bulkMode" value="OR" checked /> OR (any match)</label>
+        <label class="filter-toggle"><input type="radio" name="bulkMode" value="AND" /> AND (all match)</label>
+        <label class="filter-toggle"><input type="radio" name="bulkMode" value="AND NOT" /> AND NOT (exclude)</label>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="applyBulkSearch()" style="flex:1">Run Search</button>
+        <button class="btn" onclick="applyBulkSearchNew()" style="flex:1" title="Clear current search and run new">New Search</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="modal-overlay hidden" id="confirmDialog">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-body" style="text-align:center;padding:30px">
+      <h3 id="confirmTitle" style="margin-bottom:8px"></h3>
+      <p id="confirmMessage" style="color:var(--text-secondary);margin-bottom:20px"></p>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="btn" onclick="closeConfirm()">Cancel</button>
+        <button class="btn btn-primary" onclick="doConfirm()" style="background:var(--red);border-color:var(--red)">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+let state = {
+  rawConfigs: [],
+  parsedConfigs: [],
+  fqdnRecords: [],
+  search: '',
+  appliedSearch: '',
+  searchAST: null,
+  searchMode: 'keyword',
+  ignoreCIDR: false,
+  highlightEnabled: true,
+  disabledHosts: new Set(),
+  lang: 'en',
+  activeTab: 'sec',
+  forceShowFqdn: false,
+  lastGeneratedSearch: '',
+  lastGeneratedFilters: {fromZone:'', toZone:'', tag:''},
+  filters: {
+    sourceDevice: '',
+    fromZone: '', toZone: '', tag: '',
+    filterSource: false, filterDest: false,
+    secHideDisabled: false, secShowDisabledOnly: false,
+    natHideDisabled: false, natShowDisabledOnly: false,
+    showDisabledMembersOnly: false,
+    fqdnTypeFilter: '', fqdnOwnerFilter: '', fqdnGeoFilter: '',
+  }
+};
+
+const TABS = [
+  { id:'fqdn', label:{ en:'FQDN', zh:'FQDN' } },
+  { id:'sec', label:{ en:'Sec Rules', zh:'安全規則' } },
+  { id:'nat', label:{ en:'NAT Rules', zh:'NAT 規則' } },
+  { id:'route', label:{ en:'Routes', zh:'路由表' } },
+  { id:'objects', label:{ en:'Objects', zh:'物件' } },
+  { id:'f5_vs', label:{ en:'LTM', zh:'LTM' } },
+  { id:'f5_pools', label:{ en:'Pools', zh:'Pools' } },
+  { id:'copy', label:{ en:'Copy', zh:'匯出複製' } },
+  { id:'raw', label:{ en:'Raw Config', zh:'原始組態' } },
+  { id:'debug', label:{ en:'Debug', zh:'解析除錯' } },
+];
+
+// ===== UTILITY =====
+let _idCounter = 0;
+const genId = () => 'id_' + (++_idCounter) + '_' + Math.random().toString(36).slice(2,8);
+const esc = (s) => {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+};
+const displayHostname = (hostname) => String(hostname).split('.')[0];
+
+// Search UI helpers
+function clearSearch() {
+  document.getElementById('searchInput').value='';
+  state.search='';state.appliedSearch='';state.searchAST=null;
+  copyData=[];
+  document.getElementById('searchHint').innerHTML='';
+  document.getElementById('searchClear').style.display='none';
+  renderContent();
+}
+
+function updateSearchHint() {
+  const val=document.getElementById('searchInput').value.trim();
+  const hint=document.getElementById('searchHint');
+  const clearBtn=document.getElementById('searchClear');
+  clearBtn.style.display=val?'block':'none';
+  if(!val){hint.innerHTML='';return;}
+  let mode='';
+  if(state.ignoreCIDR){
+    mode=state.searchMode==='exact'?'Exact (Ignore CIDR)':'Keyword (Ignore CIDR)';
+  } else if(isCIDR(val)){
+    mode='CIDR Overlap';
+  } else if(isExactIP(val)){
+    mode='Exact IP';
+  } else if(isIPish(val)){
+    mode='IP Prefix';
+  } else if(state.searchMode==='exact'){
+    mode='Exact Match';
+  } else {
+    mode='Keyword / Port';
+  }
+  hint.innerHTML=`Press Enter to filter: <span class="hint-mode">${esc(val)}</span> — ${mode}`;
+}
+
+function quickSearch(value) {
+  document.getElementById('searchInput').value=value;
+  state.search=value;state.appliedSearch=value;state.searchAST=parseSearch(value);
+  state.searchMode='exact';
+  document.getElementById('searchModeBtn').textContent='Exact';
+  copyData=[];
+  addToSearchHistory(value);
+  updateSearchHint();
+  renderContent();
+}
+
+// ===== NETWORK UTILS =====
+const ipToNum = (ip) => {
+  const p = String(ip).split('.');
+  if (p.length !== 4) return NaN;
+  for (const o of p) { const n = parseInt(o,10); if (isNaN(n)||n<0||n>255) return NaN; }
+  return p.reduce((a,o) => ((a<<8)+parseInt(o,10))>>>0, 0);
+};
+const isCIDR = s => /^\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/.test(String(s));
+const isExactIP = s => /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(String(s)) && !isCIDR(s);
+const isIPish = s => /^\d[\d.]*$/.test(String(s)) && !isExactIP(s) && !isCIDR(s);
+const ipInCIDR = (ip, cidr) => {
+  try {
+    const [net,bs] = String(cidr).split('/');
+    const b = parseInt(bs,10);
+    if (isNaN(b)||b<0||b>32) return false;
+    const mask = b===0?0:(0xFFFFFFFF<<(32-b))>>>0;
+    const ipN = ipToNum(ip), netN = ipToNum(net);
+    if (isNaN(ipN)||isNaN(netN)) return false;
+    return (ipN&mask)===(netN&mask);
+  } catch { return false; }
+};
+const cidrOverlaps = (c1,c2) => {
+  try {
+    const [n1,b1s]=String(c1).split('/'), [n2,b2s]=String(c2).split('/');
+    const b1=parseInt(b1s,10), b2=parseInt(b2s,10);
+    if (isNaN(b1)||isNaN(b2)) return false;
+    const mb=Math.min(b1,b2), mask=mb===0?0:(0xFFFFFFFF<<(32-mb))>>>0;
+    const a=ipToNum(n1), b=ipToNum(n2);
+    if (isNaN(a)||isNaN(b)) return false;
+    return (a&mask)===(b&mask);
+  } catch { return false; }
+};
+const smartSort = (a,b,key,dir) => {
+  let vA=a[key]??'', vB=b[key]??'';
+  if (key==='ip') {
+    const nA=ipToNum(String(vA).split('/')[0]), nB=ipToNum(String(vB).split('/')[0]);
+    if (!isNaN(nA)&&!isNaN(nB)) return dir==='asc'?nA-nB:nB-nA;
+  }
+  if (key==='port') {
+    const nA=parseInt(vA,10), nB=parseInt(vB,10);
+    if (!isNaN(nA)&&!isNaN(nB)) return dir==='asc'?nA-nB:nB-nA;
+  }
+  return dir==='asc'?String(vA).localeCompare(String(vB),undefined,{numeric:true,sensitivity:'base'}):String(vB).localeCompare(String(vA),undefined,{numeric:true,sensitivity:'base'});
+};
+
+// ===== SEARCH ENGINE =====
+const parseSearch = (query) => {
+  if (!query||!String(query).trim()) return null;
+  const sq = String(query).replace(/\(/g,' ( ').replace(/\)/g,' ) ');
+  const raw = sq.match(/"[^"]+"|'[^']+'|\S+/g)||[];
+  let tokens = raw.map(t=>String(t).trim()).filter(Boolean);
+  const proc = [];
+  for (let i=0;i<tokens.length;i++) {
+    const t=tokens[i].toUpperCase();
+    proc.push(tokens[i]);
+    if (i<tokens.length-1) {
+      const nx=tokens[i+1].toUpperCase();
+      const isCurVal=t!=='AND'&&t!=='OR'&&t!=='NOT'&&t!=='(';
+      const isNxVal=nx!=='AND'&&nx!=='OR'&&nx!==')';
+      if ((isCurVal||t===')')&&(isNxVal||nx==='NOT'||nx==='(')) proc.push('AND');
+    }
+  }
+  tokens=proc;
+  let pos=0;
+  function parseExpr(){let n=parseTerm();while(pos<tokens.length&&tokens[pos].toUpperCase()==='OR'){pos++;n={type:'OR',left:n,right:parseTerm()};}return n;}
+  function parseTerm(){let n=parseFactor();while(pos<tokens.length&&tokens[pos].toUpperCase()==='AND'){pos++;n={type:'AND',left:n,right:parseFactor()};}return n;}
+  function parseFactor(){
+    if(pos>=tokens.length)return{type:'LITERAL',value:'',isExact:false};
+    const tk=tokens[pos];
+    if(tk.toUpperCase()==='NOT'){pos++;return{type:'NOT',operand:parseFactor()};}
+    if(tk==='('){pos++;let n=parseExpr();if(pos<tokens.length&&tokens[pos]===')') pos++;return n;}
+    pos++;let v=tk,ex=false;
+    if((v.startsWith('"')&&v.endsWith('"'))||(v.startsWith("'")&&v.endsWith("'"))){v=v.slice(1,-1);ex=true;}
+    return{type:'LITERAL',value:v,isExact:ex};
+  }
+  try{const ast=parseExpr();if(pos<tokens.length)return{type:'LITERAL',value:String(query).trim(),isExact:false};return ast;}catch{return{type:'LITERAL',value:String(query).trim(),isExact:false};}
+};
+
+const evaluateAST = (ast, matchFn) => {
+  if(!ast) return true;
+  if(ast.type==='LITERAL') return matchFn(ast.value, ast.isExact);
+  if(ast.type==='NOT') return !evaluateAST(ast.operand, matchFn);
+  if(ast.type==='AND') return evaluateAST(ast.left, matchFn) && evaluateAST(ast.right, matchFn);
+  if(ast.type==='OR')  return evaluateAST(ast.left, matchFn) || evaluateAST(ast.right, matchFn);
+  return false;
+};
+
+const extractTerms = (ast) => {
+  const terms = new Set();
+  const walk = (n) => {
+    if(!n) return;
+    if(n.type==='LITERAL'&&n.value) terms.add(String(n.value).trim());
+    if(n.type==='NOT') walk(n.operand);
+    if(n.type==='AND'||n.type==='OR'){walk(n.left);walk(n.right);}
+  };
+  walk(ast);
+  return Array.from(terms);
+};
+
+// Like extractTerms but skips terms inside NOT branches (used for FQDN IP chaining)
+const extractPositiveTerms = (ast) => {
+  const terms = new Set();
+  const walk = (n, negated) => {
+    if(!n) return;
+    if(n.type==='LITERAL'&&n.value){ if(!negated) terms.add(String(n.value).trim()); return; }
+    if(n.type==='NOT'){ walk(n.operand, true); return; }
+    if(n.type==='AND'||n.type==='OR'){ walk(n.left, negated); walk(n.right, negated); }
+  };
+  walk(ast, false);
+  return Array.from(terms);
+};
+
+// Evaluate only NOT nodes in AST against a matchFn — returns false if any NOT is violated
+const evaluateNOTNodes = (ast, matchFn) => {
+  const check = (n) => {
+    if(!n) return true;
+    if(n.type==='NOT') return !matchFn(n.operand.value||'', false);
+    if(n.type==='AND') return check(n.left) && check(n.right);
+    if(n.type==='OR') return check(n.left) && check(n.right); // conservative: both sides must pass NOT checks
+    return true; // LITERAL nodes are ignored here
+  };
+  return check(ast);
+};
+
+// ===== MATCHER =====
+const _resolveObjCache = new WeakMap();
+const _resolveObjInner = (name, addresses, groups, depth) => {
+  if(depth>10) return [{name:String(name),value:'…',type:'max-depth'}];
+  if(name==='any'||name==='all') return [{name,value:'*',type:'wildcard'}];
+  const res=[];
+  if(groups&&groups[name]){
+    res.push({name:String(name),type:'group',value:''});
+    groups[name].forEach(m=>res.push(...resolveObject(m,addresses,groups,depth+1)));
+  } else if(addresses&&addresses[name]){
+    res.push({name:String(name),...addresses[name]});
+  } else {
+    res.push({name:String(name),value:String(name),type:'unknown'});
+  }
+  return res;
+};
+const resolveObject = (name, addresses, groups, depth=0) => {
+  if(depth>0) return _resolveObjInner(name, addresses, groups, depth);
+  if(!groups) return _resolveObjInner(name, addresses, groups, depth);
+  let cache = _resolveObjCache.get(groups);
+  if(!cache){ cache = new Map(); _resolveObjCache.set(groups, cache); }
+  if(cache.has(name)) return cache.get(name);
+  const result = _resolveObjInner(name, addresses, groups, 0);
+  cache.set(name, result);
+  return result;
+};
+
+const resolveService = (name, services, serviceGroups, depth=0) => {
+  if(depth>10) return [{name:String(name),value:'…',type:'max-depth'}];
+  if(name==='any'||name==='all'||name==='application-default') return [{name,value:'*',type:'wildcard'}];
+  const res=[];
+  if(serviceGroups&&serviceGroups[name]){
+    res.push({name:String(name),type:'group',value:''});
+    serviceGroups[name].forEach(m=>res.push(...resolveService(m,services,serviceGroups,depth+1)));
+  } else if(services&&services[name]){
+    const s=services[name];
+    res.push({name:String(name),...s,value:`${s.protocol}/${s.port}`});
+  } else {
+    res.push({name:String(name),value:String(name),type:'unknown'});
+  }
+  return res;
+};
+
+const matchObject = (name, value, search, isExact, ignoreCIDR=false) => {
+  if(!search) return true;
+  const s=String(search).toLowerCase();
+  const isSC=isCIDR(search), isSI=isExactIP(search);
+  if(isExact){if(name&&String(name).toLowerCase()===s)return true;if(value&&String(value).toLowerCase()===s)return true;}
+  else{if(name&&String(name).toLowerCase().includes(s))return true;const isVI=value&&(isExactIP(value)||isCIDR(value));if(value&&(!isVI||(!isSI&&!isSC))&&String(value).toLowerCase().includes(s))return true;}
+  if(value){const v=String(value);if(!ignoreCIDR){if(isSC){if(isCIDR(v))return cidrOverlaps(search,v);if(isExactIP(v))return ipInCIDR(v,search);}if(isSI){if(isCIDR(v))return ipInCIDR(search,v);if(isExactIP(v))return search===v;}}else if(isSI){if(v.split('/')[0]===s)return true;}else if(isSC){if(v.split('/')[0]===s.split('/')[0])return true;}}
+  return false;
+};
+
+// Fast name-only match for non-IP keyword searches (avoids full group resolution)
+const _matchNameOnly = (name, s, groups, isExact, depth=0) => {
+  if(depth>10) return false;
+  if(!name) return false;
+  const n=String(name).toLowerCase();
+  if(isExact?n===s:n.includes(s)) return true;
+  if(groups&&groups[name]) return groups[name].some(m=>_matchNameOnly(m,s,groups,isExact,depth+1));
+  return false;
+};
+
+const objectListMatchesSearch = (nameList, search, addresses, groups, searchMode, ignoreCIDR=false) => {
+  if(!search) return true;
+  if(!nameList||!Array.isArray(nameList)) return false;
+  const isExact=searchMode==='exact';
+  // Fast path: non-IP/CIDR keyword → only compare names, skip full group resolution
+  const isIPSearch=isCIDR(search)||isExactIP(search);
+  if(!isIPSearch) return nameList.some(top=>_matchNameOnly(top,String(search).toLowerCase(),groups,isExact));
+  // IP/CIDR path: full resolution needed to compare IP values
+  return nameList.some(top => resolveObject(top,addresses,groups).some(r=>matchObject(r.name,r.value,search,isExact,ignoreCIDR)));
+};
+
+const serviceListMatchesSearch = (nameList, search, services, serviceGroups, searchMode) => {
+  if(!search) return true;
+  if(!nameList||!Array.isArray(nameList)) return false;
+  const s=String(search).toLowerCase(), isExact=searchMode==='exact';
+  return nameList.some(top=>resolveService(top,services,serviceGroups).some(r=>{
+    if(isExact){return(r.name&&String(r.name).toLowerCase()===s)||(r.value&&String(r.value).toLowerCase()===s)||(r.port&&String(r.port).toLowerCase()===s);}
+    return(r.name&&String(r.name).toLowerCase().includes(s))||(r.value&&String(r.value).toLowerCase().includes(s))||(r.port&&String(r.port).toLowerCase().includes(s));
+  }));
+};
+
+const objectListMatchesFqdnIp = (nameList, fqdnIp, addresses, groups, ignoreCIDR=false) => {
+  if(!fqdnIp||!nameList||!Array.isArray(nameList)) return false;
+  return nameList.some(top=>resolveObject(top,addresses,groups).some(r=>{
+    const v=r.value;
+    if(v){if(!ignoreCIDR){if(isCIDR(v))return ipInCIDR(fqdnIp,v);if(isExactIP(v))return fqdnIp===v;}else{if(String(v).split('/')[0]===String(fqdnIp))return true;}if(String(v).toLowerCase()===String(fqdnIp).toLowerCase())return true;}
+    if(r.name&&String(r.name).toLowerCase()===String(fqdnIp).toLowerCase())return true;
+    return false;
+  }));
+};
+
+// ===== PARSERS =====
+const parseValue = (str) => {
+  const m = str.match(/"[^"]+"|'[^']+'|\S+/g)||[];
+  return m.map(s=>s.replace(/['"]/g,'')).filter(s=>s!=='['&&s!==']');
+};
+
+// FortiGate Parser
+const parseFortiGateConfig = (text) => {
+  const lines=String(text).split('\n');
+  const acc={type:'FortiGate',hostname:'Unknown-FortiGate',tags:{},addresses:{},groups:{},services:{},serviceGroups:{},urlCategories:{},secRules:{},natRules:{},routes:{},unparsed:[]};
+  const parseFGTValue=(str)=>(str.match(/"[^"]+"|'[^']+'|\S+/g)||[]).map(s=>s.replace(/['"]/g,''));
+  let cs=null,ce=null,co=null;
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i].trim();
+    if(!line||line.startsWith('#'))continue;
+    if(line.startsWith('config ')){cs=line.substring(7).trim();continue;}
+    if(line==='end'){cs=null;continue;}
+    if(line.startsWith('edit ')){ce=line.substring(5).replace(/['"]/g,'').trim();co={name:ce};continue;}
+    if(line==='next'){
+      if(co&&cs){
+        if(cs==='firewall policy'){
+          let rn=co.nameField||co.name;
+          let rule={name:String(rn),from:new Set(),to:new Set(),source:new Set(),destination:new Set(),application:new Set(),service:new Set(),category:new Set(),tag:new Set(),action:'deny',disabled:false};
+          if(co.srcintf)[].concat(co.srcintf).forEach(v=>rule.from.add(v));
+          if(co.dstintf)[].concat(co.dstintf).forEach(v=>rule.to.add(v));
+          if(co.srcaddr)[].concat(co.srcaddr).forEach(v=>rule.source.add(v));
+          if(co.dstaddr)[].concat(co.dstaddr).forEach(v=>rule.destination.add(v));
+          if(co.service)[].concat(co.service).forEach(v=>rule.service.add(v));
+          if(co.action){const av=Array.isArray(co.action)?co.action[0]:co.action;rule.action=(av==='accept')?'allow':'deny';}
+          if(co.status){const sv=Array.isArray(co.status)?co.status[0]:co.status;rule.disabled=(sv==='disable');}
+          if(co.comments)rule.name=String(co.comments);
+          acc.secRules[ce]=rule;
+        } else if(cs==='firewall address'){
+          if(co.subnet){const parts=parseFGTValue(co.subnet.join?co.subnet.join(' '):co.subnet);if(parts.length>=2){const ip=parts[0],mask=parts[1];const bits=mask.split('.').reduce((a,o)=>a+parseInt(o,10).toString(2).split('').filter(b=>b==='1').length,0);acc.addresses[ce]={type:'ip-netmask',value:`${ip}/${bits}`};}}
+          if(co.fqdn)acc.addresses[ce]={type:'fqdn',value:String(Array.isArray(co.fqdn)?co.fqdn[0]:co.fqdn)};
+          if(co['start-ip']&&co['end-ip'])acc.addresses[ce]={type:'ip-range',value:`${co['start-ip']}-${co['end-ip']}`};
+        } else if(cs==='firewall addrgrp'){
+          if(!acc.groups[ce])acc.groups[ce]=new Set();
+          if(co.member)[].concat(co.member).forEach(v=>acc.groups[ce].add(v));
+        } else if(cs==='firewall service custom'){
+          if(co['tcp-portrange'])acc.services[ce]={protocol:'tcp',port:String(co['tcp-portrange'])};
+          else if(co['udp-portrange'])acc.services[ce]={protocol:'udp',port:String(co['udp-portrange'])};
+        } else if(cs==='firewall service group'){
+          if(!acc.serviceGroups[ce])acc.serviceGroups[ce]=new Set();
+          if(co.member)[].concat(co.member).forEach(v=>acc.serviceGroups[ce].add(v));
+        } else if(cs==='firewall central-snat-map'||cs==='firewall central-dnat'){
+          let rule={name:String(co.name||ce),disabled:false,from:new Set(),to:new Set(),source:new Set(),destination:new Set(),service:new Set(),tag:new Set(),sourceTranslation:[],destinationTranslation:[]};
+          if(co.srcintf)[].concat(co.srcintf).forEach(v=>rule.from.add(v));
+          if(co.dstintf)[].concat(co.dstintf).forEach(v=>rule.to.add(v));
+          if(co['orig-addr'])[].concat(co['orig-addr']).forEach(v=>rule.source.add(v));
+          if(co['dst-addr'])[].concat(co['dst-addr']).forEach(v=>rule.destination.add(v));
+          // SNAT: nat-ippool
+          if(co['nat-ippool'])[].concat(co['nat-ippool']).forEach(v=>rule.sourceTranslation.push(v));
+          // DNAT: extip / mappedip / dst-addr-nated
+          if(co['dst-addr-nated'])[].concat(co['dst-addr-nated']).forEach(v=>rule.destinationTranslation.push(v));
+          if(co.extip)[].concat(co.extip).forEach(v=>rule.destinationTranslation.push(v));
+          if(co.mappedip)[].concat(co.mappedip).forEach(v=>rule.destinationTranslation.push(v));
+          if(co.status){const sv=Array.isArray(co.status)?co.status[0]:co.status;rule.disabled=(sv==='disable');}
+          acc.natRules[ce]=rule;
+        } else if(cs==='firewall vip'){
+          // FortiGate VIP objects: parse extip/mappedip into addresses
+          if(co.extip&&co.mappedip){
+            const extip=Array.isArray(co.extip)?co.extip[0]:co.extip;
+            const mappedip=Array.isArray(co.mappedip)?co.mappedip[0]:co.mappedip;
+            acc.addresses[ce]={type:'ip-netmask',value:extip,mappedip:mappedip};
+          }
+        } else if(cs==='router static'){
+          acc.routes[ce]={name:String(ce),destination:co.dst?String(Array.isArray(co.dst)?co.dst[0]:co.dst):'',nexthop:co.gateway?String(Array.isArray(co.gateway)?co.gateway[0]:co.gateway):'',interface:co.device?String(Array.isArray(co.device)?co.device[0]:co.device):''};
+        }
+      }
+      if(cs==='system global'&&co&&co.hostname)acc.hostname=String(Array.isArray(co.hostname)?co.hostname[0]:co.hostname);
+      co=null;ce=null;continue;
+    }
+    if(co){
+      const m=line.match(/^set\s+(\S+)\s+(.*)/);
+      if(m){const k=m[1],vals=parseFGTValue(m[2]);co[k]=vals.length===1?vals[0]:vals;}
+    }
+  }
+  const toArr=s=>s instanceof Set?Array.from(s):(Array.isArray(s)?s:[]);
+  const groups={};Object.entries(acc.groups).forEach(([k,v])=>groups[k]=Array.from(v));
+  const serviceGroups={};Object.entries(acc.serviceGroups).forEach(([k,v])=>serviceGroups[k]=Array.from(v));
+  const secRules=Object.values(acc.secRules).map(r=>({name:String(r.name),disabled:r.disabled,action:r.action,from:toArr(r.from),to:toArr(r.to),source:toArr(r.source),destination:toArr(r.destination),application:toArr(r.application),service:toArr(r.service),category:toArr(r.category),tag:toArr(r.tag)}));
+  const natRules=Object.values(acc.natRules).map(r=>({name:String(r.name),disabled:!!r.disabled,from:toArr(r.from),to:toArr(r.to),source:toArr(r.source),destination:toArr(r.destination),service:toArr(r.service),tag:toArr(r.tag),sourceTranslation:Array.from(r.sourceTranslation||[]),destinationTranslation:Array.from(r.destinationTranslation||[])}));
+  const routesArr=Object.values(acc.routes).map(r=>({name:String(r.name||''),destination:r.destination?String(r.destination):'',nexthop:r.nexthop?String(r.nexthop):'',interface:r.interface?String(r.interface):''}));
+  return {...acc,groups,serviceGroups,secRules,natRules,routes:routesArr};
+};
+
+// Palo Alto Parser
+const parsePAConfig = (text) => {
+  const lines=String(text).split('\n');
+  const acc={type:'PA',hostname:'Unknown-PA',tags:{},addresses:{},groups:{},services:{},serviceGroups:{},urlCategories:{},secRules:{},natRules:{},routes:{},unparsed:[]};
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i].trim();
+    if(!line||line.startsWith('#'))continue;
+    if(!line.startsWith('set ')){acc.unparsed.push(line);continue;}
+    // Hostname: direct  →  set deviceconfig system hostname <name>
+    // Panorama template  →  set template T config deviceconfig system hostname <name>
+    // Panorama device    →  set devices serial config deviceconfig system hostname <name>
+    if(line.includes('deviceconfig system hostname ')){const m=line.match(/deviceconfig system hostname\s+("[^"]+"|'[^']+'|\S+)/);if(m)acc.hostname=String(m[1]).replace(/['"]/g,'');continue;}
+    const tagM=line.match(/tag\s+("[^"]+"|'[^']+'|\S+)\s+color\s+(color\d+)/);
+    if(tagM){acc.tags[String(tagM[1]).replace(/['"]/g,'')]=String(tagM[2]);continue;}
+    const addrM=line.match(/address\s+("[^"]+"|'[^']+'|\S+)\s+(ip-netmask|fqdn|ip-range)\s+(.+)$/);
+    if(addrM){acc.addresses[String(addrM[1]).replace(/['"]/g,'')]={type:String(addrM[2]),value:String(addrM[3]).replace(/['"]/g,'').trim()};continue;}
+    const agP=line.split(/address-group\s+/);
+    if(agP.length>1){const nm=agP[1].match(/^("[^"]+"|'[^']+'|\S+)\s+(.*)/);if(nm){const name=String(nm[1]).replace(/['"]/g,'');if(!acc.groups[name])acc.groups[name]=new Set();const tm=nm[2].match(/^(static|members)\s+(.*)/);if(tm)parseValue(tm[2]).forEach(v=>acc.groups[name].add(v));}continue;}
+    const srvM=line.match(/service\s+("[^"]+"|'[^']+'|\S+)\s+protocol\s+(tcp|udp)\s+(?:source-port\s+\S+\s+)?port\s+(.+)$/i);
+    if(srvM){acc.services[String(srvM[1]).replace(/['"]/g,'')]={protocol:String(srvM[2]).toLowerCase(),port:String(srvM[3]).replace(/['"]/g,'').trim()};continue;}
+    const sgP=line.split(/service-group\s+/);
+    if(sgP.length>1){const nm=sgP[1].match(/^("[^"]+"|'[^']+'|\S+)\s+(.*)/);if(nm){const name=String(nm[1]).replace(/['"]/g,'');if(!acc.serviceGroups[name])acc.serviceGroups[name]=new Set();const tm=nm[2].match(/^(static|members)\s+(.*)/);if(tm)parseValue(tm[2]).forEach(v=>acc.serviceGroups[name].add(v));}continue;}
+    // URL Categories
+    const urlP=line.split(/custom-url-category\s+/);
+    if(urlP.length>1){const nm=urlP[1].match(/^("[^"]+"|'[^']+'|\S+)\s+(.*)/);if(nm){const name=String(nm[1]).replace(/['"]/g,'');if(!acc.urlCategories[name])acc.urlCategories[name]=new Set();const tm=nm[2].match(/^(list|members)\s+(.*)/);if(tm)parseValue(tm[2]).forEach(v=>acc.urlCategories[name].add(v));}continue;}
+    // Security rules
+    const secM=line.match(/rulebase security rules\s+("[^"]+"|'[^']+'|\S+)\s+(.*)/);
+    if(secM){const rn=String(secM[1]).replace(/['"]/g,'');if(!acc.secRules[rn])acc.secRules[rn]={name:rn,from:new Set(),to:new Set(),source:new Set(),destination:new Set(),application:new Set(),service:new Set(),category:new Set(),tag:new Set(),action:'allow',disabled:false};const rest=secM[2];
+      const fm=rest.match(/^from\s+(.*)/);if(fm)parseValue(fm[1]).forEach(v=>acc.secRules[rn].from.add(v));
+      const tm=rest.match(/^to\s+(.*)/);if(tm)parseValue(tm[1]).forEach(v=>acc.secRules[rn].to.add(v));
+      const sm=rest.match(/^source\s+(.*)/);if(sm)parseValue(sm[1]).forEach(v=>acc.secRules[rn].source.add(v));
+      const dm=rest.match(/^destination\s+(.*)/);if(dm)parseValue(dm[1]).forEach(v=>acc.secRules[rn].destination.add(v));
+      const am=rest.match(/^application\s+(.*)/);if(am)parseValue(am[1]).forEach(v=>acc.secRules[rn].application.add(v));
+      const svm=rest.match(/^service\s+(.*)/);if(svm)parseValue(svm[1]).forEach(v=>acc.secRules[rn].service.add(v));
+      const cm=rest.match(/^category\s+(.*)/);if(cm)parseValue(cm[1]).forEach(v=>acc.secRules[rn].category.add(v));
+      const tgm=rest.match(/^tag\s+(.*)/);if(tgm)parseValue(tgm[1]).forEach(v=>acc.secRules[rn].tag.add(v));
+      const acm=rest.match(/^action\s+(\S+)/);if(acm)acc.secRules[rn].action=String(acm[1]);
+      if(rest.match(/^disabled\s+yes/))acc.secRules[rn].disabled=true;
+      continue;
+    }
+    // NAT rules
+    const natM=line.match(/rulebase nat rules\s+("[^"]+"|'[^']+'|\S+)\s+(.*)/);
+    if(natM){const rn=String(natM[1]).replace(/['"]/g,'');if(!acc.natRules[rn])acc.natRules[rn]={name:rn,from:new Set(),to:new Set(),source:new Set(),destination:new Set(),service:new Set(),tag:new Set(),'source-translation':new Set(),'destination-translation':new Set(),disabled:false};const rest=natM[2];
+      const fm=rest.match(/^from\s+(.*)/);if(fm)parseValue(fm[1]).forEach(v=>acc.natRules[rn].from.add(v));
+      const tm=rest.match(/^to\s+(.*)/);if(tm)parseValue(tm[1]).forEach(v=>acc.natRules[rn].to.add(v));
+      const sm=rest.match(/^source\s+(.*)/);if(sm)parseValue(sm[1]).forEach(v=>acc.natRules[rn].source.add(v));
+      const dm=rest.match(/^destination\s+(.*)/);if(dm)parseValue(dm[1]).forEach(v=>acc.natRules[rn].destination.add(v));
+      const svm=rest.match(/^service\s+(.*)/);if(svm)parseValue(svm[1]).forEach(v=>acc.natRules[rn].service.add(v));
+      const tgm=rest.match(/^tag\s+(.*)/);if(tgm)parseValue(tgm[1]).forEach(v=>acc.natRules[rn].tag.add(v));
+      if(rest.includes('source-translation'))acc.natRules[rn]['source-translation'].add(rest.split(/\s+/).pop());
+      if(rest.includes('destination-translation'))acc.natRules[rn]['destination-translation'].add(rest.split(/\s+/).pop());
+      if(rest.match(/^disabled\s+yes/))acc.natRules[rn].disabled=true;
+      continue;
+    }
+    // Routes
+    const rtM=line.match(/virtual-router\s+\S+\s+routing-table\s+ip\s+static-route\s+("[^"]+"|'[^']+'|\S+)\s+(.*)/);
+    if(rtM){const rn=String(rtM[1]).replace(/['"]/g,'');if(!acc.routes[rn])acc.routes[rn]={name:rn};const rest=rtM[2];
+      const dm=rest.match(/^destination\s+(\S+)/);if(dm)acc.routes[rn].destination=String(dm[1]);
+      const nm=rest.match(/^nexthop\s+\S+\s+ip-address\s+(\S+)/);if(nm)acc.routes[rn].nexthop=String(nm[1]);
+      const im=rest.match(/^interface\s+(\S+)/);if(im)acc.routes[rn].interface=String(im[1]);
+      continue;
+    }
+  }
+  const toArr=s=>s instanceof Set?Array.from(s):(Array.isArray(s)?s:[]);
+  const groups={};Object.entries(acc.groups).forEach(([k,v])=>groups[k]=Array.from(v));
+  const serviceGroups={};Object.entries(acc.serviceGroups).forEach(([k,v])=>serviceGroups[k]=Array.from(v));
+  const urlCategories={};Object.entries(acc.urlCategories).forEach(([k,v])=>urlCategories[k]=Array.from(v));
+  const secRules=Object.values(acc.secRules).map(r=>({name:String(r.name),disabled:!!r.disabled,action:r.action||'allow',from:toArr(r.from),to:toArr(r.to),source:toArr(r.source),destination:toArr(r.destination),application:toArr(r.application),service:toArr(r.service),category:toArr(r.category),tag:Array.from(r.tag||[])}));
+  const natRules=Object.values(acc.natRules).map(r=>({name:String(r.name),disabled:!!r.disabled,from:toArr(r.from),to:toArr(r.to),source:toArr(r.source),destination:toArr(r.destination),service:toArr(r.service),tag:Array.from(r.tag||[]),sourceTranslation:Array.from(r['source-translation']||[]),destinationTranslation:Array.from(r['destination-translation']||[])}));
+  const routesArr=Object.values(acc.routes).map(r=>({name:String(r.name||''),destination:r.destination?String(r.destination):'',nexthop:r.nexthop?String(r.nexthop):'',interface:r.interface?String(r.interface):''}));
+  return {...acc,groups,serviceGroups,urlCategories,secRules,natRules,routes:routesArr};
+};
+
+// Juniper SRX (JunOS set-format) Parser
+const parseSRXConfig = (text) => {
+  const lines = String(text).split('\n');
+  const acc = {
+    type: 'SRX', hostname: 'Unknown-SRX',
+    tags: {}, addresses: {}, groups: {}, services: {}, serviceGroups: {},
+    urlCategories: {}, secRules: {}, natRules: {}, routes: {}, unparsed: [],
+    _snatRuleSets: {}, _dnatRuleSets: {}, _sourcePools: {}, _destPools: {},
+    _deactivatedSecRules: new Set(),   // policy names
+    _deactivatedSnatRules: new Set(),  // "ruleSetName:ruleName"
+    _deactivatedDnatRules: new Set(),  // "ruleSetName:ruleName"
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    // JunOS CLI context banners e.g. {primary:node0} — silently discard
+    if (/^\{[^}]*\}$/.test(line)) continue;
+    // ── deactivate <path> — mark rule as disabled; parsed independently of set order ──
+    if (line.startsWith('deactivate ')) {
+      { const dm = line.match(/^deactivate security policies from-zone (\S+) to-zone (\S+) policy (\S+)$/);
+        if (dm) { acc._deactivatedSecRules.add(`${dm[1]}::${dm[2]}::${dm[3]}`); continue; } }
+      { const dm = line.match(/^deactivate security nat source rule-set (\S+) rule (\S+)$/);
+        if (dm) { acc._deactivatedSnatRules.add(`${dm[1]}:${dm[2]}`); continue; } }
+      { const dm = line.match(/^deactivate security nat destination rule-set (\S+) rule (\S+)$/);
+        if (dm) { acc._deactivatedDnatRules.add(`${dm[1]}:${dm[2]}`); continue; } }
+      acc.unparsed.push(line); continue; // unrecognised deactivate path
+    }
+    if (!line.startsWith('set ')) { acc.unparsed.push(line); continue; }
+
+    // Hostname priority (highest → lowest):
+    //   1. set groups node0 system host-name <name>   ← HA primary node, locks everything out
+    //   2. set groups <other> system host-name <name> ← any other node, only if node0 not seen
+    //   3. set system host-name <name>                ← standalone / fallback
+    { const m2 = line.match(/^set groups node0 system host-name (\S+)$/);
+      if (m2) { acc.hostname = m2[1].replace(/['"]/g, ''); acc._hostnameFromGroups = 2; continue; } }
+    { const m2 = line.match(/^set groups \S+ system host-name (\S+)$/);
+      if (m2 && (acc._hostnameFromGroups||0) < 2) { acc.hostname = m2[1].replace(/['"]/g, ''); acc._hostnameFromGroups = 1; continue; } }
+    if (!acc._hostnameFromGroups && line.startsWith('set system host-name ')) {
+      acc.hostname = line.slice('set system host-name '.length).trim().replace(/['"]/g, '');
+      continue;
+    }
+
+    let m;
+
+    // ── Address book: zone-scoped ─────────────────────────────────────────
+    // set security zones security-zone <z> address-book address <name> <value>
+    m = line.match(/^set (?:groups \S+ )?security zones security-zone \S+ address-book address (\S+) (\S+)$/);
+    if (m) {
+      const [, name, val] = m;
+      if (!acc.addresses[name]) {
+        const type = (isCIDR(val) || isExactIP(val)) ? 'ip-netmask' : 'fqdn';
+        acc.addresses[name] = { type, value: val };
+      }
+      continue;
+    }
+
+    // set security zones security-zone <z> address-book address-set <name> address <member>
+    m = line.match(/^set (?:groups \S+ )?security zones security-zone \S+ address-book address-set (\S+) address (\S+)$/);
+    if (m) {
+      const [, name, member] = m;
+      if (!acc.groups[name]) acc.groups[name] = new Set();
+      acc.groups[name].add(member);
+      continue;
+    }
+
+    // ── Applications (custom services) ────────────────────────────────────
+    m = line.match(/^set applications application (\S+) protocol (tcp|udp|icmp)$/i);
+    if (m) {
+      const [, name, proto] = m;
+      if (!acc.services[name]) acc.services[name] = { protocol: proto.toLowerCase(), port: '' };
+      else acc.services[name].protocol = proto.toLowerCase();
+      continue;
+    }
+    m = line.match(/^set applications application (\S+) destination-port (\S+)$/);
+    if (m) {
+      const [, name, port] = m;
+      if (!acc.services[name]) acc.services[name] = { protocol: 'tcp', port };
+      else acc.services[name].port = port;
+      continue;
+    }
+    // Application sets
+    m = line.match(/^set applications application-set (\S+) application (\S+)$/);
+    if (m) {
+      const [, name, app] = m;
+      if (!acc.serviceGroups[name]) acc.serviceGroups[name] = new Set();
+      acc.serviceGroups[name].add(app);
+      continue;
+    }
+
+    // ── Security policies ─────────────────────────────────────────────────
+    // set security policies from-zone <f> to-zone <t> policy <name> match/then ...
+    m = line.match(/^set security policies from-zone (\S+) to-zone (\S+) policy (\S+) (.+)$/);
+    if (m) {
+      const [, fromZ, toZ, polName, rest] = m;
+      // Key includes zone pair so same policy name in different zones becomes separate rules
+      const ruleKey = `${fromZ}::${toZ}::${polName}`;
+      if (!acc.secRules[ruleKey]) {
+        acc.secRules[ruleKey] = {
+          name: polName, from: new Set([fromZ]), to: new Set([toZ]),
+          source: new Set(), destination: new Set(),
+          application: new Set(), service: new Set(),
+          category: new Set(), tag: new Set(),
+          action: 'allow', disabled: false,
+        };
+      }
+      const r = acc.secRules[ruleKey];
+      const srcM = rest.match(/^match source-address (\S+)$/);       if (srcM) { r.source.add(srcM[1]); continue; }
+      const dstM = rest.match(/^match destination-address (\S+)$/);  if (dstM) { r.destination.add(dstM[1]); continue; }
+      const appM = rest.match(/^match application (\S+)$/);          if (appM) { r.application.add(appM[1]); r.service.add(appM[1]); continue; }
+      if (rest === 'then permit')                    { r.action = 'allow'; continue; }
+      if (rest === 'then deny' || rest === 'then reject') { r.action = 'deny'; continue; }
+      if (rest.match(/^then inactive$/))             { r.disabled = true; continue; }
+      continue;
+    }
+
+    // ── NAT Source rule-sets ──────────────────────────────────────────────
+    m = line.match(/^set security nat source rule-set (\S+) from (?:zone|routing-instance) (\S+)$/);
+    if (m) {
+      const [, rs, from] = m;
+      if (!acc._snatRuleSets[rs]) acc._snatRuleSets[rs] = { from: '', to: '', rules: {} };
+      acc._snatRuleSets[rs].from = from; continue;
+    }
+    m = line.match(/^set security nat source rule-set (\S+) to (?:zone|routing-instance) (\S+)$/);
+    if (m) {
+      const [, rs, to] = m;
+      if (!acc._snatRuleSets[rs]) acc._snatRuleSets[rs] = { from: '', to: '', rules: {} };
+      acc._snatRuleSets[rs].to = to; continue;
+    }
+    m = line.match(/^set security nat source rule-set (\S+) rule (\S+) match source-address (\S+)$/);
+    if (m) {
+      const [, rs, rn, addr] = m;
+      if (!acc._snatRuleSets[rs]) acc._snatRuleSets[rs] = { from: '', to: '', rules: {} };
+      if (!acc._snatRuleSets[rs].rules[rn]) acc._snatRuleSets[rs].rules[rn] = { source: [], snat: [] };
+      acc._snatRuleSets[rs].rules[rn].source.push(addr); continue;
+    }
+    m = line.match(/^set security nat source rule-set (\S+) rule (\S+) then source-nat (?:pool (\S+)|interface)$/);
+    if (m) {
+      const [, rs, rn, pool] = m;
+      if (!acc._snatRuleSets[rs]) acc._snatRuleSets[rs] = { from: '', to: '', rules: {} };
+      if (!acc._snatRuleSets[rs].rules[rn]) acc._snatRuleSets[rs].rules[rn] = { source: [], snat: [] };
+      acc._snatRuleSets[rs].rules[rn].snat.push(pool || 'interface'); continue;
+    }
+    // SNAT pools
+    m = line.match(/^set security nat source pool (\S+) address (\S+)$/);
+    if (m) {
+      const [, pool, addr] = m;
+      if (!acc._sourcePools[pool]) acc._sourcePools[pool] = [];
+      acc._sourcePools[pool].push(addr); continue;
+    }
+
+    // ── NAT Destination rule-sets ─────────────────────────────────────────
+    m = line.match(/^set security nat destination rule-set (\S+) from (?:zone|routing-instance) (\S+)$/);
+    if (m) {
+      const [, rs, from] = m;
+      if (!acc._dnatRuleSets[rs]) acc._dnatRuleSets[rs] = { from: '', rules: {} };
+      acc._dnatRuleSets[rs].from = from; continue;
+    }
+    m = line.match(/^set security nat destination rule-set (\S+) rule (\S+) match destination-address (\S+)$/);
+    if (m) {
+      const [, rs, rn, addr] = m;
+      if (!acc._dnatRuleSets[rs]) acc._dnatRuleSets[rs] = { from: '', rules: {} };
+      if (!acc._dnatRuleSets[rs].rules[rn]) acc._dnatRuleSets[rs].rules[rn] = { destination: [], dnat: [] };
+      acc._dnatRuleSets[rs].rules[rn].destination.push(addr); continue;
+    }
+    m = line.match(/^set security nat destination rule-set (\S+) rule (\S+) then destination-nat pool (\S+)$/);
+    if (m) {
+      const [, rs, rn, pool] = m;
+      if (!acc._dnatRuleSets[rs]) acc._dnatRuleSets[rs] = { from: '', rules: {} };
+      if (!acc._dnatRuleSets[rs].rules[rn]) acc._dnatRuleSets[rs].rules[rn] = { destination: [], dnat: [] };
+      acc._dnatRuleSets[rs].rules[rn].dnat.push(pool); continue;
+    }
+    // DNAT pools
+    m = line.match(/^set security nat destination pool (\S+) address (\S+)$/);
+    if (m) {
+      const [, pool, addr] = m;
+      if (!acc._destPools[pool]) acc._destPools[pool] = [];
+      acc._destPools[pool].push(addr); continue;
+    }
+
+    // ── Routes ────────────────────────────────────────────────────────────
+    // Global static routes
+    m = line.match(/^set routing-options static route (\S+) next-hop (\S+)$/);
+    if (m) {
+      const [, dest, nh] = m;
+      acc.routes[dest] = { name: dest, destination: dest, nexthop: nh, interface: '' }; continue;
+    }
+    // Routing-instance static routes
+    m = line.match(/^set routing-instances (\S+) routing-options static route (\S+) next-hop (\S+)$/);
+    if (m) {
+      const [, ri, dest, nh] = m;
+      const key = `${ri}:${dest}`;
+      acc.routes[key] = { name: `[${ri}] ${dest}`, destination: dest, nexthop: nh, interface: ri }; continue;
+    }
+  }
+
+  // ── Post-process: expand SNAT rule-sets → natRules ────────────────────
+  Object.entries(acc._snatRuleSets).forEach(([rsName, rs]) => {
+    Object.entries(rs.rules).forEach(([ruleName, rule]) => {
+      const snatTargets = rule.snat.flatMap(s =>
+        s === 'interface' ? ['interface (outgoing)'] : (acc._sourcePools[s] || [s])
+      );
+      acc.natRules[`snat:${rsName}:${ruleName}`] = {
+        name: `${rsName} / ${ruleName}`,
+        disabled: acc._deactivatedSnatRules.has(`${rsName}:${ruleName}`),
+        from: rs.from ? [rs.from] : [], to: rs.to ? [rs.to] : [],
+        source: rule.source, destination: [], service: [], tag: [],
+        sourceTranslation: snatTargets, destinationTranslation: [],
+      };
+    });
+  });
+
+  // ── Post-process: expand DNAT rule-sets → natRules ────────────────────
+  Object.entries(acc._dnatRuleSets).forEach(([rsName, rs]) => {
+    Object.entries(rs.rules).forEach(([ruleName, rule]) => {
+      const dnatTargets = rule.dnat.flatMap(p => acc._destPools[p] || [p]);
+      acc.natRules[`dnat:${rsName}:${ruleName}`] = {
+        name: `${rsName} / ${ruleName}`,
+        disabled: acc._deactivatedDnatRules.has(`${rsName}:${ruleName}`),
+        from: rs.from ? [rs.from] : [], to: [],
+        source: [], destination: rule.destination, service: [], tag: [],
+        sourceTranslation: [], destinationTranslation: dnatTargets,
+      };
+    });
+  });
+
+  const toArr = s => s instanceof Set ? Array.from(s) : (Array.isArray(s) ? s : []);
+  const groups = {}; Object.entries(acc.groups).forEach(([k, v]) => groups[k] = Array.from(v));
+  const serviceGroups = {}; Object.entries(acc.serviceGroups).forEach(([k, v]) => serviceGroups[k] = Array.from(v));
+  const secRules = Object.entries(acc.secRules).map(([key, r]) => ({
+    name: String(r.name), disabled: !!r.disabled || acc._deactivatedSecRules.has(key), action: r.action || 'allow',
+    from: toArr(r.from), to: toArr(r.to),
+    source: toArr(r.source), destination: toArr(r.destination),
+    application: toArr(r.application), service: toArr(r.service),
+    category: [], tag: [],
+  }));
+  const natRules = Object.values(acc.natRules).map(r => ({
+    name: String(r.name), disabled: !!r.disabled,
+    from: r.from || [], to: r.to || [],
+    source: r.source || [], destination: r.destination || [],
+    service: [], tag: [],
+    sourceTranslation: r.sourceTranslation || [],
+    destinationTranslation: r.destinationTranslation || [],
+  }));
+  const routesArr = Object.values(acc.routes).map(r => ({
+    name: String(r.name || ''), destination: String(r.destination || ''),
+    nexthop: String(r.nexthop || ''), interface: String(r.interface || ''),
+  }));
+  return { ...acc, groups, serviceGroups, urlCategories: {}, secRules, natRules, routes: routesArr };
+};
+
+// F5 Parser
+const parseF5Config = (text) => {
+  const acc={type:'F5',hostname:'Unknown-F5',virtuals:[],pools:[],addresses:{},groups:{},services:{},serviceGroups:{},secRules:[],natRules:[],routes:[],unparsed:[]};
+  const st=String(text);
+  const hnM=st.match(/sys global-settings\s*\{[^}]*hostname\s+([^\s;}]+)/);
+  if(hnM)acc.hostname=String(hnM[1]);
+  let pos=0;
+  while(pos<st.length){
+    const m=st.substring(pos).match(/^(ltm virtual|ltm pool)\s+([^\s{]+)?\s*\{/m);
+    if(!m)break;
+    const si=pos+m.index, type=m[1], name=m[2]||'';
+    const bs=st.indexOf('{',si);
+    let ob=0,ei=bs;
+    for(let i=bs;i<st.length;i++){if(st[i]==='{')ob++;else if(st[i]==='}'){ob--;if(ob===0){ei=i;break;}}}
+    const content=st.substring(bs+1,ei), pn=String(name.split('/').pop());
+    if(type==='ltm virtual'){
+      const destM=content.match(/destination\s+([^\s;}]+)/);
+      const poolM=content.match(/pool\s+([^\s;}]+)/);
+      const isDis=content.split('\n').some(l=>l.trim()==='disabled');
+      let ip='',port='*';
+      if(destM){let d=destM[1].split('/').pop();let sep=Math.max(d.lastIndexOf(':'),d.lastIndexOf('.'));if(sep>0&&sep>d.indexOf('%')){port=d.substring(sep+1);ip=d.substring(0,sep);}else ip=d;ip=ip.split('%')[0];if(port==='any')port='*';}
+      acc.virtuals.push({name:pn,ip:String(ip),port:String(port),pool:poolM?poolM[1].split('/').pop():'',status:isDis?'disabled':'enabled'});
+    } else if(type==='ltm pool'){
+      let members=[];
+      const memM=content.match(/members\s*\{/);
+      if(memM){
+        let ms=memM.index+memM[0].length,mo=1,me=ms;
+        while(me<content.length&&mo>0){if(content[me]==='{')mo++;if(content[me]==='}')mo--;me++;}
+        let memStr=content.substring(ms,me-1);
+        let re=/([^\s{]+)\s*\{([^}]*)\}/g,mm;
+        while((mm=re.exec(memStr))!==null){
+          let mn=String(mm[1].split('/').pop()),mc=String(mm[2]),mi=mn,mp='*';
+          let sep=Math.max(mn.lastIndexOf(':'),mn.lastIndexOf('.'));
+          if(sep>0){mp=mn.substring(sep+1);mi=mn.substring(0,sep);}
+          let am=mc.match(/address\s+([^\s;}]+)/);if(am)mi=String(am[1]);
+          mi=mi.split('%')[0];
+          let isDis=mc.includes('user-disabled')||mc.includes('user-down')||mc.match(/\bdisabled\b/)!==null;
+          members.push({ip:String(mi),port:String(mp),name:String(mn),status:isDis?'disabled':'enabled'});
+        }
+      }
+      acc.pools.push({name:pn,members});
+    }
+    pos=ei+1;
+  }
+  return acc;
+};
+
+// FQDN Parser
+const parseFqdnFile = (text) => {
+  const lines=String(text).split('\n');
+  const records=[];
+  let headers=null;
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i].trim();
+    if(!line)continue;
+    const sep=line.includes('\t')?'\t':(line.includes(',')?',':null);
+    if(!sep)continue;
+    const cols=line.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,''));
+    if(!headers){
+      const lower=cols.map(c=>c.toLowerCase());
+      if(lower.some(c=>c.includes('fqdn')||c.includes('domain')||c.includes('ip'))){
+        headers={fqdn:lower.findIndex(c=>c.includes('fqdn')),domain:lower.findIndex(c=>c.includes('domain')),ip:lower.findIndex(c=>c.includes('ip')&&!c.includes('type')),owner:lower.findIndex(c=>c.includes('owner')||c.includes('bu')),type:lower.findIndex(c=>c.includes('type')||c.includes('record')),geo:lower.findIndex(c=>c.includes('geo')||c.includes('country'))};
+        continue;
+      }
+      headers={fqdn:0,domain:-1,ip:cols.length>1?1:-1,owner:-1,type:-1,geo:-1};
+    }
+    const g=(idx)=>idx>=0&&idx<cols.length?cols[idx]:'';
+    const fqdn=g(headers.fqdn), domain=g(headers.domain), ip=g(headers.ip);
+    if(!fqdn&&!domain&&(!ip||ip.toLowerCase()==='null'))continue;
+    records.push({id:genId(),owner:g(headers.owner),domain:domain,fqdn:fqdn,type:g(headers.type),ip:ip,geoInfo:g(headers.geo)});
+  }
+  return records;
+};
+
+// Auto-detect parser
+const parseConfig = (text) => {
+  const s=String(text);
+  if(s.includes('sys global-settings')||s.includes('ltm virtual ')||s.includes('ltm pool '))return parseF5Config(s);
+  if(s.includes('config firewall policy')||s.includes('config system global'))return parseFortiGateConfig(s);
+  if(s.includes('set security policies from-zone')||s.includes('set security nat source rule-set')||s.includes('set security zones security-zone'))return parseSRXConfig(s);
+  return parsePAConfig(s);
+};
+
+// ===== FILTERING ENGINE =====
+function getFilteredData() {
+  const { appliedSearch, searchAST, searchMode, ignoreCIDR, filters } = state;
+  let configs = state.parsedConfigs.map(c=>c.parsed);
+  // Source Device filter — disabledHosts toggle
+  if(state.disabledHosts && state.disabledHosts.size>0) configs=configs.filter(c=>!state.disabledHosts.has(c.hostname));
+  const fqdnRecords = state.fqdnRecords;
+
+  // FQDN→IP map: only positive terms (NOT branches excluded) to avoid chaining negated terms
+  const terms = searchAST ? extractTerms(searchAST) : [];
+  const positiveTerms = searchAST ? extractPositiveTerms(searchAST) : (appliedSearch ? [appliedSearch] : []);
+  const termFqdnIpsMap = {};
+  positiveTerms.forEach(term => {
+    const s=term.toLowerCase(), ips=new Set();
+    fqdnRecords.forEach(r => {
+      let match=false;
+      if(r.fqdn&&r.fqdn.toLowerCase().includes(s))match=true;
+      else if(r.domain&&r.domain.toLowerCase().includes(s))match=true;
+      else if(r.ip&&r.ip.toLowerCase().includes(s))match=true;
+      if(match&&r.ip&&r.ip.toLowerCase()!=='null'&&isExactIP(r.ip))ips.add(r.ip);
+    });
+    termFqdnIpsMap[term]=Array.from(ips);
+  });
+  const allFqdnIps=new Set();
+  Object.values(termFqdnIpsMap).forEach(a=>a.forEach(ip=>allFqdnIps.add(ip)));
+
+  // Rule→IP map (Symmetric Chaining): only positive terms to avoid NOT-branch terms
+  // (e.g. DENY_NON_SERVICE) from matching rules and flooding allRuleIps with unrelated IPs
+  const termRuleIpsMap = {};
+  const searchSrcOnly = filters.filterSource && !filters.filterDest;
+  const searchDstOnly = filters.filterDest && !filters.filterSource;
+  positiveTerms.forEach(term => {
+    const s=term.toLowerCase(), isExactMatch=searchMode==='exact';
+    const ips=new Set();
+    const checkMatch=(val)=>{if(!val)return false;const sv=String(val).toLowerCase();return isExactMatch?sv===s:sv.includes(s);};
+    configs.forEach(parsed => {
+      // Collect IPs from matching security rules
+      (parsed.secRules||[]).forEach(rule => {
+        const ruleNameMatch=checkMatch(rule.name);
+        const appMatch=(rule.application||[]).some(a=>checkMatch(a));
+        const svcMatch=serviceListMatchesSearch(rule.service,term,parsed.services,parsed.serviceGroups,searchMode);
+        const srcMatchObjs=[];const dstMatchObjs=[];
+        if(!searchDstOnly)(rule.source||[]).forEach(obj=>{if(objectListMatchesSearch([obj],term,parsed.addresses,parsed.groups,searchMode,ignoreCIDR))srcMatchObjs.push(obj);});
+        if(!searchSrcOnly)(rule.destination||[]).forEach(obj=>{if(objectListMatchesSearch([obj],term,parsed.addresses,parsed.groups,searchMode,ignoreCIDR))dstMatchObjs.push(obj);});
+        if(ruleNameMatch||appMatch||svcMatch||srcMatchObjs.length>0||dstMatchObjs.length>0){
+          const objsToResolve=[];
+          if(ruleNameMatch||appMatch||svcMatch){if(!searchDstOnly)objsToResolve.push(...(rule.source||[]));if(!searchSrcOnly)objsToResolve.push(...(rule.destination||[]));}
+          else{objsToResolve.push(...srcMatchObjs,...dstMatchObjs);}
+          objsToResolve.forEach(obj=>resolveObject(obj,parsed.addresses,parsed.groups).forEach(r=>{
+            if(r.value&&(isCIDR(r.value)||isExactIP(r.value)))ips.add(r.value);
+          }));
+        }
+      });
+      // Collect IPs from matching NAT rules
+      (parsed.natRules||[]).forEach(rule => {
+        const ruleNameMatch=checkMatch(rule.name);
+        const svcMatch=serviceListMatchesSearch(rule.service,term,parsed.services,parsed.serviceGroups,searchMode);
+        const srcMatchObjs=[];const dstMatchObjs=[];
+        if(!searchDstOnly){(rule.source||[]).forEach(obj=>{if(objectListMatchesSearch([obj],term,parsed.addresses,parsed.groups,searchMode,ignoreCIDR))srcMatchObjs.push(obj);});
+          (rule.sourceTranslation||[]).forEach(obj=>{if(objectListMatchesSearch([obj],term,parsed.addresses,parsed.groups,searchMode,ignoreCIDR))srcMatchObjs.push(obj);});}
+        if(!searchSrcOnly){(rule.destination||[]).forEach(obj=>{if(objectListMatchesSearch([obj],term,parsed.addresses,parsed.groups,searchMode,ignoreCIDR))dstMatchObjs.push(obj);});
+          (rule.destinationTranslation||[]).forEach(obj=>{if(objectListMatchesSearch([obj],term,parsed.addresses,parsed.groups,searchMode,ignoreCIDR))dstMatchObjs.push(obj);});}
+        if(ruleNameMatch||svcMatch||srcMatchObjs.length>0||dstMatchObjs.length>0){
+          const objsToResolve=[...srcMatchObjs,...dstMatchObjs];
+          if(ruleNameMatch||svcMatch){if(!searchDstOnly)objsToResolve.push(...(rule.source||[]),...(rule.sourceTranslation||[]));if(!searchSrcOnly)objsToResolve.push(...(rule.destination||[]),...(rule.destinationTranslation||[]));}
+          objsToResolve.forEach(obj=>resolveObject(obj,parsed.addresses,parsed.groups).forEach(r=>{
+            if(r.value&&(isCIDR(r.value)||isExactIP(r.value)))ips.add(r.value);
+          }));
+        }
+      });
+    });
+    termRuleIpsMap[term]=Array.from(ips);
+  });
+  const allRuleIps=new Set();
+  Object.values(termRuleIpsMap).forEach(a=>a.forEach(ip=>allRuleIps.add(ip)));
+
+  const result = { secRules:[], natRules:[], routes:[], addresses:[], groups:[], f5Virtuals:[], f5Pools:[], fqdnList:[] };
+
+  configs.forEach(parsed => {
+    const hn = parsed.hostname;
+    // Security Rules
+    (parsed.secRules||[]).forEach(r => {
+      if(filters.secHideDisabled && r.disabled) return;
+      if(filters.secShowDisabledOnly && !r.disabled) return;
+      if(filters.fromZone && !r.from.includes(filters.fromZone)) return;
+      if(filters.toZone && !r.to.includes(filters.toZone)) return;
+      if(filters.tag && !(r.tag||[]).includes(filters.tag)) return;
+      let match = true;
+      let chainedFromFqdn = false;
+      let chainedFromNat = false;
+      if(searchAST){
+        match = evaluateAST(searchAST, (term, forceExact) => {
+          const s=String(term).toLowerCase(), isEx=forceExact||searchMode==='exact';
+          const chk=v=>isEx?String(v).toLowerCase()===s:String(v).toLowerCase().includes(s);
+          // Name, application, from-zone, to-zone
+          if(chk(r.name)) return true;
+          if((r.application||[]).some(chk)) return true;
+          if((r.from||[]).some(chk)) return true;
+          if((r.to||[]).some(chk)) return true;
+          // Source / destination (full address-object resolution)
+          const am=isEx?'exact':'keyword';
+          const ms=!searchDstOnly?objectListMatchesSearch(r.source,term,parsed.addresses,parsed.groups,am,ignoreCIDR):false;
+          const md=!searchSrcOnly?objectListMatchesSearch(r.destination,term,parsed.addresses,parsed.groups,am,ignoreCIDR):false;
+          return ms||md||serviceListMatchesSearch(r.service,term,parsed.services,parsed.serviceGroups,am);
+        });
+        // FQDN chaining: search matched FQDN → its IP → rule source/dest
+        if(!match && allFqdnIps.size>0){
+          for(const fip of allFqdnIps){
+            const ms=!searchDstOnly?objectListMatchesFqdnIp(r.source,fip,parsed.addresses,parsed.groups,ignoreCIDR):false;
+            const md=!searchSrcOnly?objectListMatchesFqdnIp(r.destination,fip,parsed.addresses,parsed.groups,ignoreCIDR):false;
+            if(ms||md){
+              // Apply NOT-only filter: reject rules that violate any NOT node in the AST
+              const notOk=evaluateNOTNodes(searchAST,(term)=>{
+                const s=String(term).toLowerCase();
+                return String(r.name).toLowerCase().includes(s)
+                    ||(r.application||[]).some(v=>String(v).toLowerCase().includes(s))
+                    ||(r.from||[]).some(v=>String(v).toLowerCase().includes(s))
+                    ||(r.to||[]).some(v=>String(v).toLowerCase().includes(s))
+                    ||serviceListMatchesSearch(r.service,term,parsed.services,parsed.serviceGroups,'keyword');
+              });
+              if(notOk){match=true;chainedFromFqdn=true;break;}
+            }
+          }
+        }
+      }
+      if(match) result.secRules.push({...r, _hostname:hn, _parsed:parsed, _chainedFromFqdn:chainedFromFqdn});
+    });
+
+    // NAT Rules
+    (parsed.natRules||[]).forEach(r => {
+      if(filters.natHideDisabled && r.disabled) return;
+      if(filters.natShowDisabledOnly && !r.disabled) return;
+      let match=true;
+      let chainedFromFqdn=false;
+      if(searchAST){
+        match=evaluateAST(searchAST,(term,forceExact)=>{
+          const s=String(term).toLowerCase(), isEx=forceExact||searchMode==='exact';
+          const chk=v=>isEx?String(v).toLowerCase()===s:String(v).toLowerCase().includes(s);
+          if(chk(r.name)) return true;
+          if((r.from||[]).some(chk)) return true;
+          if((r.to||[]).some(chk)) return true;
+          const am=isEx?'exact':'keyword';
+          const ms=!searchDstOnly?(objectListMatchesSearch(r.source,term,parsed.addresses,parsed.groups,am,ignoreCIDR)||objectListMatchesSearch(r.sourceTranslation||[],term,parsed.addresses,parsed.groups,am,ignoreCIDR)):false;
+          const md=!searchSrcOnly?(objectListMatchesSearch(r.destination,term,parsed.addresses,parsed.groups,am,ignoreCIDR)||objectListMatchesSearch(r.destinationTranslation||[],term,parsed.addresses,parsed.groups,am,ignoreCIDR)):false;
+          return ms||md||serviceListMatchesSearch(r.service,term,parsed.services,parsed.serviceGroups,am);
+        });
+        // FQDN chaining for NAT
+        if(!match && allFqdnIps.size>0){
+          for(const fip of allFqdnIps){
+            const ms=!searchDstOnly?(objectListMatchesFqdnIp(r.source,fip,parsed.addresses,parsed.groups,ignoreCIDR)||objectListMatchesFqdnIp(r.sourceTranslation||[],fip,parsed.addresses,parsed.groups,ignoreCIDR)):false;
+            const md=!searchSrcOnly?(objectListMatchesFqdnIp(r.destination,fip,parsed.addresses,parsed.groups,ignoreCIDR)||objectListMatchesFqdnIp(r.destinationTranslation||[],fip,parsed.addresses,parsed.groups,ignoreCIDR)):false;
+            if(ms||md){match=true;chainedFromFqdn=true;break;}
+          }
+        }
+      }
+      if(match) result.natRules.push({...r, _hostname:hn, _parsed:parsed, _chainedFromFqdn:chainedFromFqdn});
+    });
+
+    // Routes — with FQDN IP + Rule IP chaining
+    (parsed.routes||[]).forEach(r => {
+      let match=true;
+      let chainedMatch=false;
+      if(appliedSearch){
+        const s=appliedSearch.toLowerCase();
+        match=String(r.destination).toLowerCase().includes(s)||String(r.nexthop).toLowerCase().includes(s)||String(r.interface).toLowerCase().includes(s)||String(r.name).toLowerCase().includes(s);
+        if(!match&&isCIDR(appliedSearch)&&isCIDR(r.destination))match=cidrOverlaps(appliedSearch,r.destination);
+        if(!match&&isExactIP(appliedSearch)&&isCIDR(r.destination))match=ipInCIDR(appliedSearch,r.destination);
+        // AST-based matching for boolean search
+        if(!match&&searchAST){
+          match=evaluateAST(searchAST,(term,forceExact)=>{
+            const isEx=forceExact||searchMode==='exact';
+            const chk=v=>isEx?String(v).toLowerCase()===String(term).toLowerCase():String(v).toLowerCase().includes(String(term).toLowerCase());
+            return chk(r.destination)||chk(r.nexthop)||chk(r.interface)||chk(r.name);
+          });
+        }
+        // Chain from FQDN IPs
+        if(!match&&allFqdnIps.size>0&&isCIDR(r.destination)){
+          for(const fip of allFqdnIps){if(ipInCIDR(fip,r.destination)){match=true;chainedMatch=true;break;}}
+        }
+        if(!match&&allFqdnIps.size>0&&isExactIP(r.nexthop)){
+          for(const fip of allFqdnIps){if(fip===r.nexthop){match=true;chainedMatch=true;break;}}
+        }
+        // Chain from Rule IPs
+        if(!match&&allRuleIps.size>0&&isCIDR(r.destination)){
+          for(const rip of allRuleIps){
+            if(isExactIP(rip)&&ipInCIDR(rip,r.destination)){match=true;chainedMatch=true;break;}
+            if(isCIDR(rip)&&cidrOverlaps(rip,r.destination)){match=true;chainedMatch=true;break;}
+          }
+        }
+      }
+      if(match) result.routes.push({...r, _hostname:hn, _chained:chainedMatch});
+    });
+
+    // Addresses & Groups — with FQDN IP + Rule IP chaining
+    Object.entries(parsed.addresses||{}).forEach(([name,addr])=>{
+      let match=true;
+      let chainedMatch=false;
+      if(appliedSearch){
+        match=matchObject(name,addr.value,appliedSearch,searchMode==='exact',ignoreCIDR);
+        // AST-based matching
+        if(!match&&searchAST){
+          match=evaluateAST(searchAST,(term,forceExact)=>{
+            return matchObject(name,addr.value,term,forceExact||searchMode==='exact',ignoreCIDR);
+          });
+        }
+        // Chain from FQDN IPs
+        if(!match&&allFqdnIps.size>0){
+          for(const fip of allFqdnIps){
+            if(matchObject(name,addr.value,fip,true,ignoreCIDR)){match=true;chainedMatch=true;break;}
+          }
+        }
+        // Chain from Rule IPs
+        if(!match&&allRuleIps.size>0){
+          for(const rip of allRuleIps){
+            if(matchObject(name,addr.value,rip,true,ignoreCIDR)){match=true;chainedMatch=true;break;}
+          }
+        }
+      }
+      if(match) result.addresses.push({name,type:addr.type,value:addr.value,_hostname:hn,_chained:chainedMatch});
+    });
+    Object.entries(parsed.groups||{}).forEach(([name,members])=>{
+      let match=true;
+      let chainedMatch=false;
+      if(appliedSearch){
+        const sl=appliedSearch.toLowerCase();
+        match=String(name).toLowerCase().includes(sl)||(Array.isArray(members)?members:Array.from(members)).some(m=>String(m).toLowerCase().includes(sl));
+        // AST-based
+        if(!match&&searchAST){
+          match=evaluateAST(searchAST,(term)=>{
+            const st=String(term).toLowerCase();
+            return String(name).toLowerCase().includes(st)||(Array.isArray(members)?members:Array.from(members)).some(m=>String(m).toLowerCase().includes(st));
+          });
+        }
+        // Chain: check if any member resolves to a FQDN/Rule IP
+        if(!match&&(allFqdnIps.size>0||allRuleIps.size>0)){
+          const allChainIps=new Set([...allFqdnIps,...allRuleIps]);
+          const mems=Array.isArray(members)?members:Array.from(members);
+          for(const mem of mems){
+            const resolved=resolveObject(mem,parsed.addresses,parsed.groups);
+            for(const r of resolved){
+              if(!r.value)continue;
+              for(const cip of allChainIps){
+                if(matchObject(r.name,r.value,cip,true,ignoreCIDR)){match=true;chainedMatch=true;break;}
+              }
+              if(match)break;
+            }
+            if(match)break;
+          }
+        }
+      }
+      if(match) result.groups.push({name,members:Array.isArray(members)?members:Array.from(members),_hostname:hn,_parsed:parsed,_chained:chainedMatch});
+    });
+
+    // F5 Virtuals — with FQDN + Rule IP chaining
+    (parsed.virtuals||[]).forEach(vs => {
+      let match=true;
+      let chainedFromRule=false;
+      if(searchAST){
+        match=evaluateAST(searchAST,(term,forceExact)=>{
+          const s=String(term).toLowerCase(), isEx=forceExact||searchMode==='exact';
+          if(isEx)return String(vs.name).toLowerCase()===s||String(vs.ip)===s||String(vs.port)===s||(vs.pool&&String(vs.pool).toLowerCase()===s);
+          return String(vs.name).toLowerCase().includes(s)||String(vs.ip).toLowerCase().includes(s)||String(vs.port)===s||(vs.pool&&String(vs.pool).toLowerCase().includes(s));
+        });
+        // Chain from rule IPs → F5 VS IP
+        if(!match && allRuleIps.size>0){
+          for(const rip of allRuleIps){
+            if(isExactIP(rip)&&vs.ip===rip){match=true;chainedFromRule=true;break;}
+            if(isCIDR(rip)&&ipInCIDR(vs.ip,rip)){match=true;chainedFromRule=true;break;}
+          }
+        }
+        // Chain from FQDN IPs → F5 VS IP
+        if(!match && allFqdnIps.size>0){
+          for(const fip of allFqdnIps){
+            if(vs.ip===fip){match=true;chainedFromRule=true;break;}
+          }
+        }
+      }
+      if(match) result.f5Virtuals.push({...vs, _hostname:hn, _parsed:parsed, _chainedFromRule:chainedFromRule});
+    });
+    (parsed.pools||[]).forEach(pool => {
+      let match=true;
+      let chainedMatch=false;
+      if(searchAST){
+        match=evaluateAST(searchAST,(term,forceExact)=>{
+          const s=String(term).toLowerCase(), isEx=forceExact||searchMode==='exact';
+          if(String(pool.name).toLowerCase().includes(s))return true;
+          return(pool.members||[]).some(m=>String(m.ip).toLowerCase().includes(s)||String(m.port)===s||String(m.name).toLowerCase().includes(s));
+        });
+        // Chain from FQDN IPs / Rule IPs → pool member IPs
+        if(!match&&(allFqdnIps.size>0||allRuleIps.size>0)){
+          const allChainIps=new Set([...allFqdnIps,...allRuleIps]);
+          for(const m of (pool.members||[])){
+            for(const cip of allChainIps){
+              if(m.ip===cip){match=true;chainedMatch=true;break;}
+              if(isCIDR(cip)&&ipInCIDR(m.ip,cip)){match=true;chainedMatch=true;break;}
+            }
+            if(match)break;
+          }
+        }
+      }
+      if(match) result.f5Pools.push({...pool, _hostname:hn, _parsed:parsed, _chained:chainedMatch});
+    });
+  });
+
+// FQDN — with symmetric chaining: Rule IPs → match FQDN IP
+  fqdnRecords.forEach(r => {
+    let match=false;
+    let chainedFromRule=false;
+    if(searchAST){
+      // Use evaluateAST to preserve OR/AND/NOT structure.
+      // NOT terms (e.g. rule names like DENY_NON_SERVICE) never appear in fqdn/ip/domain/owner,
+      // so NOT(matchFn(term)) = NOT(false) = true — correctly ignored for FQDN records.
+      match=evaluateAST(searchAST,(term,forceExact)=>{
+        const s=term.toLowerCase(),isEx=forceExact||searchMode==='exact';
+        if(isEx) return String(r.fqdn).toLowerCase()===s||String(r.ip).toLowerCase()===s||String(r.owner).toLowerCase()===s;
+        return String(r.fqdn).toLowerCase()===s
+            || String(r.ip).toLowerCase()===s
+            || String(r.domain).toLowerCase().includes(s)
+            || String(r.owner).toLowerCase().includes(s);
+      });
+    } else if(appliedSearch){
+      const s=appliedSearch.toLowerCase();
+      match=String(r.fqdn).toLowerCase()===s
+          ||String(r.ip).toLowerCase()===s
+          ||String(r.domain).toLowerCase().includes(s)
+          ||String(r.owner).toLowerCase().includes(s);
+    } else {
+      match=true; // no filter active — show all
+    }
+    // Symmetric: rule matched → its IPs → match this FQDN record's IP
+    if(!match && allRuleIps.size>0 && r.ip && r.ip.toLowerCase()!=='null' && isExactIP(r.ip)){
+      for(const rip of allRuleIps){
+        if(isExactIP(rip)&&r.ip===rip){match=true;chainedFromRule=true;break;}
+        if(isCIDR(rip)&&ipInCIDR(r.ip,rip)){match=true;chainedFromRule=true;break;}
+      }
+    }
+    if(match) result.fqdnList.push({...r, _chainedFromRule:chainedFromRule});
+  });
+
+  // === Post-processing: Sec↔NAT name chaining + NAT DNAT→F5 VS chaining ===
+
+  // 1. Collect matched NAT rule names by hostname → chain back to Sec rules with same name
+  const matchedNatNamesByHost = {};
+  result.natRules.forEach(r => {
+    if(!matchedNatNamesByHost[r._hostname]) matchedNatNamesByHost[r._hostname]=new Set();
+    matchedNatNamesByHost[r._hostname].add(r.name);
+  });
+
+  // Pull in Sec rules whose name matches a matched NAT rule name (if not already in results)
+  if(searchAST && Object.keys(matchedNatNamesByHost).length>0){
+    const existingSecKeys = new Set(result.secRules.map(r=>`${r._hostname}|${r.name}`));
+    configs.forEach(parsed => {
+      const hn=parsed.hostname;
+      const natNames=matchedNatNamesByHost[hn];
+      if(!natNames) return;
+      (parsed.secRules||[]).forEach(r=>{
+        const key=`${hn}|${r.name}`;
+        if(existingSecKeys.has(key)) return;
+        if(filters.secHideDisabled&&r.disabled) return;
+        if(natNames.has(r.name)){
+          existingSecKeys.add(key);
+          result.secRules.push({...r, _hostname:hn, _parsed:parsed, _chainedFromFqdn:false, _chainedFromNat:true});
+        }
+      });
+    });
+  }
+
+  // 2. Collect DNAT IPs from matched NAT rules → chain to F5 VS
+  const chainedDnatIPs = new Set();
+  result.natRules.forEach(r => {
+    (r.destinationTranslation||[]).forEach(dt => {
+      resolveObject(dt, r._parsed.addresses, r._parsed.groups).forEach(resolved => {
+        if(resolved.value && (isExactIP(resolved.value)||isCIDR(resolved.value))) chainedDnatIPs.add(resolved.value);
+      });
+    });
+  });
+
+  // Pull in F5 VS whose IP matches a DNAT IP (if not already in results)
+  if(chainedDnatIPs.size>0){
+    const existingF5Keys = new Set(result.f5Virtuals.map(v=>`${v._hostname}|${v.name}`));
+    configs.forEach(parsed => {
+      const hn=parsed.hostname;
+      (parsed.virtuals||[]).forEach(vs=>{
+        const key=`${hn}|${vs.name}`;
+        if(existingF5Keys.has(key)) return;
+        for(const dip of chainedDnatIPs){
+          if(isExactIP(dip)&&vs.ip===dip){existingF5Keys.add(key);result.f5Virtuals.push({...vs,_hostname:hn,_parsed:parsed,_chainedFromRule:true});break;}
+          if(isCIDR(dip)&&ipInCIDR(vs.ip,dip)){existingF5Keys.add(key);result.f5Virtuals.push({...vs,_hostname:hn,_parsed:parsed,_chainedFromRule:true});break;}
+        }
+      });
+    });
+  }
+
+  return result;
+}
+
+// ===== UI RENDERING =====
+function renderTabs() {
+  const d = getFilteredData();
+  const counts = {
+    sec:d.secRules.length, nat:d.natRules.length, route:d.routes.length,
+    objects:d.addresses.length+d.groups.length, f5_vs:d.f5Virtuals.length,
+    f5_pools:d.f5Pools.length, fqdn:d.fqdnList.length, copy:'', raw:'', debug:''
+  };
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map(t => {
+    const c = counts[t.id];
+    const cn = c!==''&&c!==undefined?`<span class="tab-count">${c}</span>`:'';
+    return `<button class="tab-btn ${state.activeTab===t.id?'active':''}" onclick="switchTab('${t.id}')">${t.label[state.lang]}${cn}</button>`;
+  }).join('');
+  return d;
+}
+
+let _cachedFilterData = null;
+let _filterCacheDirty = true;
+
+function invalidateFilterCache() { _filterCacheDirty = true; }
+
+function renderContent(expandOnly=false) {
+  let d;
+  if(expandOnly && !_filterCacheDirty && _cachedFilterData) {
+    d = _cachedFilterData;
+    // Still update tab counts from cache
+    const tb = document.getElementById('tabBar');
+    const counts = d._tabCounts || {};
+    tb.innerHTML = TABS.map(t => {
+      const c = counts[t.id];
+      const cn = c!==''&&c!==undefined?`<span class="tab-count">${c}</span>`:'';
+      return `<button class="tab-btn ${state.activeTab===t.id?'active':''}" onclick="switchTab('${t.id}')">${t.label[state.lang]}${cn}</button>`;
+    }).join('');
+  } else {
+    d = renderTabs();
+    // Cache tab counts for reuse
+    const counts = {};
+    TABS.forEach(t => { counts[t.id] = ''; });
+    d._tabCounts = d._tabCounts || counts;
+    _cachedFilterData = d;
+    _filterCacheDirty = false;
+  }
+  const el = document.getElementById('content');
+  switch(state.activeTab) {
+    case 'sec': el.innerHTML = renderSecRules(d.secRules); break;
+    case 'nat': el.innerHTML = renderNatRules(d.natRules); break;
+    case 'route': el.innerHTML = renderRoutes(d.routes); break;
+    case 'objects': el.innerHTML = renderObjects(d.addresses, d.groups); break;
+    case 'f5_vs': el.innerHTML = renderF5Virtuals(d.f5Virtuals); break;
+    case 'f5_pools': el.innerHTML = renderF5Pools(d.f5Pools); break;
+    case 'fqdn': el.innerHTML = renderFqdn(d.fqdnList); break;
+    case 'copy': el.innerHTML = renderCopyTab(d); break;
+    case 'raw': el.innerHTML = renderRawConfig(); break;
+    case 'debug': el.innerHTML = renderDebugTab(); break;
+    default: el.innerHTML = '<div class="empty-state">Select a tab</div>';
+  }
+  updateFilterOptions();
+}
+
+let expandedPills = new Set();
+let collapsedGroups = new Set();
+const _ruleExpandMap = {};
+
+function collectAllGroupTreeIds(name, groups, pathId, result, depth=0) {
+  if(depth>15 || !groups || !groups[name]) return;
+  result.add(pathId);
+  groups[name].forEach(member => {
+    if(groups[member]) collectAllGroupTreeIds(member, groups, `${pathId}__${member}`, result, depth+1);
+  });
+}
+
+function expandAllRulePills(key) {
+  const e = _ruleExpandMap[key]; if(!e) return;
+  const parsed = state.parsedConfigs.find(c=>c.parsed.hostname===e.hostname)?.parsed;
+  const groups = parsed?.groups || {};
+  e.items.forEach(item => {
+    const pid = `${item}_${e.hostname}_${e.ctx}`;
+    expandedPills.add(pid);
+    if(groups[item]) collectAllGroupTreeIds(item, groups, pid, expandedPills);
+  });
+  renderContent(true);
+}
+function collapseAllRulePills(key) {
+  const e = _ruleExpandMap[key]; if(!e) return;
+  const parsed = state.parsedConfigs.find(c=>c.parsed.hostname===e.hostname)?.parsed;
+  const groups = parsed?.groups || {};
+  const toRemove = new Set();
+  e.items.forEach(item => {
+    const pid = `${item}_${e.hostname}_${e.ctx}`;
+    toRemove.add(pid);
+    if(groups[item]) collectAllGroupTreeIds(item, groups, pid, toRemove);
+  });
+  toRemove.forEach(id => expandedPills.delete(id));
+  renderContent(true);
+}
+
+function pillCopyText(item, hostname, type) {
+  const parsed=state.parsedConfigs.find(c=>c.parsed.hostname===hostname)?.parsed;
+  if(type==='service'){
+    const srv=parsed?.services?.[item];
+    return srv?`${item}\t${srv.protocol}/${srv.port}`:item;
+  }
+  const resolved=resolveObject(item,parsed?.addresses,parsed?.groups).filter(r=>r.type!=='group'&&r.value&&r.value!==item&&r.value!=='*');
+  if(resolved.length===0) return item;
+  if(resolved.length===1) return `${item}\t${resolved[0].value}`;
+  return `${item}\n`+resolved.map(r=>`  ${r.name}\t${r.value}`).join('\n');
+}
+function copyPillText(text){navigator.clipboard.writeText(text).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);});showCopyFeedback();}
+function copyF5VsRow(name,ip,port,pool){copyPillText(`${name}\t${ip}\t${port}\t${pool}`);}
+
+function renderGroupTree(name, addresses, groups, pathId, depth) {
+  const pad = depth * 14;
+  const padStyle = `padding-left:${pad}px`;
+  if(name==='any'||name==='all') {
+    return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">* ${esc(name)}</span></div>`;
+  }
+  if(groups && groups[name]) {
+    const members = groups[name];
+    const nodeId = `${pathId}__${esc(name)}`;
+    const isExp = expandedPills.has(nodeId);
+    const arrow = isExp ? '▼' : '▶';
+    const subHtml = isExp ? members.map(m => renderGroupTree(m, addresses, groups, nodeId, depth+1)).join('') : '';
+    return `<div class="pill-expand-member" style="${padStyle};cursor:pointer" onclick="event.stopPropagation();togglePill('${nodeId}')"><span style="margin-right:4px;font-size:9px;color:var(--accent)">${arrow}</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>${subHtml}`;
+  }
+  const addr = addresses && addresses[name];
+  const val = addr && addr.value && addr.value !== name ? addr.value : '';
+  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>`;
+}
+
+function renderPills(list, parsed, type='object', ctx='') {
+  if(!list||list.length===0) return '<span class="text-muted text-sm">—</span>';
+  return '<div class="pills">' + list.map(item => {
+    const pid = ctx ? `${item}_${parsed?.hostname||''}_${ctx}` : `${item}_${parsed?.hostname||''}`;
+    const isExpanded = expandedPills.has('__ALL__') || expandedPills.has(pid);
+    const isMatched = state.highlightEnabled && state.searchAST && (() => {
+      if(!parsed) return false;
+      const resolved = type==='service' ? resolveService(item, parsed.services, parsed.serviceGroups) : resolveObject(item, parsed.addresses, parsed.groups);
+      return resolved.some(r => checkSingleResolvedMatch(r, type));
+    })();
+    const star = isMatched ? '<span class="pill-star">✦</span>' : '';
+    const hn = (parsed?.hostname||'').replace(/'/g,"\\'");
+    const copyBtn = `<button class="pill-cb" onclick="event.stopPropagation();copyPillText(pillCopyText('${esc(item)}','${hn}','${type}'))" title="Copy">⎘</button>`;
+
+    if(isExpanded) {
+      const addresses = parsed?.addresses || {};
+      const grps = parsed?.groups || {};
+      if(type === 'object' && grps[item]) {
+        const members = grps[item];
+        const memberHtml = members.map(m => renderGroupTree(m, addresses, grps, pid, 1)).join('');
+        return `<div class="pill-expand-container"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${members.length})</span>${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
+      }
+      const rawResolved = type==='service' ? resolveService(item, parsed?.services, parsed?.serviceGroups) : resolveObject(item, parsed?.addresses, parsed?.groups);
+      const resolved = rawResolved.filter(r => r.type !== 'group');
+      const memberHtml = resolved.map(r => {
+        const rMatched = state.highlightEnabled && state.searchAST && checkSingleResolvedMatch(r, type);
+        const val = r.value && r.value!==r.name && r.value!=='*' ? r.value : '';
+        return `<div class="pill-expand-member ${rMatched?'matched':''}"><span class="mem-name">${esc(r.name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(r.name)}')" title="Quick Search">🔍</span></div>`;
+      }).join('');
+      return `<div class="pill-expand-container"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${resolved.length})</span>${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
+    }
+
+    return `<span class="pill expandable ${isMatched?'matched':''}" onclick="togglePill('${esc(pid)}')" title="Click to expand">${esc(item)}${star}${copyBtn}</span>`;
+  }).join('') + '</div>';
+}
+
+
+function togglePill(pid) { if(expandedPills.has(pid)) expandedPills.delete(pid); else expandedPills.add(pid); renderContent(true); }
+
+let expandedUrlCats = new Set();
+function renderUrlCategoryPill(name, parsed) {
+  if(name==='any'||name==='all') return `<span class="pill">* ${esc(name)}</span>`;
+  const members = parsed?.urlCategories?.[name];
+  const isCustom = !!members && members.length>0;
+  const ucid = `uc_${name}_${parsed?.hostname||''}`;
+  const isExp = expandedUrlCats.has(ucid);
+  
+  if(!isCustom) return `<span class="pill" style="border-style:dashed">${esc(name)}</span>`;
+  
+  if(isExp) {
+    const memberHtml = members.map(m=>`<div style="padding:2px 8px;font-size:11px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;margin:1px 0">${esc(m)}</div>`).join('');
+    return `<div style="display:inline-block;vertical-align:top;margin:2px">
+      <span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer">➖ ${esc(name)} (${members.length})<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></span>
+      <div style="padding-left:12px;border-left:2px solid var(--border);margin-left:8px;margin-top:4px">${memberHtml}</div>
+    </div>`;
+  }
+  return `<span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer">➕ ${esc(name)} (${members.length})<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></span>`;
+}
+function toggleUrlCat(ucid){if(expandedUrlCats.has(ucid))expandedUrlCats.delete(ucid);else expandedUrlCats.add(ucid);renderContent(true);}
+
+function checkSingleResolvedMatch(r, type) {
+  if(!state.searchAST) return false;
+  const terms = extractTerms(state.searchAST);
+  if(type==='service') {
+    return terms.some(t => {
+      const s=t.toLowerCase(), isEx=state.searchMode==='exact';
+      if(isEx) return (r.name&&String(r.name).toLowerCase()===s)||(r.value&&String(r.value).toLowerCase()===s)||(r.port&&String(r.port).toLowerCase()===s);
+      return (r.name&&String(r.name).toLowerCase().includes(s))||(r.value&&String(r.value).toLowerCase().includes(s))||(r.port&&String(r.port).toLowerCase().includes(s));
+    });
+  }
+  return terms.some(t => matchObject(r.name, r.value, t, state.searchMode==='exact', state.ignoreCIDR));
+}
+
+function groupByDevice(items) {
+  const map = new Map();
+  items.forEach(item => {
+    const hn = item._hostname || 'Unknown';
+    if(!map.has(hn)) map.set(hn, { hostname:hn, type:item._parsed?.type||'', items:[] });
+    map.get(hn).items.push(item);
+  });
+  return Array.from(map.values());
+}
+
+function renderDeviceGroupHeader(group, totalCount) {
+  const gid = `grp_${group.hostname}`;
+  const isCollapsed = collapsedGroups.has(gid);
+  const tc = group.type==='PA'?'pa':(group.type==='FortiGate'?'fortigate':(group.type==='SRX'?'srx':'f5'));
+  const tl = group.type==='PA'?'Palo Alto':(group.type==='FortiGate'?'FortiGate':(group.type==='SRX'?'Juniper SRX':(group.type==='F5'?'F5':'')));
+  return `<div class="device-group-header" onclick="toggleDeviceGroup('${esc(gid)}')">
+    <span class="device-group-chevron ${isCollapsed?'collapsed':''}">▼</span>
+    ${tl?`<span class="device-group-type ${tc}">${tl}</span>`:''}
+    <span class="device-group-hostname">${esc(displayHostname(group.hostname))}</span>
+    <span class="device-group-count">(${group.items.length} items)</span>
+  </div>`;
+}
+
+function toggleDeviceGroup(gid) { if(collapsedGroups.has(gid)) collapsedGroups.delete(gid); else collapsedGroups.add(gid); renderContent(true); }
+
+function copyRuleTSV(ruleData) {
+  const fields = ['name','action','from','to','source','destination','service','application'];
+  const header = fields.join('\t');
+  const row = fields.map(f => {
+    const v = ruleData[f];
+    if(Array.isArray(v)) return v.join(', ');
+    return String(v||'');
+  }).join('\t');
+  const tsv = header+'\n'+row;
+  navigator.clipboard.writeText(tsv).then(()=>showCopyFeedback()).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=tsv;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showCopyFeedback();
+  });
+}
+
+// Store filtered rules for copy access
+let _lastFilteredSecRules = [];
+let _lastFilteredNatRules = [];
+
+function renderSecRules(rules) {
+  if(rules.length===0) return '<div class="empty-state">No matching security rules found.</div>';
+  const groups = groupByDevice(rules);
+  const stats = `<div class="stats-bar">Total: ${rules.length} matching rule(s), from ${groups.length} device(s)</div>`;
+  _lastFilteredSecRules = rules;
+  return stats + groups.map(group => {
+    const gid = `grp_${group.hostname}`;
+    const isCollapsed = collapsedGroups.has(gid);
+    const header = `<div class="rule-body-header"><span>Rule / Action</span><span>From / To</span><span>Source</span><span>Destination</span><span>Service</span><span>Application</span><span>URL Category</span></div>`;
+    const cards = group.items.map(r => {
+      const globalIdx = _lastFilteredSecRules.indexOf(r);
+      const ruleKey = `sec_${globalIdx}`;
+      const hn = r._parsed?.hostname || '';
+      const expandableItems = [...(r.source||[]), ...(r.destination||[]), ...(r.from||[]), ...(r.to||[]), ...(r.service||[]), ...(r.application||[])];
+      _ruleExpandMap[ruleKey] = { hostname: hn, items: expandableItems, ctx: ruleKey };
+      return `
+    <div class="rule-card ${r._chainedFromFqdn||r._chainedFromNat?'chained':''}">
+      <div class="rule-body">
+        <div class="rule-field" style="display:flex;flex-direction:column;gap:5px">
+          <span class="rule-name">${esc(r.name)}</span>
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <span class="rule-action ${r.action}">${esc(r.action)}</span>
+            <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredSecRules[${globalIdx}])" title="Copy this rule as TSV">📋</button>
+            <button class="rule-copy-btn" onclick="event.stopPropagation();expandAllRulePills('${ruleKey}')" title="展開所有物件">⊞</button>
+            <button class="rule-copy-btn" onclick="event.stopPropagation();collapseAllRulePills('${ruleKey}')" title="收合所有物件">⊟</button>
+            ${r._chainedFromFqdn?'<span class="chain-pill fqdn">FQDN→IP</span>':''}
+            ${r._chainedFromNat?'<span class="chain-pill nat">NAT→Rule</span>':''}
+            ${r.disabled?'<span class="rule-status disabled">Disabled</span>':''}
+          </div>
+        </div>
+        <div class="rule-field"><div style="display:flex;align-items:baseline;gap:5px;margin-bottom:3px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">FROM</span>${renderPills(r.from,r._parsed,'object',ruleKey)}</div><div style="display:flex;align-items:baseline;gap:5px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">TO</span>${renderPills(r.to,r._parsed,'object',ruleKey)}</div></div>
+        <div class="rule-field">${renderPills(r.source,r._parsed,'object',ruleKey)}</div>
+        <div class="rule-field">${renderPills(r.destination,r._parsed,'object',ruleKey)}</div>
+        <div class="rule-field">${renderPills(r.service,r._parsed,'service',ruleKey)}</div>
+        <div class="rule-field">${r.application&&r.application.length>0?renderPills(r.application,r._parsed,'object',ruleKey):''}</div>
+        <div class="rule-field">${r.category&&r.category.length>0?`<div class="pills">${r.category.map(c=>renderUrlCategoryPill(c,r._parsed)).join('')}</div>`:''}</div>
+      </div>
+    </div>
+  `;}).join('');
+    return `<div class="device-group">${renderDeviceGroupHeader(group)}
+      <div class="device-group-body ${isCollapsed?'collapsed':''}">${header}${cards}</div></div>`;
+  }).join('');
+}
+
+function renderNatRules(rules) {
+  if(rules.length===0) return '<div class="empty-state">No matching NAT rules found.</div>';
+  const groups = groupByDevice(rules);
+  const stats = `<div class="stats-bar">Total: ${rules.length} matching NAT rule(s), from ${groups.length} device(s)</div>`;
+  _lastFilteredNatRules = rules;
+  return stats + groups.map(group => {
+    const gid = `grp_nat_${group.hostname}`;
+    const isCollapsed = collapsedGroups.has(gid);
+    const cards = group.items.slice(0,500).map(r => {
+      const globalIdx = _lastFilteredNatRules.indexOf(r);
+      return `
+    <div class="rule-card ${r._chainedFromFqdn?'chained':''}">
+      <div class="rule-header">
+        <div><span class="rule-name">${esc(r.name)}</span>${r._chainedFromFqdn?'<span class="chain-pill fqdn">FQDN → IP</span>':''}${r.disabled?'<span class="rule-status disabled">Disabled</span>':''}</div>
+        <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredNatRules[${globalIdx}])" title="Copy">📋</button>
+      </div>
+      <div class="rule-body">
+        <div class="rule-field"><div class="rule-field-label">From</div>${renderPills(r.from,r._parsed)}</div>
+        <div class="rule-field"><div class="rule-field-label">To</div>${renderPills(r.to,r._parsed)}</div>
+        <div class="rule-field"><div class="rule-field-label">Source</div>${renderPills(r.source,r._parsed)}</div>
+        <div class="rule-field"><div class="rule-field-label">Destination</div>${renderPills(r.destination,r._parsed)}</div>
+        <div class="rule-field"><div class="rule-field-label">Service</div>${renderPills(r.service,r._parsed,'service')}</div>
+        ${r.sourceTranslation&&r.sourceTranslation.length>0?`<div class="rule-field"><div class="rule-field-label">SNAT</div>${renderPills(r.sourceTranslation,r._parsed)}</div>`:''}
+        ${r.destinationTranslation&&r.destinationTranslation.length>0?`<div class="rule-field"><div class="rule-field-label">DNAT</div>${renderPills(r.destinationTranslation,r._parsed)}</div>`:''}
+      </div>
+    </div>`;}).join('');
+    return `<div class="device-group">${renderDeviceGroupHeader(group)}
+      <div class="device-group-body ${isCollapsed?'collapsed':''}">${cards}</div></div>`;
+  }).join('');
+}
+
+function renderRoutes(routes) {
+  if(routes.length===0) return '<div class="empty-state">No matching routing entries found.</div>';
+  const groups = groupByDevice(routes);
+  const stats = `<div class="stats-bar">Total: ${routes.length} route(s), from ${groups.length} device(s)</div>`;
+  return stats + groups.map(group => {
+    const gid = `grp_rt_${group.hostname}`;
+    const isCollapsed = collapsedGroups.has(gid);
+    const tableHtml = `<table class="route-table"><thead><tr><th>#</th><th>Name</th><th>Destination</th><th>Nexthop</th><th>Interface</th></tr></thead>
+      <tbody>${group.items.map((r,i)=>`<tr${r._chained?' style="border-left:3px solid var(--yellow)"':''}><td class="text-muted">${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.destination)}</td><td>${esc(r.nexthop)}</td><td>${esc(r.interface)}</td></tr>`).join('')}</tbody></table>`;
+    return `<div class="device-group">${renderDeviceGroupHeader(group)}
+      <div class="device-group-body ${isCollapsed?'collapsed':''}">${tableHtml}</div></div>`;
+  }).join('');
+}
+
+function renderObjects(addresses, groups) {
+  if(addresses.length===0&&groups.length===0) return '<div class="empty-state">No matching addresses or groups found.</div>';
+  // Group by device
+  const addrByDevice = new Map();
+  addresses.forEach(a=>{if(!addrByDevice.has(a._hostname))addrByDevice.set(a._hostname,[]);addrByDevice.get(a._hostname).push(a);});
+  const grpByDevice = new Map();
+  groups.forEach(g=>{if(!grpByDevice.has(g._hostname))grpByDevice.set(g._hostname,[]);grpByDevice.get(g._hostname).push(g);});
+  const allDevices = new Set([...addrByDevice.keys(),...grpByDevice.keys()]);
+  
+  let html = `<div class="stats-bar">Total: ${addresses.length+groups.length} matching Objects, from ${allDevices.size} device(s)</div>`;
+  
+  for(const hn of allDevices){
+    const gid=`grp_obj_${hn}`;
+    const isCollapsed=collapsedGroups.has(gid);
+    const devAddrs=addrByDevice.get(hn)||[];
+    const devGrps=grpByDevice.get(hn)||[];
+    const firstItem=devAddrs[0]||devGrps[0];
+    const type=firstItem?._parsed?.type||'';
+    
+    html+=`<div class="device-group">`;
+    html+=renderDeviceGroupHeader({hostname:hn,type,items:[...devAddrs,...devGrps]});
+    html+=`<div class="device-group-body ${isCollapsed?'collapsed':''}" style="display:${isCollapsed?'none':'flex'};gap:16px;flex-wrap:wrap">`;
+    
+    // Addresses table
+    if(devAddrs.length>0){
+      html+=`<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Addresses <span class="tab-count">${devAddrs.length}</span></h4>
+        <table class="route-table"><thead><tr><th>Name</th><th>Type</th><th>Value</th></tr></thead>
+        <tbody>${devAddrs.map(a=>`<tr${a._chained?' style="border-left:3px solid var(--yellow)"':''}><td style="font-weight:600;color:${a._chained?'var(--accent)':'var(--text)'}">${esc(a.name)}</td><td><span class="obj-card-type">${esc(a.type)}</span></td><td>${esc(a.value)}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+    
+    // Groups cards
+    if(devGrps.length>0){
+      html+=`<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Address Groups <span class="tab-count">${devGrps.length}</span></h4>`;
+      html+=devGrps.map(g=>`<div class="obj-group-card${g._chained?' chained':''}"><div class="obj-group-header" onclick="this.nextElementSibling.classList.toggle('hidden')"><span style="margin-right:4px">▶</span><span class="obj-group-name">${esc(g.name)}</span><span class="obj-group-count">(${g.members.length})</span></div><div class="obj-group-members hidden">${g.members.map(m=>`<span class="pill">${esc(m)}</span>`).join('')}</div></div>`).join('');
+      html+=`</div>`;
+    }
+    
+    html+=`</div></div>`;
+  }
+  return html;
+}
+
+let f5LtmExpandedRows = new Set();
+let f5LtmSort = { key:'ip', dir:'asc' };
+
+function renderF5Virtuals(virtuals) {
+  let filtered = virtuals;
+  if(state.filters.showDisabledMembersOnly){
+    filtered=filtered.filter(vs=>{
+      const pool=vs._parsed?.pools?.find(p=>p.name===vs.pool);
+      return pool&&(pool.members||[]).some(m=>m.status==='disabled');
+    });
+  }
+  if(filtered.length===0) return '<div class="empty-state">No matching F5 Virtual Servers found.</div>';
+  const groups = groupByDevice(filtered);
+  const stats = `<div class="stats-bar">Total: ${filtered.length} Virtual Server(s), from ${groups.length} device(s)${state.filters.showDisabledMembersOnly?' (showing disabled members only)':''}</div>`;
+  const arrow=(k)=>f5LtmSort.key===k?`<span class="sort-arrow">${f5LtmSort.dir==='asc'?'▲':'▼'}</span>`:'';
+  return stats + groups.map(group => {
+    const gid = `grp_f5vs_${group.hostname}`;
+    const isCollapsed = collapsedGroups.has(gid);
+    // Sort
+    const sorted=[...group.items].sort((a,b)=>smartSort(a,b,f5LtmSort.key,f5LtmSort.dir));
+    const tableHtml = `<table class="f5-ltm-table"><thead><tr>
+      <th style="width:30px"></th>
+      <th style="width:24px"></th>
+      <th onclick="sortF5Ltm('name')">VS Name${arrow('name')}</th>
+      <th onclick="sortF5Ltm('ip')">Destination IP${arrow('ip')}</th>
+      <th onclick="sortF5Ltm('port')">Port${arrow('port')}</th>
+      <th onclick="sortF5Ltm('pool')">Pool${arrow('pool')}</th>
+      <th onclick="sortF5Ltm('status')">Status${arrow('status')}</th>
+    </tr></thead><tbody>${sorted.map(vs=>{
+      const pool=vs._parsed?.pools?.find(p=>p.name===vs.pool);
+      const isExp=f5LtmExpandedRows.has(vs.name);
+      const isChained=vs._chainedFromRule;
+      const dot=`<span class="ltm-dot ${vs.status==='enabled'?'enabled':'disabled'}"></span>`;
+      const _n=vs.name.replace(/'/g,"\\'"), _i=(vs.ip||'').replace(/'/g,"\\'"), _po=(vs.port||'').replace(/'/g,"\\'"), _pl=(vs.pool||'').replace(/'/g,"\\'");
+      let row=`<tr class="${isChained?'chained':''}" style="cursor:pointer" onclick="toggleF5LtmRow('${esc(vs.name)}')">
+        <td><span class="f5-ltm-expand ${isExp?'open':''}">▶</span></td>
+        <td onclick="event.stopPropagation()"><button class="rule-copy-btn" onclick="copyF5VsRow('${_n}','${_i}','${_po}','${_pl}')" title="Copy row">📋</button></td>
+        <td><b>${esc(vs.name)}</b>${isChained?'<span class="chain-pill dnat">DNAT → IP</span>':''}</td>
+        <td style="font-family:monospace">${esc(vs.ip)}</td>
+        <td>${esc(vs.port)}</td>
+        <td>${esc(vs.pool||'—')}</td>
+        <td>${dot}<span style="font-size:11px">${vs.status}</span></td>
+      </tr>`;
+      if(isExp&&pool){
+        row+=`<tr><td colspan="6" style="padding:0"><div class="f5-ltm-members">
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px">Pool: ${esc(pool.name)} (${pool.members.length} members)</div>
+          ${pool.members.map(m=>`<div class="f5-pool-member-row ${m.status==='disabled'?'disabled':''}">
+            <span class="f5-pool-member-ip">${esc(m.ip)}:${esc(m.port)}</span>
+            <span class="f5-pool-member-status ${m.status}">${m.status}</span>
+          </div>`).join('')}
+        </div></td></tr>`;
+      } else if(isExp&&!pool&&vs.pool){
+        row+=`<tr><td colspan="6" style="padding:8px 12px 8px 36px"><span class="text-muted text-sm">Pool "${esc(vs.pool)}" — no member data</span></td></tr>`;
+      }
+      return row;
+    }).join('')}</tbody></table>`;
+    return `<div class="device-group">${renderDeviceGroupHeader(group)}
+      <div class="device-group-body ${isCollapsed?'collapsed':''}">${tableHtml}</div></div>`;
+  }).join('');
+}
+
+function sortF5Ltm(key){if(f5LtmSort.key===key)f5LtmSort.dir=f5LtmSort.dir==='asc'?'desc':'asc';else{f5LtmSort.key=key;f5LtmSort.dir='asc';}renderContent();}
+function toggleF5LtmRow(name){if(f5LtmExpandedRows.has(name))f5LtmExpandedRows.delete(name);else f5LtmExpandedRows.add(name);renderContent();}
+
+function renderF5Pools(pools) {
+  let filtered = pools;
+  if(state.filters.showDisabledMembersOnly){
+    filtered=filtered.filter(p=>(p.members||[]).some(m=>m.status==='disabled'));
+  }
+  if(filtered.length===0) return '<div class="empty-state">No matching F5 Pools found.</div>';
+  const groups = groupByDevice(filtered);
+  const stats = `<div class="stats-bar">Total: ${filtered.length} Pool(s), from ${groups.length} device(s)${state.filters.showDisabledMembersOnly?' (showing disabled members only)':''}</div>`;
+  return stats + groups.map(group => {
+    const gid = `grp_f5p_${group.hostname}`;
+    const isCollapsed = collapsedGroups.has(gid);
+    const cards = group.items.map(p=>{
+      const disabledCount=(p.members||[]).filter(m=>m.status==='disabled').length;
+      return `<div class="f5-pool-card">
+        <div class="f5-pool-header">
+          <div><span class="f5-name">${esc(p.name)}</span><span class="text-sm text-muted" style="margin-left:8px">(${(p.members||[]).length} members${disabledCount>0?`, ${disabledCount} disabled`:''})</span></div>
+        </div>
+        <div>${(p.members||[]).map(m=>`<div class="f5-pool-member-row ${m.status==='disabled'?'disabled':''}">
+          <span class="f5-pool-member-ip">${esc(m.ip)}:${esc(m.port)}</span>
+          <span class="f5-pool-member-status ${m.status}">${m.status}</span>
+          <span class="text-sm text-muted">${esc(m.name)}</span>
+        </div>`).join('')}</div>
+      </div>`;
+    }).join('');
+    return `<div class="device-group">${renderDeviceGroupHeader(group)}
+      <div class="device-group-body ${isCollapsed?'collapsed':''}">${cards}</div></div>`;
+  }).join('');
+}
+
+let fqdnSortState = { key:'domain', dir:'asc' };
+function renderFqdn(list) {
+  // FQDN filters
+  let filtered = list;
+  if(state.filters.fqdnTypeFilter) filtered=filtered.filter(r=>r.type===state.filters.fqdnTypeFilter);
+  if(state.filters.fqdnOwnerFilter) filtered=filtered.filter(r=>r.owner===state.filters.fqdnOwnerFilter);
+  if(state.filters.fqdnGeoFilter) filtered=filtered.filter(r=>r.geoInfo===state.filters.fqdnGeoFilter);
+
+  // Initial state: don't show all FQDN until search or force
+  if(!state.appliedSearch && !state.forceShowFqdn && filtered.length>0) {
+    // Build filter dropdowns
+    const types=new Set(), owners=new Set(), geos=new Set();
+    list.forEach(r=>{if(r.type)types.add(r.type);if(r.owner)owners.add(r.owner);if(r.geoInfo)geos.add(r.geoInfo);});
+    const filterHtml=`<div class="flex gap-2 items-center mb-2" style="flex-wrap:wrap">
+      <select class="filter-select" onchange="state.filters.fqdnTypeFilter=this.value;renderContent()"><option value="">Type (All)</option>${Array.from(types).sort().map(t=>`<option value="${esc(t)}" ${state.filters.fqdnTypeFilter===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
+      <select class="filter-select" onchange="state.filters.fqdnOwnerFilter=this.value;renderContent()"><option value="">Owner (All)</option>${Array.from(owners).sort().map(o=>`<option value="${esc(o)}" ${state.filters.fqdnOwnerFilter===o?'selected':''}>${esc(o)}</option>`).join('')}</select>
+      <select class="filter-select" onchange="state.filters.fqdnGeoFilter=this.value;renderContent()"><option value="">Geo (All)</option>${Array.from(geos).sort().map(g=>`<option value="${esc(g)}" ${state.filters.fqdnGeoFilter===g?'selected':''}>${esc(g)}</option>`).join('')}</select>
+    </div>`;
+    if(state.filters.fqdnTypeFilter||state.filters.fqdnOwnerFilter||state.filters.fqdnGeoFilter) {
+      // Show filtered results
+    } else {
+      return filterHtml+`<div class="empty-state"><p>Enter a keyword above or select filters to view FQDN records.</p><button class="btn btn-primary mt-2" onclick="state.forceShowFqdn=true;renderContent()">Show All FQDN (${list.length} records)</button></div>`;
+    }
+  }
+
+  if(filtered.length===0) return '<div class="empty-state">No matching FQDN records found.</div>';
+  const sorted=[...filtered].sort((a,b)=>smartSort(a,b,fqdnSortState.key,fqdnSortState.dir));
+  const display=sorted.slice(0,2000);
+  const arrow=(k)=>fqdnSortState.key===k?`<span class="sort-arrow">${fqdnSortState.dir==='asc'?'▲':'▼'}</span>`:'';
+  // Build filter dropdowns
+  const types=new Set(), owners=new Set(), geos=new Set();
+  list.forEach(r=>{if(r.type)types.add(r.type);if(r.owner)owners.add(r.owner);if(r.geoInfo)geos.add(r.geoInfo);});
+  const filterHtml=`<div class="flex gap-2 items-center mb-2" style="flex-wrap:wrap">
+    <select class="filter-select" onchange="state.filters.fqdnTypeFilter=this.value;renderContent()"><option value="">Type (All)</option>${Array.from(types).sort().map(t=>`<option value="${esc(t)}" ${state.filters.fqdnTypeFilter===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
+    <select class="filter-select" onchange="state.filters.fqdnOwnerFilter=this.value;renderContent()"><option value="">Owner (All)</option>${Array.from(owners).sort().map(o=>`<option value="${esc(o)}" ${state.filters.fqdnOwnerFilter===o?'selected':''}>${esc(o)}</option>`).join('')}</select>
+    <select class="filter-select" onchange="state.filters.fqdnGeoFilter=this.value;renderContent()"><option value="">Geo (All)</option>${Array.from(geos).sort().map(g=>`<option value="${esc(g)}" ${state.filters.fqdnGeoFilter===g?'selected':''}>${esc(g)}</option>`).join('')}</select>
+  </div>`;
+  return filterHtml+`<div class="stats-bar">Total: ${filtered.length} record(s)${filtered.length>2000?' (showing first 2000)':''}</div>
+    <table class="fqdn-table"><thead><tr>
+      <th onclick="sortFqdn('owner')">Owner${arrow('owner')}</th>
+      <th onclick="sortFqdn('domain')">Domain${arrow('domain')}</th>
+      <th onclick="sortFqdn('fqdn')">FQDN${arrow('fqdn')}</th>
+      <th onclick="sortFqdn('type')">Type${arrow('type')}</th>
+      <th onclick="sortFqdn('ip')">IP${arrow('ip')}</th>
+      <th onclick="sortFqdn('geoInfo')">Geo${arrow('geoInfo')}</th>
+    </tr></thead><tbody>${display.map(r=>`<tr${r._chainedFromRule?' style="border-left:3px solid var(--yellow)"':''}><td>${esc(r.owner)}</td><td>${esc(r.domain)}</td><td>${esc(r.fqdn)}</td><td>${esc(r.type)}</td><td>${esc(r.ip)}</td><td>${esc(r.geoInfo)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+// Copy Tab
+const COPY_FIELDS = [
+  // FQDN
+  {key:'fqdn',label:'FQDN',group:'FQDN',selected:true},
+  {key:'ip',label:'FQDN IP',group:'FQDN',selected:true},
+  {key:'domain',label:'Domain',group:'FQDN',selected:false},
+  {key:'fqdn_type',label:'DNS Type',group:'FQDN',selected:false},
+  {key:'fqdn_owner',label:'Owner',group:'FQDN',selected:false},
+  {key:'fqdn_geo',label:'GeoInfo',group:'FQDN',selected:false},
+  // Security Rules
+  {key:'hostname',label:'Device',group:'Security Rules',selected:true},
+  {key:'rule_name',label:'Sec Rule Name',group:'Security Rules',selected:true},
+  {key:'action',label:'Action',group:'Security Rules',selected:false},
+  {key:'from',label:'From Zone',group:'Security Rules',selected:false},
+  {key:'to',label:'To Zone',group:'Security Rules',selected:false},
+  {key:'source',label:'Source',group:'Security Rules',selected:false},
+  {key:'destination',label:'Destination',group:'Security Rules',selected:false},
+  {key:'service',label:'Service',group:'Security Rules',selected:false},
+  {key:'application',label:'Application',group:'Security Rules',selected:false},
+  {key:'url_category',label:'URL Category',group:'Security Rules',selected:false},
+  // NAT
+  {key:'nat_name',label:'NAT Rule Name',group:'NAT Rules',selected:true},
+  {key:'nat_from',label:'NAT Zone From',group:'NAT Rules',selected:false},
+  {key:'nat_to',label:'NAT Zone To',group:'NAT Rules',selected:false},
+  {key:'nat_orig_src',label:'Original Src',group:'NAT Rules',selected:false},
+  {key:'nat_orig_dst',label:'Original Dst',group:'NAT Rules',selected:false},
+  {key:'nat_snat',label:'SNAT',group:'NAT Rules',selected:false},
+  {key:'nat_dnat',label:'DNAT',group:'NAT Rules',selected:false},
+  // LTM
+  {key:'f5_vs',label:'VS Name',group:'LTM',selected:true},
+  {key:'f5_dest',label:'VS Dest IP',group:'LTM',selected:true},
+  {key:'f5_port',label:'VS Port',group:'LTM',selected:false},
+  {key:'f5_status',label:'VS Status',group:'LTM',selected:false},
+  {key:'f5_pool',label:'Pool Name',group:'LTM',selected:true},
+  {key:'f5_members',label:'Pool Members',group:'LTM',selected:true},
+];
+const MULTILINE_KEYS = new Set([
+  'source','destination','service','application','url_category',
+  'nat_orig_src','nat_orig_dst','nat_snat','nat_dnat',
+  'f5_members'
+]);
+let copyFields = JSON.parse(JSON.stringify(COPY_FIELDS));
+let copyData = [];
+
+function renderCopyTab(d) {
+  const isDirty = copyData.length>0 && (
+    state.lastGeneratedSearch !== state.appliedSearch ||
+    state.lastGeneratedFilters.fromZone !== state.filters.fromZone ||
+    state.lastGeneratedFilters.toZone !== state.filters.toZone ||
+    state.lastGeneratedFilters.tag !== state.filters.tag
+  );
+  
+  // Group fields by group
+  const groupOrder=['FQDN','Security Rules','NAT Rules','LTM'];
+  const groupColors={'FQDN':'#7C3AED','Security Rules':'#CC6B47','NAT Rules':'#3B82F6','LTM':'#10B981'};
+  
+  let fieldSettingsHtml=`<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;min-width:200px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <b style="font-size:12px">Field Settings & Order</b>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button class="btn btn-sm" onclick="resetCopyFields()">Default</button>
+        <button class="btn btn-sm" onclick="selectAllCopyFields()">Select All</button>
+        <button class="btn btn-sm" onclick="deselectAllCopyFields()">Deselect All</button>
+      </div>`;
+  
+  groupOrder.forEach(grp=>{
+    const fields=copyFields.filter(f=>f.group===grp);
+    if(fields.length===0) return;
+    const color=groupColors[grp]||'var(--text)';
+    const allSelected=fields.every(f=>f.selected);
+    fieldSettingsHtml+=`<div style="margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:4px">
+        <input type="checkbox" ${allSelected?'checked':''} onchange="toggleCopyGroup('${grp}',this.checked)" style="accent-color:${color}"/>
+        <span style="font-weight:700;font-size:11px;color:${color}">${grp}</span>
+      </label>`;
+    fields.forEach(f=>{
+      const idx=copyFields.indexOf(f);
+      fieldSettingsHtml+=`<label style="display:flex;align-items:center;gap:6px;padding:1px 0 1px 16px;cursor:pointer;font-size:12px" draggable="true" ondragstart="onCopyFieldDragStart(event,${idx})" ondragover="onCopyFieldDragOver(event,${idx})" ondragend="onCopyFieldDragEnd(event)">
+        <input type="checkbox" ${f.selected?'checked':''} onchange="toggleCopyField(${idx})" style="accent-color:${color}"/>
+        <span>${f.label}</span><span class="text-muted" style="font-size:10px;margin-left:2px">${f.group}</span>
+      </label>`;
+    });
+    fieldSettingsHtml+=`</div>`;
+  });
+  fieldSettingsHtml+=`</div>`;
+
+  // Preview panel
+  const hasAnyFilter=!!(state.appliedSearch||state.filters.fromZone||state.filters.toZone||state.filters.tag);
+  let previewHtml=`<div style="flex:1;min-width:300px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <b style="font-size:12px">Preview${copyData.length>0?` (first ${Math.min(copyData.length,copyDisplayLimit)} rows)`:''} ${copyData.length>0?`<span class="tab-count">${copyData.length} items</span>`:''}</b>
+      <div style="display:flex;gap:6px">
+        ${isDirty?'<span class="text-sm" style="color:var(--yellow)">⚠️ Regenerate</span>':''}
+        <button class="btn btn-primary btn-sm" onclick="generateCopyData()" ${!hasAnyFilter?'disabled title="Enter a search term or select a filter first"':''}>Generate Preview</button>
+        <button class="btn btn-sm" onclick="copyTSV()" ${copyData.length===0?'disabled':''}>📋 Copy to Clipboard</button>
+      </div>
+    </div>`;
+
+  if(!hasAnyFilter){
+    previewHtml+=`<div class="empty-state" style="padding:30px">Enter a search term or select a zone/tag filter to enable preview generation.</div>`;
+  } else if(copyData.length>0){
+    const selFields=copyFields.filter(f=>f.selected);
+    const showCount=Math.min(copyData.length,copyDisplayLimit);
+    const previewCellVal=(key,val)=>MULTILINE_KEYS.has(key)&&val&&val.includes(', ')?val.split(', ').join(' / '):val;
+    previewHtml+=`<div class="copy-preview"><table><thead><tr>${selFields.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead><tbody>${copyData.slice(0,showCount).map(row=>`<tr>${selFields.map(f=>{const v=previewCellVal(f.key,row[f.key]||'');return `<td title="${esc(v)}">${esc(v)}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`;
+    if(copyData.length>showCount) previewHtml+=`<div style="text-align:center;margin-top:8px"><button class="btn btn-sm" onclick="copyDisplayLimit+=50;renderContent()">Load More (${showCount}/${copyData.length})</button></div>`;
+    else previewHtml+=`<div class="text-sm text-muted mt-2">Total: ${copyData.length} rows (all shown)</div>`;
+  } else {
+    previewHtml+=`<div class="empty-state" style="padding:30px">Click "Generate Preview" to see results.</div>`;
+  }
+  previewHtml+=`</div>`;
+
+  return `<div style="display:flex;gap:16px;flex-wrap:wrap">${fieldSettingsHtml}${previewHtml}</div>`;
+}
+let copyDisplayLimit = 50;
+
+function resetCopyFields(){copyFields=JSON.parse(JSON.stringify(COPY_FIELDS));renderContent();}
+function selectAllCopyFields(){copyFields.forEach(f=>f.selected=true);renderContent();}
+function deselectAllCopyFields(){copyFields.forEach(f=>f.selected=false);renderContent();}
+function toggleCopyGroup(grp,checked){copyFields.filter(f=>f.group===grp).forEach(f=>f.selected=checked);renderContent();}
+
+function generateCopyData() {
+  const _hasFilter=!!(state.appliedSearch||state.filters.fromZone||state.filters.toZone||state.filters.tag);
+  if(!_hasFilter){alert('Please enter a search term or select a filter first.');return;}
+  const d=getFilteredData();
+  const { ignoreCIDR: ignoreCIDRFlag, filters } = state;
+  const rows=[];
+
+  // ===== Helper Functions =====
+
+  const expandObjectList = (nameList, addresses, groups) => {
+    if (!nameList || nameList.length === 0) return [];
+    const result = new Set();
+    nameList.forEach(name => {
+      const resolved = resolveObject(name, addresses, groups);
+      resolved.forEach(r => {
+        if (r.type === 'group') { result.add(r.name); return; }
+        if (r.type === 'wildcard') { result.add(r.name); return; }
+        if (r.mappedip) {
+          result.add(`${r.name} (${r.value} → ${r.mappedip})`);
+        } else if (r.value && r.value !== r.name) {
+          result.add(`${r.name} (${r.value})`);
+        } else {
+          result.add(r.name);
+        }
+      });
+    });
+    return Array.from(result);
+  };
+
+  const expandSvcList = (nameList, services, serviceGroups) => {
+    if(!nameList||nameList.length===0) return [];
+    const result=new Set();
+    nameList.forEach(name=>{
+      resolveService(name,services,serviceGroups).filter(r=>r.type!=='group').forEach(r=>{
+        if(r.value&&r.value!==r.name&&r.value!=='*') result.add(`${r.name} (${r.value})`);
+        else result.add(r.name);
+      });
+    });
+    return Array.from(result);
+  };
+
+  const matchFqdnToIp = (ipVal, fqdnRec) => {
+    if(!ipVal||!fqdnRec.ip||fqdnRec.ip==='null') return false;
+    if(!ignoreCIDRFlag){
+      if(isCIDR(ipVal)) return ipInCIDR(fqdnRec.ip, ipVal);
+      if(isCIDR(fqdnRec.ip)) return ipInCIDR(ipVal, fqdnRec.ip);
+    }
+    return String(ipVal).split('/')[0]===String(fqdnRec.ip).split('/')[0];
+  };
+
+  const getRuleIps = (sec, nat) => {
+    const ips = new Set();
+    const searchSrcOnly = filters.filterSource && !filters.filterDest;
+    const searchDstOnly = filters.filterDest && !filters.filterSource;
+    const addIps = (list, parsed) => {
+      if (!list) return;
+      expandObjectList(list, parsed.addresses, parsed.groups).forEach(val => {
+        const matches = String(val).match(/\b\d{1,3}(?:\.\d{1,3}){3}(?:\/\d{1,2})?\b/g);
+        if (matches) matches.forEach(m => ips.add(m));
+      });
+    };
+    if (sec) {
+      if (!searchDstOnly) addIps(sec.rule.source, sec.parsed);
+      if (!searchSrcOnly) addIps(sec.rule.destination, sec.parsed);
+    }
+    if (nat) {
+      if (!searchDstOnly) { addIps(nat.rule.source, nat.parsed); addIps(nat.rule.sourceTranslation, nat.parsed); }
+      if (!searchSrcOnly) { addIps(nat.rule.destination, nat.parsed); addIps(nat.rule.destinationTranslation, nat.parsed); }
+    }
+    return ips;
+  };
+
+  // ===== Data Preparation =====
+  const allSecRules = d.secRules.map(r => ({ hostname: r._hostname||'', parsed: r._parsed, rule: r, _used: false }));
+  const allNatRules = d.natRules.map(r => ({ hostname: r._hostname||'', parsed: r._parsed, rule: r, _used: false }));
+  const allVirtuals = d.f5Virtuals.map(vs => ({ hostname: vs._hostname||'', parsed: vs._parsed, vs, _used: false }));
+
+  const getValidVsList = (sec, nat) => {
+    const targetIpSet = new Set();
+    const extractIps = (list, parsed) => {
+      if (!list) return;
+      list.forEach(name => {
+        const resolved = resolveObject(name, parsed.addresses, parsed.groups);
+        resolved.forEach(r => {
+          const valToExtract = r.mappedip || r.value || r.name;
+          const matches = String(valToExtract).match(/\b\d{1,3}(?:\.\d{1,3}){3}(?:\/\d{1,2})?\b/g);
+          if (matches) matches.forEach(m => targetIpSet.add(String(m).split('/')[0]));
+        });
+      });
+      list.forEach(val => {
+        const matches = String(val).match(/\b\d{1,3}(?:\.\d{1,3}){3}(?:\/\d{1,2})?\b/g);
+        if (matches) matches.forEach(m => targetIpSet.add(String(m).split('/')[0]));
+      });
+    };
+    if (nat && nat.rule.destinationTranslation && nat.rule.destinationTranslation.length > 0) {
+      extractIps(nat.rule.destinationTranslation, nat.parsed);
+    } else if (sec && sec.rule.destination && sec.rule.destination.length > 0) {
+      extractIps(sec.rule.destination, sec.parsed);
+    }
+    if (targetIpSet.size > 0) {
+      return allVirtuals.filter(vs => targetIpSet.has(String(vs.vs.ip).split('/')[0]));
+    }
+    return [];
+  };
+
+  const doNamesMatch = (ruleA, ruleB) => {
+    if (!ruleA || !ruleB) return false;
+    if (ruleA.name === ruleB.name) return true;
+    const partsA = String(ruleA.name).split('_');
+    const partsB = String(ruleB.name).split('_');
+    if (partsA.length > 1 && partsB.length === 1) return partsA.includes(ruleB.name);
+    if (partsB.length > 1 && partsA.length === 1) return partsB.includes(ruleA.name);
+    return false;
+  };
+
+  const buildRow = (fqdn, sec, nat, vsList = []) => {
+    const row = {
+      fqdn:'', ip:'', domain:'', fqdn_type:'', fqdn_owner:'', fqdn_geo:'',
+      hostname:'', rule_name:'', action:'', from:'', to:'',
+      source:'', destination:'', service:'', application:'', url_category:'',
+      nat_name:'', nat_from:'', nat_to:'', nat_orig_src:'', nat_orig_dst:'', nat_snat:'', nat_dnat:'',
+      f5_vs:'', f5_dest:'', f5_port:'', f5_status:'', f5_pool:'', f5_members:''
+    };
+    if (fqdn) {
+      row.fqdn = fqdn.fqdn||''; row.ip = fqdn.ip||''; row.domain = fqdn.domain||'';
+      row.fqdn_type = fqdn.type||''; row.fqdn_owner = fqdn.owner||''; row.fqdn_geo = fqdn.geoInfo||'';
+    }
+    if (sec) {
+      row.hostname = sec.hostname||'';
+      row.rule_name = sec.rule.name||''; row.action = sec.rule.action||'';
+      row.from = (sec.rule.from||[]).join(', '); row.to = (sec.rule.to||[]).join(', ');
+      row.source = expandObjectList(sec.rule.source, sec.parsed.addresses, sec.parsed.groups).join(', ');
+      row.destination = expandObjectList(sec.rule.destination, sec.parsed.addresses, sec.parsed.groups).join(', ');
+      row.service = expandSvcList(sec.rule.service, sec.parsed.services, sec.parsed.serviceGroups).join(', ');
+      row.application = (sec.rule.application||[]).join(', ');
+      row.url_category = (sec.rule.category||[]).join(', ');
+    }
+    if (nat) {
+      if (!row.hostname) row.hostname = nat.hostname||'';
+      row.nat_name = nat.rule.name||'';
+      row.nat_from = (nat.rule.from||[]).join(', '); row.nat_to = (nat.rule.to||[]).join(', ');
+      row.nat_orig_src = expandObjectList(nat.rule.source, nat.parsed.addresses, nat.parsed.groups).join(', ');
+      row.nat_orig_dst = expandObjectList(nat.rule.destination, nat.parsed.addresses, nat.parsed.groups).join(', ');
+      row.nat_snat = expandObjectList(nat.rule.sourceTranslation||[], nat.parsed.addresses, nat.parsed.groups).join(', ');
+      row.nat_dnat = expandObjectList(nat.rule.destinationTranslation||[], nat.parsed.addresses, nat.parsed.groups).join(', ');
+    }
+    if (vsList && vsList.length > 0) {
+      if (!row.hostname) row.hostname = vsList[0].hostname||'';
+      row.f5_vs = vsList.map(v => v.vs.name).join(', ');
+      row.f5_dest = vsList.map(v => v.vs.ip).join(', ');
+      row.f5_port = vsList.map(v => String(v.vs.port||'*')).join(', ');
+      row.f5_status = vsList.map(v => v.vs.status||'').join(', ');
+      row.f5_pool = vsList.map(v => v.vs.pool||'None').join(', ');
+      const allMembers = [];
+      vsList.forEach(v => {
+        if (v.vs.pool) {
+          const poolObj = v.parsed.pools?.find(p => p.name === v.vs.pool);
+          if (poolObj && poolObj.members) poolObj.members.forEach(m => allMembers.push(`${m.ip}:${m.port}`));
+        }
+      });
+      row.f5_members = [...new Set(allMembers)].join('; ');
+    }
+    return row;
+  };
+
+  // ===== Phase 2: FQDN-driven Matching =====
+  if(d.fqdnList && d.fqdnList.length>0){
+    d.fqdnList.forEach(fRec=>{
+      if(!fRec.ip || fRec.ip==='null') return; // skip FQDNs with no IP
+
+      const matchedSec = allSecRules.filter(sec => {
+        if (sec._used) return false;
+        for (const ip of getRuleIps(sec, null)) {
+          if (matchFqdnToIp(ip, fRec)) return true;
+        }
+        return false;
+      });
+
+      // Skip orphan FQDNs that have no matching SEC rule
+      if(matchedSec.length===0) return;
+
+      matchedSec.forEach(sec => {
+        sec._used = true;
+        const matchedNat = allNatRules.find(nat =>
+          !nat._used &&
+          (!nat.hostname || !sec.hostname || nat.hostname === sec.hostname) &&
+          doNamesMatch(sec.rule, nat.rule)
+        );
+        if (matchedNat) matchedNat._used = true;
+        const vsList = getValidVsList(sec, matchedNat);
+        vsList.forEach(v => v._used = true);
+        rows.push(buildRow(fRec, sec, matchedNat, vsList));
+      });
+    });
+
+    // Sec rules not matched to any FQDN IP (e.g. found via rule-name search)
+    allSecRules.forEach(sec=>{
+      if(sec._used) return;
+      sec._used = true;
+      const matchedNat = allNatRules.find(nat =>
+        !nat._used &&
+        (!nat.hostname || !sec.hostname || nat.hostname === sec.hostname) &&
+        doNamesMatch(sec.rule, nat.rule)
+      );
+      if (matchedNat) matchedNat._used = true;
+      const vsList = getValidVsList(sec, matchedNat);
+      vsList.forEach(v => v._used = true);
+      rows.push(buildRow(null, sec, matchedNat, vsList));
+    });
+  } else {
+    // No FQDN: Sec-driven approach
+    allSecRules.forEach(sec=>{
+      if(sec._used) return;
+      sec._used = true;
+      const matchedNat = allNatRules.find(nat =>
+        !nat._used &&
+        (!nat.hostname || !sec.hostname || nat.hostname === sec.hostname) &&
+        doNamesMatch(sec.rule, nat.rule)
+      );
+      if (matchedNat) matchedNat._used = true;
+      const vsList = getValidVsList(sec, matchedNat);
+      vsList.forEach(v => v._used = true);
+      rows.push(buildRow(null, sec, matchedNat, vsList));
+    });
+  }
+
+  // ===== Phase 3: Orphan NAT rules (not matched to any Sec rule) =====
+  allNatRules.forEach(nat=>{
+    if(nat._used) return;
+    nat._used = true;
+    const vsList = getValidVsList(null, nat);
+    vsList.forEach(v => v._used = true);
+    rows.push(buildRow(null, null, nat, vsList));
+  });
+
+  // Orphan F5 VS are skipped — they appear on the LTM tab
+
+  // ===== Phase 4: Deduplication =====
+  const seen=new Set();
+  const dedupedRows=[];
+  const selKeys=copyFields.filter(f=>f.selected).map(f=>f.key);
+  rows.forEach(row=>{
+    const fp=selKeys.map(k=>String(row[k]||'').trim()).join('|');
+    if(!seen.has(fp)){ seen.add(fp); dedupedRows.push(row); }
+  });
+
+  copyData=dedupedRows;
+  state.lastGeneratedSearch=state.appliedSearch;
+  state.lastGeneratedFilters={fromZone:state.filters.fromZone, toZone:state.filters.toZone, tag:state.filters.tag};
+  copyDisplayLimit=50;
+  renderContent();
+}
+
+function copyTSV() {
+  if(copyData.length===0)return;
+  const selFields=copyFields.filter(f=>f.selected);
+  const header=selFields.map(f=>f.label).join('\t');
+  const body=copyData.map(row=>
+    selFields.map(f=>{
+      const val=String(row[f.key]||'');
+      if(MULTILINE_KEYS.has(f.key)&&val.includes(', ')){
+        const lines=val.split(', ').join('\n');
+        return `"${lines.replace(/"/g,'""')}"`;
+      }
+      return val.replace(/\t/g,' ');
+    }).join('\t')
+  ).join('\n');
+  const tsv=header+'\n'+body;
+  navigator.clipboard.writeText(tsv).then(()=>{showCopyFeedback();}).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=tsv;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showCopyFeedback();
+  });
+}
+
+function showCopyFeedback(){
+  const el=document.createElement('div');el.className='copy-feedback';el.textContent='✓ Copied to clipboard!';
+  document.body.appendChild(el);setTimeout(()=>el.remove(),1500);
+}
+
+function renderRawConfig() {
+  if(state.rawConfigs.length===0) return '<div class="empty-state">No configuration files imported.</div>';
+  return state.rawConfigs.map(c=>`
+    <div class="raw-config-block">
+      <div class="raw-config-header"><span>${esc(c.filename)}</span></div>
+      <pre class="raw-config-pre">${esc(c.text.substring(0,50000))}${c.text.length>50000?'\n\n... (truncated)':''}</pre>
+    </div>
+  `).join('');
+}
+
+// PA Tag Colors
+const PA_COLORS = {
+  color1:'#C23B22',color2:'#E25822',color3:'#FF8C00',color4:'#FFD700',color5:'#ADFF2F',
+  color6:'#32CD32',color7:'#008000',color8:'#00CED1',color9:'#4169E1',color10:'#0000CD',
+  color11:'#6A5ACD',color12:'#8B008B',color13:'#FF69B4',color14:'#8B4513',color15:'#808080',
+  color16:'#C71585',color17:'#6B8E23',color18:'#2E8B57',color19:'#4682B4',color20:'#9370DB',
+  color21:'#D2691E',color22:'#DC143C',color23:'#00BFFF',color24:'#FF4500',color25:'#2F4F4F',
+  color26:'#8FBC8F',color27:'#B8860B',color28:'#9932CC',color29:'#E9967A',color30:'#556B2F',
+  color31:'#483D8B',color32:'#BC8F8F',color33:'#A0522D',color34:'#C0C0C0',color35:'#708090',
+  color36:'#DAA520',color37:'#20B2AA',color38:'#7B68EE',color39:'#DB7093',color40:'#CD853F',
+  color41:'#DEB887',color42:'#5F9EA0',color43:'#D2B48C',color44:'#F0E68C',color45:'#E0FFFF',
+  color46:'#FAFAD2',color47:'#FFE4E1',color48:'#F5DEB3',color49:'#FFFACD'
+};
+
+// Debug Tab
+function renderDebugTab() {
+  if(state.parsedConfigs.length===0) return '<div class="empty-state">No configuration files imported.</div>';
+  return state.parsedConfigs.map(c=>{
+    const p=c.parsed;
+    const tc=p.type==='PA'?'pa':(p.type==='FortiGate'?'fortigate':(p.type==='SRX'?'srx':'f5'));
+    const tl=p.type==='PA'?'Palo Alto':(p.type==='FortiGate'?'FortiGate':(p.type==='SRX'?'Juniper SRX':'F5'));
+
+    let statsHtml='';
+    if(p.type==='F5'){
+      statsHtml=`
+        <tr><td>Virtual Servers</td><td>${(p.virtuals||[]).length}</td></tr>
+        <tr><td>Pools</td><td>${(p.pools||[]).length}</td></tr>
+        <tr><td>Total Pool Members</td><td>${(p.pools||[]).reduce((a,pl)=>a+(pl.members||[]).length,0)}</td></tr>
+        <tr><td>Disabled Members</td><td>${(p.pools||[]).reduce((a,pl)=>a+(pl.members||[]).filter(m=>m.status==='disabled').length,0)}</td></tr>
+      `;
+    } else {
+      statsHtml=`
+        <tr><td>Addresses</td><td>${Object.keys(p.addresses||{}).length}</td></tr>
+        <tr><td>Address Groups</td><td>${Object.keys(p.groups||{}).length}</td></tr>
+        <tr><td>Services</td><td>${Object.keys(p.services||{}).length}</td></tr>
+        <tr><td>Service Groups</td><td>${Object.keys(p.serviceGroups||{}).length}</td></tr>
+        <tr><td>Security Rules</td><td>${(p.secRules||[]).length}</td></tr>
+        <tr><td>NAT Rules</td><td>${(p.natRules||[]).length}</td></tr>
+        <tr><td>Routes</td><td>${(p.routes||[]).length}</td></tr>
+        <tr><td>Tags</td><td>${Object.keys(p.tags||{}).length}</td></tr>
+        <tr><td>URL Categories</td><td>${Object.keys(p.urlCategories||{}).length}</td></tr>
+      `;
+    }
+    
+    const unparsedHtml=(p.unparsed||[]).length>0?`
+      <details style="margin-top:12px">
+        <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--text-secondary)">Unparsed / Ignored Lines (${p.unparsed.length})</summary>
+        <pre style="background:var(--bg);padding:8px;border-radius:6px;font-size:11px;max-height:300px;overflow:auto;margin-top:8px">${esc(p.unparsed.slice(0,200).join('\n'))}${p.unparsed.length>200?'\n\n... (truncated)':''}</pre>
+      </details>
+    `:'';
+    
+    return `<div class="rule-card" style="margin-bottom:16px">
+      <div class="rule-header"><div><span class="device-group-type ${tc}" style="margin-right:8px">${tl}</span><span class="rule-name">${esc(displayHostname(p.hostname))}</span></div></div>
+      <table class="route-table" style="margin-top:8px"><thead><tr><th>Metric</th><th>Count</th></tr></thead><tbody>${statsHtml}</tbody></table>
+      ${unparsedHtml}
+    </div>`;
+  }).join('');
+}
+
+// Confirm Dialog
+let confirmCallback = null;
+function showConfirm(title, message, onConfirm) {
+  confirmCallback = onConfirm;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMessage').textContent = message;
+  document.getElementById('confirmDialog').classList.remove('hidden');
+}
+function closeConfirm() {
+  document.getElementById('confirmDialog').classList.add('hidden');
+  confirmCallback = null;
+}
+function doConfirm() {
+  if(confirmCallback) confirmCallback();
+  closeConfirm();
+}
+
+// ===== FILTER OPTIONS =====
+function updateFilterOptions() {
+  const zones=new Set(), tags=new Set();
+  state.parsedConfigs.forEach(c=>{
+    (c.parsed.secRules||[]).forEach(r=>{(r.from||[]).forEach(z=>zones.add(z));(r.to||[]).forEach(z=>zones.add(z));(r.tag||[]).forEach(t=>tags.add(t));});
+  });
+  fillSelect('fromZoneFilter','FROM ZONE (All)',zones);
+  fillSelect('toZoneFilter','TO ZONE (All)',zones);
+  fillSelect('tagFilter','TAG (All)',tags);
+  renderDeviceToggleBar();
+}
+
+function renderDeviceToggleBar(){
+  const bar=document.getElementById('sourceDeviceBar');
+  if(!bar) return;
+  const allActive=state.disabledHosts.size===0;
+  let html=`<span class="text-sm text-muted" style="font-weight:700;margin-right:4px">Source:</span>`;
+  html+=`<button class="device-toggle-btn ${allActive?'active all':''}" onclick="toggleAllDevices()">All (${state.parsedConfigs.length})</button>`;
+  state.parsedConfigs.forEach(c=>{
+    const p=c.parsed;
+    const isDisabled=state.disabledHosts.has(p.hostname);
+    const tc=p.type==='PA'?'pa':(p.type==='FortiGate'?'fortigate':(p.type==='SRX'?'srx':'f5'));
+    html+=`<button class="device-toggle-btn ${isDisabled?'disabled':'active '+tc}" onclick="toggleDevice('${esc(p.hostname)}')" title="${isDisabled?'Click to enable':'Click to disable'}">${esc(displayHostname(p.hostname))}</button>`;
+  });
+  bar.innerHTML=html;
+}
+
+function toggleDevice(hostname){
+  if(state.disabledHosts.has(hostname)) state.disabledHosts.delete(hostname);
+  else state.disabledHosts.add(hostname);
+  renderContent();
+}
+
+function toggleAllDevices(){
+  if(state.disabledHosts.size===0){
+    // All active → disable all
+    state.parsedConfigs.forEach(c=>state.disabledHosts.add(c.parsed.hostname));
+  } else {
+    // Some disabled → enable all
+    state.disabledHosts.clear();
+  }
+  renderContent();
+}
+
+function fillSelect(id, defaultLabel, values) {
+  const el=document.getElementById(id);
+  if(!el) return;
+  const cur=el.value;
+  const opts=[`<option value="">${defaultLabel}</option>`];
+  Array.from(values).sort().forEach(v=>opts.push(`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(v)}</option>`));
+  el.innerHTML=opts.join('');
+}
+
+// ── Server integration ────────────────────────────────────────────────────────
+async function loadFromServer() {
+  const spinner = document.getElementById('searchSpinner');
+  const searchInput = document.getElementById('searchInput');
+  if (spinner) spinner.classList.add('active');
+  if (searchInput) searchInput.disabled = true;
+  try {
+    const res = await fetch('/api/data');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    state.parsedConfigs = data.parsedConfigs || [];
+    state.fqdnRecords   = data.fqdnRecords   || [];
+    _serverLastLoaded   = data.lastLoaded;
+    updateDeviceList();
+    updateStatusBar();
+    renderContent();
+    console.log(`[client] Loaded ${state.parsedConfigs.length} devices from server.`);
+  } catch (err) {
+    console.error('[client] Failed to load from server:', err.message);
+  } finally {
+    if (spinner) spinner.classList.remove('active');
+    if (searchInput) searchInput.disabled = false;
+  }
+}
+
+let _serverLastLoaded = null;
+
+function updateStatusBar() {
+  const el = document.getElementById('serverStatusBar');
+  if (!el) return;
+  if (_serverLastLoaded) {
+    const d = new Date(_serverLastLoaded);
+    const fmt = d.toLocaleString('zh-TW', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    el.textContent = `資料版本：${fmt}`;
+  } else {
+    el.textContent = '尚未載入';
+  }
+}
+
+async function triggerReload() {
+  const btn = document.getElementById('reloadBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '重載中...'; }
+  try {
+    await fetch('/api/reload', { method: 'POST' });
+    await loadFromServer();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 重載'; }
+  }
+}
+
+// ===== EVENT HANDLERS =====
+function switchTab(id){state.activeTab=id;renderContent();}
+function toggleSearchMode(){state.searchMode=state.searchMode==='keyword'?'exact':'keyword';document.getElementById('searchModeBtn').textContent=state.searchMode==='keyword'?'Keyword':'Exact';renderContent();}
+function toggleHighlight(){state.highlightEnabled=!state.highlightEnabled;const btn=document.getElementById('searchHlBtn');if(btn){btn.classList.toggle('on',state.highlightEnabled);btn.title=state.highlightEnabled?'Highlight ON — click to disable':'Highlight OFF — click to enable';}renderContent();}
+function toggleSearchHelp(){const el=document.getElementById('searchHelpPopup');el.classList.toggle('hidden');}
+// Close search help on outside click
+document.addEventListener('click',e=>{const popup=document.getElementById('searchHelpPopup');const btn=document.getElementById('searchHelpBtn');if(popup&&!popup.classList.contains('hidden')&&!popup.contains(e.target)&&e.target!==btn){popup.classList.add('hidden');}});
+function toggleLang(){state.lang=state.lang==='en'?'zh':'en';document.getElementById('langBtn').textContent=state.lang==='en'?'EN':'中文';renderContent();}
+function sortFqdn(key){if(fqdnSortState.key===key)fqdnSortState.dir=fqdnSortState.dir==='asc'?'desc':'asc';else{fqdnSortState.key=key;fqdnSortState.dir='asc';}renderContent();}
+function toggleCopyField(idx){copyFields[idx].selected=!copyFields[idx].selected;renderContent();}
+
+// Search
+// Search — handled by history-aware listener below
+document.getElementById('ignoreCidr').addEventListener('change',e=>{state.ignoreCIDR=e.target.checked;if(state.appliedSearch)renderContent();updateSearchHint();});
+// Source device now uses toggle buttons
+document.getElementById('fromZoneFilter').addEventListener('change',e=>{state.filters.fromZone=e.target.value;renderContent();});
+document.getElementById('toZoneFilter').addEventListener('change',e=>{state.filters.toZone=e.target.value;renderContent();});
+document.getElementById('tagFilter').addEventListener('change',e=>{state.filters.tag=e.target.value;renderContent();});
+document.getElementById('filterSource').addEventListener('change',e=>{state.filters.filterSource=e.target.checked;renderContent();});
+document.getElementById('filterDest').addEventListener('change',e=>{state.filters.filterDest=e.target.checked;renderContent();});
+document.getElementById('secHideDisabled').addEventListener('change',e=>{state.filters.secHideDisabled=e.target.checked;state.filters.natHideDisabled=e.target.checked;if(e.target.checked){state.filters.secShowDisabledOnly=false;state.filters.natShowDisabledOnly=false;}document.getElementById('secShowDisabledOnly').checked=false;renderContent();});
+document.getElementById('secShowDisabledOnly').addEventListener('change',e=>{state.filters.secShowDisabledOnly=e.target.checked;state.filters.natShowDisabledOnly=e.target.checked;if(e.target.checked){state.filters.secHideDisabled=false;state.filters.natHideDisabled=false;}document.getElementById('secHideDisabled').checked=false;renderContent();});
+document.getElementById('showDisabledMembersOnly').addEventListener('change',e=>{state.filters.showDisabledMembersOnly=e.target.checked;renderContent();});
+
+function expandAllPills(){expandedPills=new Set(['__ALL__']);renderContent();}
+function collapseAllPills(){expandedPills=new Set();renderContent();}
+
+function clearAllFilters(){
+  state.filters={sourceDevice:'',fromZone:'',toZone:'',tag:'',filterSource:false,filterDest:false,secHideDisabled:false,secShowDisabledOnly:false,natHideDisabled:false,natShowDisabledOnly:false,showDisabledMembersOnly:false,fqdnTypeFilter:'',fqdnOwnerFilter:'',fqdnGeoFilter:''};
+  state.disabledHosts=new Set();
+  document.getElementById('fromZoneFilter').value='';
+  document.getElementById('toZoneFilter').value='';
+  document.getElementById('tagFilter').value='';
+  document.getElementById('filterSource').checked=false;
+  document.getElementById('filterDest').checked=false;
+  document.getElementById('secHideDisabled').checked=false;
+  document.getElementById('secShowDisabledOnly').checked=false;
+  document.getElementById('showDisabledMembersOnly').checked=false;
+  renderContent();
+}
+
+// Import
+function openImportModal(){document.getElementById('importModal').classList.remove('hidden');}
+function closeImportModal(){document.getElementById('importModal').classList.add('hidden');}
+function openBulkSearch(){document.getElementById('bulkSearchModal').classList.remove('hidden');}
+function closeBulkSearch(){document.getElementById('bulkSearchModal').classList.add('hidden');}
+
+// Staged Import
+let stagedConfigFiles = [];
+let stagedFqdnFilesList = [];
+
+function handleConfigDrop(e){e.preventDefault();e.currentTarget.classList.remove('dragover');stageConfigFiles(e.dataTransfer.files);}
+function handleFqdnDrop(e){e.preventDefault();e.currentTarget.classList.remove('dragover');stageFqdnFiles(e.dataTransfer.files);}
+
+function stageConfigFiles(files){
+  Array.from(files).forEach(f=>stagedConfigFiles.push(f));
+  renderStagedQueue();
+}
+
+function stageFqdnFiles(files){
+  Array.from(files).forEach(f=>stagedFqdnFilesList.push(f));
+  renderStagedQueue();
+}
+
+function renderStagedQueue(){
+  // Config queue
+  const cq=document.getElementById('stagedConfigQueue');
+  if(stagedConfigFiles.length>0){
+    cq.classList.remove('hidden');
+    cq.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="text-sm" style="font-weight:600">Staged: ${stagedConfigFiles.length} file(s)</span><div><button class="btn btn-primary btn-sm" onclick="importStagedConfigs()">Import All</button> <button class="btn btn-sm" onclick="stagedConfigFiles=[];renderStagedQueue()">Clear</button></div></div>` +
+      stagedConfigFiles.map((f,i)=>`<div class="text-sm" style="padding:2px 0">${esc(f.name)} <button class="btn btn-sm" onclick="stagedConfigFiles.splice(${i},1);renderStagedQueue()" style="color:var(--red);padding:0 4px">✕</button></div>`).join('');
+  } else {
+    cq.classList.add('hidden');cq.innerHTML='';
+  }
+  // FQDN queue
+  const fq=document.getElementById('stagedFqdnQueue');
+  if(stagedFqdnFilesList.length>0){
+    fq.classList.remove('hidden');
+    fq.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="text-sm" style="font-weight:600">Staged FQDN: ${stagedFqdnFilesList.length} file(s)</span><div><button class="btn btn-primary btn-sm" onclick="importStagedFqdn()">Import All</button> <button class="btn btn-sm" onclick="stagedFqdnFilesList=[];renderStagedQueue()">Clear</button></div></div>` +
+      stagedFqdnFilesList.map((f,i)=>`<div class="text-sm" style="padding:2px 0">${esc(f.name)} <button class="btn btn-sm" onclick="stagedFqdnFilesList.splice(${i},1);renderStagedQueue()" style="color:var(--red);padding:0 4px">✕</button></div>`).join('');
+  } else {
+    fq.classList.add('hidden');fq.innerHTML='';
+  }
+}
+
+function showImportProgress(show){
+  const el=document.getElementById('importProgress');
+  if(show)el.classList.remove('hidden');else el.classList.add('hidden');
+}
+
+async function importStagedConfigs(){
+  showImportProgress(true);
+  for(const f of stagedConfigFiles){
+    const text=await readFileAsync(f);
+    addConfig(f.name,text);
+  }
+  stagedConfigFiles=[];
+  renderStagedQueue();
+  showImportProgress(false);
+}
+
+async function importStagedFqdn(){
+  showImportProgress(true);
+  for(const f of stagedFqdnFilesList){
+    const text=await readFileAsync(f);
+    const records=parseFqdnFile(text);
+    state.fqdnRecords.push(...records);
+  }
+  stagedFqdnFilesList=[];
+  renderStagedQueue();
+  updateDeviceList();
+  showImportProgress(false);
+  renderContent();
+}
+
+function readFileAsync(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>resolve(e.target.result);
+    reader.onerror=reject;
+    reader.readAsText(file);
+  });
+}
+
+// Legacy direct import (for paste)
+function handleConfigFiles(files){
+  Array.from(files).forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>{addConfig(f.name,e.target.result);};
+    reader.readAsText(f);
+  });
+}
+
+function handleFqdnFiles(files){
+  Array.from(files).forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const records=parseFqdnFile(e.target.result);
+      state.fqdnRecords.push(...records);
+      updateDeviceList();
+      renderContent();
+    };
+    reader.readAsText(f);
+  });
+}
+
+// Auto URL Import
+const BASE_URL = "https://librenms.opsware.xyz/RIO_Config";
+const BACKUP_CONFIGS = [
+  {site:"FRI",dir:"FRI",host:"FRI-FW01",type:"FW"},
+  {site:"GICT",dir:"GICT",host:"GICT-FW01",type:"FW"},
+  {site:"GICT",dir:"GICT",host:"GICT-MGT-FW01",type:"FW"},
+  {site:"LOADTEST",dir:"LOADTEST",host:"LoadTest-FW01",type:"FW"},
+  {site:"MGT",dir:"MGT",host:"MGT-FW01",type:"FW"},
+  {site:"SAT",dir:"SAT",host:"SAT-FW01",type:"FW"},
+  {site:"SUN",dir:"SUN",host:"SUN-FW01",type:"FW"},
+  {site:"UAT",dir:"UAT",host:"UAT-FW01",type:"FW"},
+  {site:"FRI",dir:"FRI",host:"FRI-LTM01",type:"LTM"},
+  {site:"GICT",dir:"GICT",host:"GICT-LTM01",type:"LTM"},
+  {site:"LOADTEST",dir:"LOADTEST",host:"LoadTest-LTM01",type:"LTM"},
+  {site:"MGT",dir:"MGT",host:"MGT-LTM01",type:"LTM"},
+  {site:"SAT",dir:"SAT",host:"SAT-LTM01",type:"LTM"},
+  {site:"SUN",dir:"SUN",host:"SUN-LTM01",type:"LTM"},
+  {site:"UAT",dir:"UAT",host:"UAT-SLB01",type:"LTM"},
+];
+
+const fmtDate=(d)=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}${m}${day}`;};
+
+const buildFallbackCandidates=(host,site,dir,type)=>{
+  const now=new Date(), hour=now.getHours(), candidates=[];
+  const todayStr=fmtDate(now);
+  if(hour>=18) candidates.push({date:todayStr,time:'1700'});
+  candidates.push({date:todayStr,time:'0500'});
+  const yesterday=new Date(now);yesterday.setDate(yesterday.getDate()-1);
+  const yesterdayStr=fmtDate(yesterday);
+  candidates.push({date:yesterdayStr,time:'1700'});
+  candidates.push({date:yesterdayStr,time:'0500'});
+  return candidates.map(c=>({host,site,type,time:c.time,date:c.date,url:`${BASE_URL}/${dir}_${c.date}/${host}_${c.date}-${c.time}.txt`}));
+};
+
+async function runUrlImport(){
+  const btn=document.getElementById('urlImportBtn');
+  const statusEl=document.getElementById('urlImportStatus');
+  const resultsEl=document.getElementById('urlImportResults');
+  btn.disabled=true;btn.textContent='Importing...';
+  statusEl.innerHTML=`⏳ Fetching ${BACKUP_CONFIGS.length} devices...`;
+  resultsEl.innerHTML='';
+  const TIMEOUT_MS=3000;
+  const results=[];
+  for(const cfg of BACKUP_CONFIGS){
+    const candidates=buildFallbackCandidates(cfg.host,cfg.site,cfg.dir,cfg.type);
+    let success=false;
+    for(const cand of candidates){
+      try{
+        const ctrl=new AbortController();
+        const timer=setTimeout(()=>ctrl.abort(),TIMEOUT_MS);
+        const res=await fetch(cand.url,{signal:ctrl.signal});
+        clearTimeout(timer);
+        if(!res.ok)continue;
+        const text=await res.text();
+        if(text.length<100)continue;
+        addConfig(`${cand.host}_${cand.date}-${cand.time}.txt`,text);
+        results.push({host:cand.host,status:'success',url:cand.url,isFallback:cand!==candidates[0]});
+        success=true;break;
+      }catch(err){
+        if(err.message?.includes('Failed to fetch')||err.message?.includes('CORS')){
+          results.push({host:cand.host,status:'cors',url:cand.url});success=true;break;
+        }
+        continue;
+      }
+    }
+    if(!success)results.push({host:cfg.host,status:'fail',url:candidates[0].url});
+    statusEl.innerHTML=`⏳ ${results.length}/${BACKUP_CONFIGS.length} done...`;
+  }
+  btn.disabled=false;btn.textContent='Re-Import';
+  const ok=results.filter(r=>r.status==='success').length;
+  const fail=results.filter(r=>r.status==='fail').length;
+  const cors=results.filter(r=>r.status==='cors').length;
+  statusEl.innerHTML=`✅ ${ok} success${fail>0?`, ❌ ${fail} failed`:''}${cors>0?`, ⚠️ ${cors} CORS blocked`:''}`;
+  resultsEl.innerHTML=results.map(r=>`<div class="text-sm" style="padding:2px 0;color:${r.status==='success'?'var(--green)':(r.status==='cors'?'var(--yellow)':'var(--red)')}">${r.status==='success'?'✅':'❌'} ${esc(r.host)}</div>`).join('');
+}
+
+function importPastedText(){
+  const text=document.getElementById('pasteArea').value.trim();
+  if(!text){alert('Please paste config text first.');return;}
+  addConfig('pasted-config',text);
+  document.getElementById('pasteArea').value='';
+}
+
+function addConfig(filename,text){
+  const id=genId();
+  const parsed=parseConfig(text);
+  // Fallback: if parser could not extract a hostname, use the filename stem
+  if(parsed.hostname&&/^Unknown-/.test(parsed.hostname)){
+    const stem=String(filename).replace(/\.[^.]+$/,'').replace(/[_\-]+config$/i,'').replace(/[_\-]+running$/i,'').trim();
+    if(stem)parsed.hostname=stem;
+  }
+  state.rawConfigs.push({id,filename,text});
+  state.parsedConfigs.push({id,filename,parsed});
+  updateDeviceList();
+  renderContent();
+}
+
+function removeConfig(id){
+  const cfg=state.parsedConfigs.find(c=>c.id===id);
+  const name=cfg?displayHostname(cfg.parsed.hostname):'this device';
+  showConfirm('Remove Device',`Are you sure you want to remove ${name}?`,()=>{
+    state.rawConfigs=state.rawConfigs.filter(c=>c.id!==id);
+    state.parsedConfigs=state.parsedConfigs.filter(c=>c.id!==id);
+    updateDeviceList();renderContent();
+  });
+}
+
+function clearAllConfigs(){
+  showConfirm('Clear All Configs','Are you sure you want to clear all imported configs?',()=>{
+    state.rawConfigs=[];state.parsedConfigs=[];
+    updateDeviceList();renderContent();
+  });
+}
+
+function clearAllFqdn(){
+  showConfirm('Clear FQDN Data','Are you sure you want to clear all FQDN data?',()=>{
+    state.fqdnRecords=[];state.forceShowFqdn=false;
+    updateDeviceList();renderContent();
+  });
+}
+
+function updateDeviceList(){
+  const el=document.getElementById('deviceList');
+  let html='';
+  state.parsedConfigs.forEach(c=>{
+    const p=c.parsed;
+    const typeClass=p.type==='PA'?'pa':(p.type==='FortiGate'?'fortigate':(p.type==='SRX'?'srx':'f5'));
+    const typeLabel=p.type==='PA'?'Palo Alto':(p.type==='FortiGate'?'FortiGate':(p.type==='SRX'?'Juniper SRX':'F5'));
+    const info=p.type==='F5'?`${p.virtuals.length} VS, ${p.pools.length} Pools`:`${(p.secRules||[]).length} Sec, ${(p.natRules||[]).length} NAT, ${(p.routes||[]).length} Routes`;
+    html+=`<div class="device-item"><div><span class="device-type ${typeClass}">${typeLabel}</span> <b>${esc(displayHostname(p.hostname))}</b> <span class="text-sm text-muted">(${c.filename}) — ${info}</span></div><button class="btn btn-sm" onclick="removeConfig('${c.id}')" style="color:var(--red)">✕</button></div>`;
+  });
+  if(state.fqdnRecords.length>0){
+    html+=`<div class="device-item"><div><span class="device-type" style="background:#ECFDF5;color:#16A34A">FQDN</span> <b>${state.fqdnRecords.length} records</b></div></div>`;
+  }
+  el.innerHTML=html;
+}
+
+// Bulk Search
+function applyBulkSearch(){
+  const input=document.getElementById('bulkInput').value.trim();
+  if(!input){alert('Please enter search terms.');return;}
+  const terms=input.split('\n').map(l=>l.trim()).filter(Boolean);
+  const mode=document.querySelector('input[name="bulkMode"]:checked').value;
+  let query;
+  if(mode==='AND NOT'){
+    query=terms.map(t=>t.includes(' ')?`NOT "${t}"`:`NOT ${t}`).join(' ');
+    // Prepend current search if exists
+    if(state.appliedSearch) query=state.appliedSearch+' '+query;
+  } else {
+    query=terms.map(t=>t.includes(' ')?`"${t}"`:t).join(` ${mode} `);
+  }
+  document.getElementById('searchInput').value=query;
+  state.search=query;state.appliedSearch=query;state.searchAST=parseSearch(query);
+  copyData=[];
+  addToSearchHistory(query);
+  closeBulkSearch();
+  renderContent();
+}
+
+function applyBulkSearchNew(){
+  // Clear current search first, then apply
+  state.search='';state.appliedSearch='';state.searchAST=null;
+  applyBulkSearch();
+}
+
+// ===== SEARCH HISTORY =====
+let searchHistory = JSON.parse(localStorage.getItem('ns_search_history')||'[]');
+let historyOpen = false;
+
+// Normalize legacy string entries
+const _hq = h => typeof h==='string'?h:h.query;
+const _ht = h => typeof h==='string'?'keyword':(h.type||'keyword');
+const _htime = h => typeof h==='string'?'':' · '+(h.time||'');
+
+function addToSearchHistory(query) {
+  if(!query) return;
+  const type = isCIDR(query)?'cidr':isExactIP(query)?'ip':isIPish(query)?'ip':'keyword';
+  const now = new Date();
+  const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const entry = {query, type, time};
+  searchHistory = searchHistory.filter(h=>_hq(h)!==query);
+  searchHistory.unshift(entry);
+  if(searchHistory.length>20) searchHistory=searchHistory.slice(0,20);
+  localStorage.setItem('ns_search_history', JSON.stringify(searchHistory));
+}
+
+function renderSearchHistory() {
+  const el=document.getElementById('searchHistory');
+  if(!historyOpen||searchHistory.length===0){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');
+  const input=document.getElementById('searchInput').value.toLowerCase();
+  const filtered=input?searchHistory.filter(h=>_hq(h).toLowerCase().includes(input)):searchHistory;
+  if(filtered.length===0){el.classList.add('hidden');return;}
+  const badgeColors = {keyword:'keyword',ip:'ip',cidr:'cidr',fqdn:'fqdn'};
+  el.innerHTML=
+    `<div class="search-history-label">Recent Searches</div>`+
+    filtered.slice(0,12).map((h,i)=>{
+      const q=_hq(h), type=_ht(h), tm=_htime(h);
+      return `<div class="search-history-item" onclick="selectHistory(${i})">
+        <span><span class="sh-badge ${badgeColors[type]||'keyword'}">${type.toUpperCase()}</span>${esc(q)}<span class="sh-meta">${tm}</span></span>
+        <span class="remove-btn" onclick="event.stopPropagation();removeHistory(${i})">&times;</span>
+      </div>`;
+    }).join('')+
+    `<button class="sh-clear-all" onclick="event.stopPropagation();clearAllHistory()">Clear History</button>`;
+}
+
+function selectHistory(idx) {
+  const input=document.getElementById('searchInput').value.toLowerCase();
+  const filtered=input?searchHistory.filter(h=>_hq(h).toLowerCase().includes(input)):searchHistory;
+  const entry=filtered[idx];
+  if(!entry) return;
+  const query=_hq(entry);
+  document.getElementById('searchInput').value=query;
+  state.search=query;state.appliedSearch=query;state.searchAST=parseSearch(query);
+  copyData=[];
+  historyOpen=false;
+  renderSearchHistory();
+  renderContent();
+}
+
+function removeHistory(idx) {
+  const input=document.getElementById('searchInput').value.toLowerCase();
+  const filtered=input?searchHistory.filter(h=>_hq(h).toLowerCase().includes(input)):searchHistory;
+  const entry=filtered[idx];
+  if(!entry) return;
+  const query=_hq(entry);
+  searchHistory=searchHistory.filter(h=>_hq(h)!==query);
+  localStorage.setItem('ns_search_history',JSON.stringify(searchHistory));
+  renderSearchHistory();
+}
+
+function clearAllHistory() {
+  searchHistory=[];
+  localStorage.removeItem('ns_search_history');
+  historyOpen=false;
+  renderSearchHistory();
+}
+
+document.getElementById('searchInput').addEventListener('focus',()=>{historyOpen=true;renderSearchHistory();});
+document.getElementById('searchInput').addEventListener('input',()=>{if(historyOpen)renderSearchHistory();});
+document.addEventListener('click',(e)=>{
+  if(!document.getElementById('searchWrap').contains(e.target)){historyOpen=false;renderSearchHistory();}
+});
+
+// ===== COPY FIELD DRAG & DROP =====
+let dragFieldIdx = null;
+
+function onCopyFieldDragStart(e, idx) {
+  dragFieldIdx = idx;
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+
+function onCopyFieldDragOver(e, idx) {
+  e.preventDefault();
+  if(dragFieldIdx===null||dragFieldIdx===idx) return;
+  // Reorder
+  const item=copyFields.splice(dragFieldIdx,1)[0];
+  copyFields.splice(idx,0,item);
+  dragFieldIdx=idx;
+  renderContent();
+}
+
+function onCopyFieldDragEnd(e) {
+  dragFieldIdx=null;
+  document.querySelectorAll('.copy-field-btn').forEach(b=>b.classList.remove('dragging'));
+}
+
+// ===== SIMPLE VIRTUAL SCROLL =====
+function createVirtualScroll(containerId, items, renderItem, itemHeight=80) {
+  const container=document.getElementById(containerId);
+  if(!container) return;
+  const totalHeight=items.length*itemHeight;
+  const overscan=5;
+  
+  container.style.height='calc(100vh - 200px)';
+  container.innerHTML=`<div class="virtual-scroll-spacer" style="height:${totalHeight}px"><div class="virtual-scroll-viewport" id="${containerId}_vp"></div></div>`;
+  
+  const viewport=document.getElementById(`${containerId}_vp`);
+  
+  function onScroll() {
+    const scrollTop=container.scrollTop;
+    const viewHeight=container.clientHeight;
+    const startIdx=Math.max(0,Math.floor(scrollTop/itemHeight)-overscan);
+    const endIdx=Math.min(items.length,Math.ceil((scrollTop+viewHeight)/itemHeight)+overscan);
+    
+    viewport.style.transform=`translateY(${startIdx*itemHeight}px)`;
+    viewport.innerHTML=items.slice(startIdx,endIdx).map((item,i)=>renderItem(item,startIdx+i)).join('');
+  }
+  
+  container.addEventListener('scroll',onScroll);
+  onScroll();
+}
+
+// Search with history support
+document.getElementById('searchInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    const query=e.target.value.trim();
+    state.search=query;
+    state.appliedSearch=query;
+    state.searchAST=parseSearch(query);
+    copyData=[];
+    if(query) addToSearchHistory(query);
+    historyOpen=false;
+    renderSearchHistory();
+    // Show spinner briefly
+    const spinner=document.getElementById('searchSpinner');
+    spinner.classList.add('active');
+    setTimeout(()=>{
+      renderContent();
+      spinner.classList.remove('active');
+      updateSearchHint();
+    }, 50);
+  }
+});
+
+// ===== INIT =====
+renderContent();
+loadFromServer();
+</script>
+</body>
+</html>
