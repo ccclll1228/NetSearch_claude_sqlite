@@ -4,6 +4,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const { parseConfig, parseFqdnFile } = require('./lib/parser');
+const { startScheduler } = require('./lib/scheduler');
 
 const settings = JSON.parse(fs.readFileSync('./config/settings.json', 'utf8'));
 
@@ -19,6 +20,37 @@ const state = {
   lastLoaded:    null, // ISO string
   loading:       false,
 };
+
+const CACHE_PATH = path.join(__dirname, 'cache', 'parsed.json');
+
+function readCache() {
+  try {
+    if (fs.existsSync(CACHE_PATH)) {
+      const raw = fs.readFileSync(CACHE_PATH, 'utf8');
+      const cached = JSON.parse(raw);
+      state.parsedConfigs = cached.parsedConfigs || [];
+      state.fqdnRecords   = cached.fqdnRecords   || [];
+      state.lastLoaded    = cached.lastLoaded     || null;
+      console.log(`[cache] Restored ${state.parsedConfigs.length} devices from cache (${state.lastLoaded})`);
+    }
+  } catch (err) {
+    console.warn('[cache] Could not read cache:', err.message);
+  }
+}
+
+function writeCache() {
+  try {
+    fs.mkdirSync(path.dirname(CACHE_PATH), { recursive: true });
+    fs.writeFileSync(CACHE_PATH, JSON.stringify({
+      parsedConfigs: state.parsedConfigs,
+      fqdnRecords:   state.fqdnRecords,
+      lastLoaded:    state.lastLoaded,
+    }), 'utf8');
+    console.log('[cache] Cache written.');
+  } catch (err) {
+    console.warn('[cache] Could not write cache:', err.message);
+  }
+}
 
 // ── Loader ───────────────────────────────────────────────────────────────────
 async function loadAllConfigs() {
@@ -60,6 +92,7 @@ async function loadAllConfigs() {
     state.fqdnRecords   = newFqdnRecords;
     state.lastLoaded    = new Date().toISOString();
     console.log(`[load] Done. ${newParsedConfigs.length} devices loaded.`);
+    writeCache();
     return { ok: true, lastLoaded: state.lastLoaded };
   } catch (err) {
     console.error('[load] Error:', err.message);
@@ -99,5 +132,7 @@ app.post('/api/reload', async (req, res) => {
 const PORT = settings.port || 3000;
 app.listen(PORT, async () => {
   console.log(`[server] NetSearch running at http://localhost:${PORT}`);
-  await loadAllConfigs();
+  readCache();
+  loadAllConfigs();
+  startScheduler(loadAllConfigs, settings.cronSchedule || []);
 });
