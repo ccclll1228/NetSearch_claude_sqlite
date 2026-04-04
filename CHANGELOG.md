@@ -4,6 +4,26 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [1.3.0] - 2026-04-05
+
+### Changed
+- **Typography scale** — standardized font sizes from 10 chaotic values (`6.5/9/10/11/12/13/14/15/17/18px`) to a 7-step semantic scale:
+  - `6.5px` — rule TAG chips (intentional, 50% of rule-name)
+  - `10px` — column headers, badges, muted metadata, quick-search icon (was 9px in some places)
+  - `11px` — pills, stats bar, secondary UI
+  - `12px` — buttons, tables, form controls
+  - `13px` — entity/object names (rule names, group names)
+  - `14px` — body text
+  - `16px` — device hostnames (was 15px)
+  - `18px` — logo (was 17px)
+- **CSS variables** — added `--fs-micro` through `--fs-disp` to `:root` for maintainability.
+
+### Fixed
+- **Layout overlaps** — search hint `bottom:-20px` changed to `top:calc(100% + 4px)` and header `padding-bottom:28px` added; eliminates hint text bleeding over Source device bar.
+- **Copy tab** — preview panel header row uses `flex-wrap:wrap` so "Generate Preview" button wraps gracefully instead of overlapping "Preview" label on narrow viewports.
+
+---
+
 ## [1.2.0] - 2026-04-05
 
 ### Added

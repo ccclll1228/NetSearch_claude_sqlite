@@ -41,6 +41,14 @@
   --radius-sm: 6px;
   --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'Fira Code', monospace;
   --font-ui: 'DM Sans', system-ui, sans-serif;
+  /* Typography scale */
+  --fs-micro: 10px;   /* column headers, badges, muted meta */
+  --fs-sm:    11px;   /* pills, stats bar, secondary UI */
+  --fs-base:  12px;   /* buttons, tables, form controls */
+  --fs-name:  13px;   /* entity / object names */
+  --fs-body:  14px;   /* body text */
+  --fs-head:  16px;   /* device hostnames */
+  --fs-disp:  18px;   /* logo */
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:var(--font-ui); background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; }
@@ -52,14 +60,14 @@ input,textarea { font-family:inherit; }
 
 /* ── Header ── */
 .header {
-  display:flex; align-items:center; gap:12px; padding:10px 20px;
+  display:flex; align-items:center; gap:12px; padding:10px 20px 28px;
   border-bottom:1px solid var(--border);
   background:linear-gradient(180deg, #0c1120 0%, #0a0e1a 100%);
   flex-shrink:0;
 }
 .logo { display:flex; align-items:center; gap:10px; }
 .logo-title {
-  font-weight:700; font-size:17px; line-height:1.15;
+  font-weight:700; font-size:18px; line-height:1.15;
   letter-spacing:-0.3px; color:#e8f0fe;
 }
 .logo-sub { font-size:11px; color:var(--text-muted); font-weight:400; font-family:var(--font-mono); letter-spacing:0.05em; }
@@ -103,7 +111,7 @@ input,textarea { font-family:inherit; }
 .search-clear { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer; padding:2px 4px; line-height:1; display:none; transition:color .15s; }
 .search-clear:hover { color:var(--accent); }
 .search-input:not(:placeholder-shown) ~ .search-clear { display:block; }
-.search-hint { position:absolute; bottom:-20px; left:14px; font-size:10px; color:var(--text-muted); white-space:nowrap; font-family:var(--font-mono); }
+.search-hint { position:absolute; top:calc(100% + 4px); left:14px; font-size:10px; color:var(--text-muted); white-space:nowrap; font-family:var(--font-mono); z-index:1; }
 .search-hint .hint-mode { color:var(--accent); }
 .search-spinner { position:absolute; right:68px !important; top:50%; transform:translateY(-50%); width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .6s linear infinite; display:none; }
 .search-spinner.active { display:block; }
@@ -115,7 +123,7 @@ input,textarea { font-family:inherit; }
 .search-hl-btn:hover:not(.on) { background:var(--bg-hover); color:var(--accent); }
 
 /* Quick search pill button */
-.pill-quick-search { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:3px; font-size:9px; cursor:pointer; opacity:0; transition:opacity .15s; margin-left:2px; background:rgba(0,212,255,0.12); color:var(--accent); flex-shrink:0; }
+.pill-quick-search { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:3px; font-size:10px; cursor:pointer; opacity:0; transition:opacity .15s; margin-left:2px; background:rgba(0,212,255,0.12); color:var(--accent); flex-shrink:0; }
 .pill:hover .pill-quick-search, .pill-detail:hover .pill-quick-search { opacity:1; }
 .pill-quick-search:hover { background:var(--accent); color:#000; }
 
@@ -380,7 +388,7 @@ input,textarea { font-family:inherit; }
 .device-group-header:hover { border-color:rgba(0,212,255,0.2); box-shadow:0 0 10px rgba(0,212,255,0.05); }
 .device-group-chevron { transition:transform .25s cubic-bezier(.4,0,.2,1); font-size:11px; color:var(--text-muted); }
 .device-group-chevron.collapsed { transform:rotate(-90deg); }
-.device-group-hostname { font-weight:700; font-size:15px; font-family:var(--font-mono); color:var(--text); letter-spacing:-0.02em; }
+.device-group-hostname { font-weight:700; font-size:16px; font-family:var(--font-mono); color:var(--text); letter-spacing:-0.02em; }
 .device-group-type { font-size:10px; padding:2px 7px; border-radius:3px; font-weight:700; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.06em; }
 .device-group-type.pa { background:rgba(167,139,250,0.15); color:#a78bfa; border:1px solid rgba(167,139,250,0.2); }
 .device-group-type.fortigate { background:rgba(248,113,113,0.15); color:#f87171; border:1px solid rgba(248,113,113,0.2); }
@@ -486,7 +494,7 @@ input,textarea { font-family:inherit; }
 }
 .search-history-item { padding:8px 16px; font-size:12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-family:var(--font-mono); }
 .search-history-item:hover { background:var(--bg-hover); }
-.search-history-item .remove-btn { color:var(--text-muted); font-size:15px; opacity:0; padding:0 4px; }
+.search-history-item .remove-btn { color:var(--text-muted); font-size:16px; opacity:0; padding:0 4px; }
 .search-history-item:hover .remove-btn { opacity:1; }
 .search-history-label { font-size:10px; color:var(--text-muted); padding:6px 16px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; border-bottom:1px solid var(--border); font-family:var(--font-ui); }
 
@@ -588,7 +596,7 @@ input,textarea { font-family:inherit; }
 .pill-cb { display:none; cursor:pointer; margin-left:3px; font-size:10px; color:var(--text-muted); vertical-align:middle; border:none; background:none; padding:0 1px; line-height:1; }
 .pill:hover .pill-cb, .pill-expand-header .pill-cb { display:inline-block; }
 .pill-cb:hover { color:var(--accent); }
-.pill-star { color:var(--yellow); margin-left:3px; font-size:9px; vertical-align:middle; }
+.pill-star { color:var(--yellow); margin-left:3px; font-size:10px; vertical-align:middle; }
 
 /* ── LTM status dot ── */
 .ltm-dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px; vertical-align:middle; flex-shrink:0; }
@@ -2133,7 +2141,7 @@ function renderGroupTreeFull(name, addresses, groups, depth, _seen) {
     const members = groups[name];
     const seen2 = new Set(_seen); seen2.add(name);
     const subHtml = members.map(m => renderGroupTreeFull(m, addresses, groups, depth+1, seen2)).join('');
-    return `<div class="pill-expand-member" style="${padStyle}"><span style="margin-right:4px;font-size:9px;color:var(--accent)">▼</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>${subHtml}`;
+    return `<div class="pill-expand-member" style="${padStyle}"><span style="margin-right:4px;font-size:10px;color:var(--accent)">▼</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>${subHtml}`;
   }
   const addr = addresses && addresses[name];
   const val = addr && addr.value && addr.value !== name ? addr.value : '';
@@ -2152,7 +2160,7 @@ function renderGroupTree(name, addresses, groups, pathId, depth) {
     const isExp = expandedPills.has(nodeId);
     const arrow = isExp ? '▼' : '▶';
     const subHtml = isExp ? members.map(m => renderGroupTree(m, addresses, groups, nodeId, depth+1)).join('') : '';
-    return `<div class="pill-expand-member" style="${padStyle};cursor:pointer" onclick="event.stopPropagation();togglePill('${nodeId}')"><span style="margin-right:4px;font-size:9px;color:var(--accent)">${arrow}</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>${subHtml}`;
+    return `<div class="pill-expand-member" style="${padStyle};cursor:pointer" onclick="event.stopPropagation();togglePill('${nodeId}')"><span style="margin-right:4px;font-size:10px;color:var(--accent)">${arrow}</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>${subHtml}`;
   }
   const addr = addresses && addresses[name];
   const val = addr && addr.value && addr.value !== name ? addr.value : '';
@@ -2726,9 +2734,9 @@ function renderCopyTab(d) {
   // Preview panel
   const hasAnyFilter=!!(state.appliedSearch||state.filters.fromZone||state.filters.toZone||state.filters.tag);
   let previewHtml=`<div style="flex:1;min-width:300px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <b style="font-size:12px">Preview${copyData.length>0?` (first ${Math.min(copyData.length,copyDisplayLimit)} rows)`:''} ${copyData.length>0?`<span class="tab-count">${copyData.length} items</span>`:''}</b>
-      <div style="display:flex;gap:6px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+      <b style="font-size:12px;flex-shrink:0">Preview${copyData.length>0?` (first ${Math.min(copyData.length,copyDisplayLimit)} rows)`:''} ${copyData.length>0?`<span class="tab-count">${copyData.length} items</span>`:''}</b>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         ${isDirty?'<span class="text-sm" style="color:var(--yellow)">⚠️ Regenerate</span>':''}
         <button class="btn btn-primary btn-sm" onclick="generateCopyData()" ${!hasAnyFilter?'disabled title="Enter a search term or select a filter first"':''}>Generate Preview</button>
         <button class="btn btn-sm" onclick="copyTSV()" ${copyData.length===0?'disabled':''}>📋 Copy to Clipboard</button>
