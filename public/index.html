@@ -123,7 +123,7 @@ input,textarea { font-family:inherit; }
 .search-hl-btn:hover:not(.on) { background:var(--bg-hover); color:var(--accent); }
 
 /* Quick search pill button */
-.pill-qs { display:none; cursor:pointer; margin-left:2px; font-size:10px; color:var(--text-muted); border:none; background:none; padding:0 1px; line-height:1; vertical-align:middle; }
+.pill-qs { display:none; cursor:pointer; margin-left:2px; color:var(--text-muted); border:none; background:none; padding:0 1px; line-height:1; vertical-align:middle; }
 .pill:hover .pill-qs, .pill-expand-header .pill-qs, .pill-expand-member:hover .pill-qs,
 tr:hover .pill-qs, .obj-group-header:hover .pill-qs,
 .f5-pool-header:hover .pill-qs, .f5-pool-member-row:hover .pill-qs { display:inline-block; }
@@ -603,7 +603,7 @@ tr:hover .pill-qs, .obj-group-header:hover .pill-qs,
 .sh-clear-all:hover { background:var(--red-bg); color:var(--red); }
 
 /* ── Pill: copy button + match star ── */
-.pill-cb { display:none; cursor:pointer; margin-left:3px; font-size:10px; color:var(--text-muted); vertical-align:middle; border:none; background:none; padding:0 1px; line-height:1; }
+.pill-cb { display:none; cursor:pointer; margin-left:3px; color:var(--text-muted); vertical-align:middle; border:none; background:none; padding:0 1px; line-height:1; }
 .pill:hover .pill-cb, .pill-expand-header .pill-cb { display:inline-block; }
 .pill-cb:hover { color:var(--accent); }
 .pill-star { color:var(--yellow); margin-left:3px; font-size:10px; vertical-align:middle; }
@@ -856,6 +856,11 @@ const TABS = [
   { id:'debug', label:{ en:'Debug', zh:'解析除錯' } },
 ];
 
+// ===== SVG ICONS =====
+const SVG_COPY = `<svg width="10" height="10" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="1" width="6.5" height="7.5" rx="1"/><rect x="1" y="3.5" width="6.5" height="7.5" rx="1"/></svg>`;
+const SVG_QS   = `<svg width="10" height="10" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="4.5" cy="4.5" r="3.2"/><line x1="6.8" y1="6.8" x2="10.5" y2="10.5"/></svg>`;
+const SVG_RELOAD = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5.5A4 4 0 1 0 5.5 1.5"/><polyline points="7,0.5 5.5,1.5 7,2.5"/></svg>`;
+
 // ===== I18N =====
 const i18n = {
   en: {
@@ -863,8 +868,8 @@ const i18n = {
     searchModeKeyword:'Keyword', searchModeExact:'Exact',
     searchPlaceholder:'Enter IP, CIDR, Port, or Keyword, then press Enter...',
     ignoreCidr:'Ignore CIDR',
-    btnBulk:'📋 Bulk', btnImport:'📥 Import',
-    btnReload:'🔄 Reload', btnReloading:'Reloading...',
+    btnBulk:`${SVG_COPY} Bulk`, btnImport:'📥 Import',
+    btnReload:`${SVG_RELOAD} Reload`, btnReloading:'Reloading...',
     statusLoading:'Loading...', statusNotLoaded:'Not loaded',
     statusData:'Data: {0}',
     sourceLabel:'Source:', toggleAll:'All ({0})',
@@ -916,7 +921,7 @@ const i18n = {
     fieldSettings:'Field Settings & Order',
     btnDefault:'Default', btnSelectAll:'Select All', btnDeselectAll:'Deselect All',
     previewLabel:'Preview', btnGenerate:'Generate Preview',
-    btnCopyClipboard:'📋 Copy to Clipboard',
+    btnCopyClipboard:`${SVG_COPY} Copy to Clipboard`,
     loadMore:'Load More ({0}/{1})', totalRows:'Total: {0} rows (all shown)',
     regenerateWarning:'⚠️ Regenerate',
     noPreview:'Click "Generate Preview" to see results.',
@@ -947,8 +952,8 @@ const i18n = {
     searchModeKeyword:'關鍵字', searchModeExact:'精確',
     searchPlaceholder:'輸入 IP、CIDR、Port 或關鍵字，按 Enter 搜尋...',
     ignoreCidr:'忽略 CIDR',
-    btnBulk:'📋 批次搜尋', btnImport:'📥 匯入',
-    btnReload:'🔄 重載', btnReloading:'重載中...',
+    btnBulk:`${SVG_COPY} 批次搜尋`, btnImport:'📥 匯入',
+    btnReload:`${SVG_RELOAD} 重載`, btnReloading:'重載中...',
     statusLoading:'載入中...', statusNotLoaded:'尚未載入',
     statusData:'資料版本：{0}',
     sourceLabel:'來源：', toggleAll:'全部（{0}）',
@@ -1000,7 +1005,7 @@ const i18n = {
     fieldSettings:'欄位設定與順序',
     btnDefault:'預設', btnSelectAll:'全選', btnDeselectAll:'全不選',
     previewLabel:'預覽', btnGenerate:'產生預覽',
-    btnCopyClipboard:'📋 複製到剪貼簿',
+    btnCopyClipboard:`${SVG_COPY} 複製到剪貼簿`,
     loadMore:'載入更多（{0}/{1}）', totalRows:'共 {0} 筆（全部顯示）',
     regenerateWarning:'⚠️ 需重新產生',
     noPreview:'點擊「產生預覽」以查看結果。',
@@ -2343,11 +2348,11 @@ function renderGroupTreeFull(name, addresses, groups, depth, _seen) {
     const members = groups[name];
     const seen2 = new Set(_seen); seen2.add(name);
     const subHtml = members.map(m => renderGroupTreeFull(m, addresses, groups, depth+1, seen2)).join('');
-    return `<div class="pill-expand-member" style="${padStyle}"><span style="margin-right:4px;font-size:10px;color:var(--accent)">▼</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">🔍</button></div>${subHtml}`;
+    return `<div class="pill-expand-member" style="${padStyle}"><span style="margin-right:4px;font-size:10px;color:var(--accent)">▼</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button></div>${subHtml}`;
   }
   const addr = addresses && addresses[name];
   const val = addr && addr.value && addr.value !== name ? addr.value : '';
-  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||name)}')" title="Search">🔍</button></div>`;
+  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||name)}')" title="Search">${SVG_QS}</button></div>`;
 }
 
 function renderGroupTree(name, addresses, groups, pathId, depth) {
@@ -2362,11 +2367,11 @@ function renderGroupTree(name, addresses, groups, pathId, depth) {
     const isExp = expandedPills.has(nodeId);
     const arrow = isExp ? '▼' : '▶';
     const subHtml = isExp ? members.map(m => renderGroupTree(m, addresses, groups, nodeId, depth+1)).join('') : '';
-    return `<div class="pill-expand-member" style="${padStyle};cursor:pointer" onclick="event.stopPropagation();togglePill('${nodeId}')"><span style="margin-right:4px;font-size:10px;color:var(--accent)">${arrow}</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">🔍</button></div>${subHtml}`;
+    return `<div class="pill-expand-member" style="${padStyle};cursor:pointer" onclick="event.stopPropagation();togglePill('${nodeId}')"><span style="margin-right:4px;font-size:10px;color:var(--accent)">${arrow}</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button></div>${subHtml}`;
   }
   const addr = addresses && addresses[name];
   const val = addr && addr.value && addr.value !== name ? addr.value : '';
-  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||name)}')" title="Search">🔍</button></div>`;
+  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||name)}')" title="Search">${SVG_QS}</button></div>`;
 }
 
 function renderPills(list, parsed, type='object', ctx='') {
@@ -2386,8 +2391,8 @@ function renderPills(list, parsed, type='object', ctx='') {
     })();
     const star = isMatched ? '<span class="pill-star">✦</span>' : '';
     const hn = (parsed?.hostname||'').replace(/'/g,"\\'");
-    const copyBtn = `<button class="pill-cb" onclick="event.stopPropagation();copyPillText(pillCopyText('${esc(item)}','${hn}','${type}'))" title="Copy">⎘</button>`;
-    const qsBtn = `<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(item)}')" title="Search">🔍</button>`;
+    const copyBtn = `<button class="pill-cb" onclick="event.stopPropagation();copyPillText(pillCopyText('${esc(item)}','${hn}','${type}'))" title="Copy">${SVG_COPY}</button>`;
+    const qsBtn = `<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(item)}')" title="Search">${SVG_QS}</button>`;
 
     if(isExpanded) {
       const addresses = parsed?.addresses || {};
@@ -2402,7 +2407,7 @@ function renderPills(list, parsed, type='object', ctx='') {
       const memberHtml = resolved.map(r => {
         const rMatched = state.highlightEnabled && state.searchAST && checkSingleResolvedMatch(r, type);
         const val = r.value && r.value!==r.name && r.value!=='*' ? r.value : '';
-        return `<div class="pill-expand-member ${rMatched?'matched':''}"><span class="mem-name">${esc(r.name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||r.name)}')" title="Search">🔍</button></div>`;
+        return `<div class="pill-expand-member ${rMatched?'matched':''}"><span class="mem-name">${esc(r.name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||r.name)}')" title="Search">${SVG_QS}</button></div>`;
       }).join('');
       return `<div class="pill-expand-container"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${resolved.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
     }
@@ -2427,11 +2432,11 @@ function renderUrlCategoryPill(name, parsed) {
   if(isExp) {
     const memberHtml = members.map(m=>`<div style="padding:2px 8px;font-size:11px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;margin:1px 0">${esc(m)}</div>`).join('');
     return `<div style="display:inline-block;vertical-align:top;margin:2px">
-      <span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">🔍</button></span>
+      <span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button></span>
       <div style="padding-left:12px;border-left:2px solid var(--border);margin-left:8px;margin-top:4px">${memberHtml}</div>
     </div>`;
   }
-  return `<span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">🔍</button></span>`;
+  return `<span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button></span>`;
 }
 function toggleUrlCat(ucid){if(expandedUrlCats.has(ucid))expandedUrlCats.delete(ucid);else expandedUrlCats.add(ucid);renderContent(true);}
 
@@ -2514,7 +2519,7 @@ function renderSecRules(rules) {
           ${r.tag&&r.tag.length>0?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:1px">${r.tag.map(t=>`<span class="rule-tag-chip">${esc(t)}</span>`).join('')}</div>`:''}
           <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
             <span class="rule-action ${r.action}">${esc(r.action)}</span>
-            <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredSecRules[${globalIdx}])" title="Copy this rule as TSV">📋</button>
+            <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredSecRules[${globalIdx}])" title="Copy this rule as TSV">${SVG_COPY}</button>
             <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();expandAllRulePills('${ruleKey}')" title="${T('titleExpandAll')}">
               <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>
             </button>
@@ -2612,7 +2617,7 @@ function renderNatRules(rules) {
         <div><span class="rule-name">${esc(r.name)}</span>${r._chainedFromFqdn?'<span class="chain-pill fqdn">FQDN → IP</span>':''}${r.disabled?'<span class="rule-status disabled">Disabled</span>':''}</div>
         <div style="display:flex;align-items:center;gap:4px">
           ${r.tag&&r.tag.length>0?r.tag.map(t=>`<span class="rule-tag-chip">${esc(t)}</span>`).join(''):''}
-          <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredNatRules[${globalIdx}])" title="Copy">📋</button>
+          <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredNatRules[${globalIdx}])" title="Copy">${SVG_COPY}</button>
         </div>
       </div>
       <div class="nat-rule-body" style="grid-template-columns:${tpl}">${cells.join('')}</div>
@@ -2664,10 +2669,10 @@ function renderObjects(addresses, groups) {
       html+=`<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">${T('headAddresses')} <span class="tab-count">${devAddrs.length}</span></h4>
         <table class="route-table"><thead><tr><th>${T('colObjName')}</th><th>${T('colObjType')}</th><th>${T('colObjValue')}</th><th style="width:32px"></th></tr></thead>
         <tbody>${devAddrs.map(a=>`<tr${a._chained?' style="border-left:3px solid var(--yellow)"':''}>
-          <td style="font-weight:600;color:${a._chained?'var(--accent)':'var(--text)'}">${esc(a.name)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(a.name)}')" title="Search">🔍</button></td>
+          <td style="font-weight:600;color:${a._chained?'var(--accent)':'var(--text)'}">${esc(a.name)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(a.name)}')" title="Search">${SVG_QS}</button></td>
           <td><span class="obj-card-type">${esc(a.type)}</span></td>
-          <td>${esc(a.value)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(a.value)}')" title="Search">🔍</button></td>
-          <td><button class="rule-copy-btn" onclick="navigator.clipboard.writeText('${esc(a.name)}\\t${esc(a.value)}')" title="Copy name + value">📋</button></td>
+          <td>${esc(a.value)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(a.value)}')" title="Search">${SVG_QS}</button></td>
+          <td><button class="rule-copy-btn" onclick="navigator.clipboard.writeText('${esc(a.name)}\\t${esc(a.value)}')" title="Copy name + value">${SVG_COPY}</button></td>
         </tr>`).join('')}</tbody></table></div>`;
     }
 
@@ -2692,8 +2697,8 @@ function renderObjects(addresses, groups) {
             <span style="display:inline-flex;align-items:center;margin-right:6px;color:var(--accent)">${arrow}</span>
             <span class="obj-group-name">${esc(g.name)}</span>
             <span class="obj-group-count">(${g.members.length})</span>
-            <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(g.name)}')" title="Search" style="margin-left:auto">🔍</button>
-            <button class="rule-copy-btn" onclick="event.stopPropagation();navigator.clipboard.writeText('${esc(membersText)}')" title="Copy group name + all members">📋</button>
+            <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(g.name)}')" title="Search" style="margin-left:auto">${SVG_QS}</button>
+            <button class="rule-copy-btn" onclick="event.stopPropagation();navigator.clipboard.writeText('${esc(membersText)}')" title="Copy group name + all members">${SVG_COPY}</button>
           </div>
           <div class="obj-group-members">${memberRows}</div>
         </div>`;
@@ -2742,9 +2747,9 @@ function renderF5Virtuals(virtuals) {
       const _n=vs.name.replace(/'/g,"\\'"), _i=(vs.ip||'').replace(/'/g,"\\'"), _po=(vs.port||'').replace(/'/g,"\\'"), _pl=(vs.pool||'').replace(/'/g,"\\'");
       let row=`<tr class="${isChained?'chained':''}" style="cursor:pointer" onclick="toggleF5LtmRow('${esc(vs.name)}')">
         <td><span class="f5-ltm-expand ${isExp?'open':''}">▶</span></td>
-        <td onclick="event.stopPropagation()"><button class="rule-copy-btn" onclick="copyF5VsRow('${_n}','${_i}','${_po}','${_pl}')" title="Copy row">📋</button></td>
-        <td><b>${esc(vs.name)}</b>${isChained?'<span class="chain-pill dnat">DNAT → IP</span>':''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(vs.name)}')" title="Search">🔍</button></td>
-        <td style="font-family:monospace">${esc(vs.ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(vs.ip)}')" title="Search">🔍</button></td>
+        <td onclick="event.stopPropagation()"><button class="rule-copy-btn" onclick="copyF5VsRow('${_n}','${_i}','${_po}','${_pl}')" title="Copy row">${SVG_COPY}</button></td>
+        <td><b>${esc(vs.name)}</b>${isChained?'<span class="chain-pill dnat">DNAT → IP</span>':''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(vs.name)}')" title="Search">${SVG_QS}</button></td>
+        <td style="font-family:monospace">${esc(vs.ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(vs.ip)}')" title="Search">${SVG_QS}</button></td>
         <td>${esc(vs.port)}</td>
         <td>${esc(vs.pool||'—')}</td>
         <td>${dot}<span style="font-size:11px">${vs.status}</span></td>
@@ -2754,7 +2759,7 @@ function renderF5Virtuals(virtuals) {
           <div style="font-size:12px;font-weight:600;margin-bottom:6px">Pool: ${esc(pool.name)} (${pool.members.length} members)</div>
           ${pool.members.map(m=>`<div class="f5-pool-member-row ${m.status==='disabled'?'disabled':''}">
             <span class="f5-pool-member-ip">${esc(m.ip)}:${esc(m.port)}</span>
-            <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(m.ip)}')" title="Search">🔍</button>
+            <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(m.ip)}')" title="Search">${SVG_QS}</button>
             <span class="f5-pool-member-status ${m.status}">${m.status}</span>
           </div>`).join('')}
         </div></td></tr>`;
@@ -2786,11 +2791,11 @@ function renderF5Pools(pools) {
       const disabledCount=(p.members||[]).filter(m=>m.status==='disabled').length;
       return `<div class="f5-pool-card">
         <div class="f5-pool-header">
-          <div><span class="f5-name">${esc(p.name)}</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(p.name)}')" title="Search">🔍</button><span class="text-sm text-muted" style="margin-left:8px">(${(p.members||[]).length} members${disabledCount>0?`, ${disabledCount} disabled`:''})</span></div>
+          <div><span class="f5-name">${esc(p.name)}</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(p.name)}')" title="Search">${SVG_QS}</button><span class="text-sm text-muted" style="margin-left:8px">(${(p.members||[]).length} members${disabledCount>0?`, ${disabledCount} disabled`:''})</span></div>
         </div>
         <div>${(p.members||[]).map(m=>`<div class="f5-pool-member-row ${m.status==='disabled'?'disabled':''}">
           <span class="f5-pool-member-ip">${esc(m.ip)}:${esc(m.port)}</span>
-          <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(m.ip)}')" title="Search">🔍</button>
+          <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(m.ip)}')" title="Search">${SVG_QS}</button>
           <span class="f5-pool-member-status ${m.status}">${m.status}</span>
           <span class="text-sm text-muted">${esc(m.name)}</span>
         </div>`).join('')}</div>
@@ -2847,7 +2852,7 @@ function renderFqdn(list) {
       <th onclick="sortFqdn('ip')">IP${arrow('ip')}</th>
       <th onclick="sortFqdn('geoInfo')">Geo${arrow('geoInfo')}</th>
       <th></th>
-    </tr></thead><tbody>${display.map(r=>`<tr${r._chainedFromRule?' style="border-left:3px solid var(--yellow)"':''}><td>${esc(r.owner)}</td><td>${esc(r.domain)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.domain)}')" title="Search">🔍</button></td><td>${esc(r.fqdn)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.fqdn)}')" title="Search">🔍</button></td><td>${esc(r.type)}</td><td>${esc(r.ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.ip)}')" title="Search">🔍</button></td><td>${esc(r.geoInfo)}</td><td></td></tr>`).join('')}</tbody></table>`;
+    </tr></thead><tbody>${display.map(r=>`<tr${r._chainedFromRule?' style="border-left:3px solid var(--yellow)"':''}><td>${esc(r.owner)}</td><td>${esc(r.domain)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.domain)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.fqdn)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.fqdn)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type)}</td><td>${esc(r.ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.ip)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.geoInfo)}</td><td></td></tr>`).join('')}</tbody></table>`;
 }
 
 // Copy Tab
@@ -3443,12 +3448,12 @@ function updateStatusBar() {
 
 async function triggerReload() {
   const btn = document.getElementById('reloadBtn');
-  if (btn) { btn.disabled = true; btn.textContent = T('btnReloading'); }
+  if (btn) { btn.disabled = true; btn.innerHTML = T('btnReloading'); }
   try {
     await fetch('/api/reload', { method: 'POST' });
     await loadFromServer();
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = T('btnReload'); }
+    if (btn) { btn.disabled = false; btn.innerHTML = T('btnReload'); }
   }
 }
 
@@ -3468,8 +3473,9 @@ function applyLang(){
   const si=document.getElementById('searchInput');if(si)si.placeholder=T('searchPlaceholder');
   const pa=document.getElementById('pasteArea');if(pa)pa.placeholder=T('pastePlaceholder');
   L('lblIgnoreCidr','ignoreCidr');
-  const btnB=document.getElementById('btnBulk');if(btnB)btnB.textContent=T('btnBulk');
+  const btnB=document.getElementById('btnBulk');if(btnB)btnB.innerHTML=T('btnBulk');
   const btnI=document.getElementById('btnImportHeader');if(btnI)btnI.textContent=T('btnImport');
+  const btnR=document.getElementById('reloadBtn');if(btnR&&!btnR.disabled)btnR.innerHTML=T('btnReload');
   L('lblFilterSrc','filterSrc');L('lblFilterDst','filterDst');
   L('lblHideDisabled','hideDisabled');L('lblDisabledOnly','disabledOnly');L('lblF5Disabled','f5Disabled');
   L('lblExpand','btnExpand');L('lblCollapse','btnCollapse');L('btnClearFilters','btnClear');

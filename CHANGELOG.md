@@ -4,6 +4,19 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [1.7.0] - 2026-04-05
+
+### Changed
+- **SVG icon 取代 emoji** — Copy、Search（放大鏡）、Reload 三種操作圖示全面改用描邊 SVG，視覺風格與現有 Expand/Collapse icon 統一（`stroke`, `round linecap`, no fill）：
+  - `SVG_COPY` — 雙矩形疊加（clipboard）
+  - `SVG_QS` — circle + handle（放大鏡）
+  - `SVG_RELOAD` — 270° 弧 + 箭頭尖端（重載）
+  - 影響位置：header Bulk / Reload 按鈕、Copy tab「複製到剪貼簿」按鈕、Sec Rules / NAT Rules copy 按鈕、Objects 表格 copy 按鈕、Objects Group copy 按鈕、LTM VS copy 按鈕、所有 pill-qs 搜尋按鈕（17 處）、pill-cb copy 按鈕（1 處）
+  - `applyLang()` 改用 `innerHTML` 渲染含 SVG 的按鈕文字
+  - i18n 字串（en/zh）同步改為 template literal 引用 SVG 常數
+
+---
+
 ## [1.6.0] - 2026-04-05
 
 ### Added
