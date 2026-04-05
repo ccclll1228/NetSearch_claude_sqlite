@@ -4,6 +4,31 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [1.6.0] - 2026-04-05
+
+### Added
+- **🔍 Quick Search 按鈕（Sec Rules pills）** — 所有 pill 統一改用 `.pill-qs` class，預設隱藏，hover 時顯示，點擊直接搜尋：
+  - Collapsed pill：搜尋 object 名稱
+  - Expanded header 行：搜尋 object 名稱
+  - Expanded member 行：搜尋 value（IP/CIDR），fallback 到 name
+  - URL Category pill：搜尋 category 名稱
+  - 移除舊的 `.pill-quick-search` class，全面統一為 `.pill-qs`
+- **🔍 Quick Search 按鈕（Objects / LTM / Pools tab）** — 擴展至三個 tab：
+  - Objects Address 表格：name 欄、value 欄各一個 🔍
+  - Objects Group header：搜尋 group 名稱
+  - LTM VS：name 欄、IP 欄各一個 🔍
+  - LTM pool member：搜尋純 IP
+  - Pools pool header：搜尋 pool 名稱
+  - Pools member：搜尋純 IP
+- **🔍 Quick Search 按鈕（FQDN tab）** — DOMAIN、FQDN、IP 三欄各加 🔍 按鈕
+
+### Fixed
+- **FQDN Geo dropdown 亂值** — `parseFqdnFile` 新增 `isValidGeoInfo()` 清洗函數：長度 > 50、含 `=;@`、符合 IP 格式、開頭為 MX priority 數字、含兩個以上 `.` 的值一律清為空字串；`lib/parser.js` 與 `public/index.html` 同步修改
+- **FQDN CSV pandas row-index 欄偏移** — header 偵測時過濾空字串欄位名稱，避免 pandas 輸出的空第 0 欄導致所有欄位 index 偏移 1
+- **FQDN GEO 欄不顯示** — `fqdn-table` 改用 `table-layout:fixed` + `<colgroup>` 固定 7 欄比例（7/13/28/11/16/8/17%），防止 GEO 欄因全為空值被 browser 壓縮為 0 寬；`.fqdn-table td` 加 `word-break:break-all`
+
+---
+
 ## [1.5.0] - 2026-04-05
 
 ### Fixed

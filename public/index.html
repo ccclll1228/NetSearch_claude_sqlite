@@ -123,9 +123,11 @@ input,textarea { font-family:inherit; }
 .search-hl-btn:hover:not(.on) { background:var(--bg-hover); color:var(--accent); }
 
 /* Quick search pill button */
-.pill-quick-search { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:3px; font-size:10px; cursor:pointer; opacity:0; transition:opacity .15s; margin-left:2px; background:rgba(0,212,255,0.12); color:var(--accent); flex-shrink:0; }
-.pill:hover .pill-quick-search, .pill-detail:hover .pill-quick-search { opacity:1; }
-.pill-quick-search:hover { background:var(--accent); color:#000; }
+.pill-qs { display:none; cursor:pointer; margin-left:2px; font-size:10px; color:var(--text-muted); border:none; background:none; padding:0 1px; line-height:1; vertical-align:middle; }
+.pill:hover .pill-qs, .pill-expand-header .pill-qs, .pill-expand-member:hover .pill-qs,
+tr:hover .pill-qs, .obj-group-header:hover .pill-qs,
+.f5-pool-header:hover .pill-qs, .f5-pool-member-row:hover .pill-qs { display:inline-block; }
+.pill-qs:hover { color:var(--accent); }
 
 /* Header actions */
 .header-actions { display:flex; gap:8px; align-items:center; }
@@ -407,8 +409,11 @@ input,textarea { font-family:inherit; }
 .rule-copy-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); box-shadow:0 0 6px var(--accent-glow); }
 
 /* ── Tables (Route, FQDN, LTM) ── */
-.route-table, .fqdn-table, .f5-ltm-table {
+.route-table, .f5-ltm-table {
   width:100%; border-collapse:collapse; font-size:12px;
+}
+.fqdn-table {
+  width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;
 }
 .route-table th, .fqdn-table th, .f5-ltm-table th {
   text-align:left; padding:7px 12px;
@@ -419,9 +424,14 @@ input,textarea { font-family:inherit; }
 }
 .fqdn-table th { cursor:pointer; user-select:none; }
 .route-table th:hover, .fqdn-table th:hover, .f5-ltm-table th:hover { color:var(--text); }
-.route-table td, .fqdn-table td, .f5-ltm-table td {
+.route-table td, .f5-ltm-table td {
   padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.03);
   font-family:var(--font-mono); font-size:12px;
+}
+.fqdn-table td {
+  padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.03);
+  font-family:var(--font-mono); font-size:12px;
+  word-break:break-all; overflow-wrap:break-word; white-space:normal;
 }
 .route-table tr:hover td, .fqdn-table tr:hover td, .f5-ltm-table tr:hover td { background:var(--bg-hover); }
 .f5-ltm-table tr.chained td { border-left:2px solid var(--yellow); }
@@ -1757,6 +1767,16 @@ const parseF5Config = (text) => {
 };
 
 // FQDN Parser
+function isValidGeoInfo(v) {
+  if(!v||v==='null') return false;
+  if(v.length>50) return false;
+  if(/[=;@]/.test(v)) return false;
+  if(/^\d+\.\d+\.\d+/.test(v)) return false;
+  if(/^\d+\s/.test(v)) return false;
+  if((v.match(/\./g)||[]).length>=2) return false;
+  return true;
+}
+
 const parseFqdnFile = (text) => {
   const lines=String(text).split('\n');
   const records=[];
@@ -1768,9 +1788,11 @@ const parseFqdnFile = (text) => {
     if(!sep)continue;
     const cols=line.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,''));
     if(!headers){
+      // Fix: skip empty leading column (pandas row-index export produces empty first header)
       const lower=cols.map(c=>c.toLowerCase());
       if(lower.some(c=>c.includes('fqdn')||c.includes('domain')||c.includes('ip'))){
-        headers={fqdn:lower.findIndex(c=>c.includes('fqdn')),domain:lower.findIndex(c=>c.includes('domain')),ip:lower.findIndex(c=>c.includes('ip')&&!c.includes('type')),owner:lower.findIndex(c=>c.includes('owner')||c.includes('bu')),type:lower.findIndex(c=>c.includes('type')||c.includes('record')),geo:lower.findIndex(c=>c.includes('geo')||c.includes('country'))};
+        const fi=(fn)=>lower.findIndex((c,i)=>c!==''&&fn(c));
+        headers={fqdn:fi(c=>c.includes('fqdn')),domain:fi(c=>c.includes('domain')),ip:fi(c=>c.includes('ip')&&!c.includes('type')),owner:fi(c=>c.includes('owner')||c.includes('bu')),type:fi(c=>c.includes('type')||c.includes('record')),geo:fi(c=>c.includes('geo')||c.includes('country'))};
         continue;
       }
       headers={fqdn:0,domain:-1,ip:cols.length>1?1:-1,owner:-1,type:-1,geo:-1};
@@ -1778,7 +1800,8 @@ const parseFqdnFile = (text) => {
     const g=(idx)=>idx>=0&&idx<cols.length?cols[idx]:'';
     const fqdn=g(headers.fqdn), domain=g(headers.domain), ip=g(headers.ip);
     if(!fqdn&&!domain&&(!ip||ip.toLowerCase()==='null'))continue;
-    records.push({id:genId(),owner:g(headers.owner),domain:domain,fqdn:fqdn,type:g(headers.type),ip:ip,geoInfo:g(headers.geo)});
+    const rawGeo=g(headers.geo);
+    records.push({id:genId(),owner:g(headers.owner),domain:domain,fqdn:fqdn,type:g(headers.type),ip:ip,geoInfo:isValidGeoInfo(rawGeo)?rawGeo:''});
   }
   return records;
 };
@@ -2320,11 +2343,11 @@ function renderGroupTreeFull(name, addresses, groups, depth, _seen) {
     const members = groups[name];
     const seen2 = new Set(_seen); seen2.add(name);
     const subHtml = members.map(m => renderGroupTreeFull(m, addresses, groups, depth+1, seen2)).join('');
-    return `<div class="pill-expand-member" style="${padStyle}"><span style="margin-right:4px;font-size:10px;color:var(--accent)">▼</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>${subHtml}`;
+    return `<div class="pill-expand-member" style="${padStyle}"><span style="margin-right:4px;font-size:10px;color:var(--accent)">▼</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">🔍</button></div>${subHtml}`;
   }
   const addr = addresses && addresses[name];
   const val = addr && addr.value && addr.value !== name ? addr.value : '';
-  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>`;
+  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||name)}')" title="Search">🔍</button></div>`;
 }
 
 function renderGroupTree(name, addresses, groups, pathId, depth) {
@@ -2339,11 +2362,11 @@ function renderGroupTree(name, addresses, groups, pathId, depth) {
     const isExp = expandedPills.has(nodeId);
     const arrow = isExp ? '▼' : '▶';
     const subHtml = isExp ? members.map(m => renderGroupTree(m, addresses, groups, nodeId, depth+1)).join('') : '';
-    return `<div class="pill-expand-member" style="${padStyle};cursor:pointer" onclick="event.stopPropagation();togglePill('${nodeId}')"><span style="margin-right:4px;font-size:10px;color:var(--accent)">${arrow}</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>${subHtml}`;
+    return `<div class="pill-expand-member" style="${padStyle};cursor:pointer" onclick="event.stopPropagation();togglePill('${nodeId}')"><span style="margin-right:4px;font-size:10px;color:var(--accent)">${arrow}</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">🔍</button></div>${subHtml}`;
   }
   const addr = addresses && addresses[name];
   const val = addr && addr.value && addr.value !== name ? addr.value : '';
-  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></div>`;
+  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||name)}')" title="Search">🔍</button></div>`;
 }
 
 function renderPills(list, parsed, type='object', ctx='') {
@@ -2364,6 +2387,7 @@ function renderPills(list, parsed, type='object', ctx='') {
     const star = isMatched ? '<span class="pill-star">✦</span>' : '';
     const hn = (parsed?.hostname||'').replace(/'/g,"\\'");
     const copyBtn = `<button class="pill-cb" onclick="event.stopPropagation();copyPillText(pillCopyText('${esc(item)}','${hn}','${type}'))" title="Copy">⎘</button>`;
+    const qsBtn = `<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(item)}')" title="Search">🔍</button>`;
 
     if(isExpanded) {
       const addresses = parsed?.addresses || {};
@@ -2371,19 +2395,19 @@ function renderPills(list, parsed, type='object', ctx='') {
       if(type === 'object' && grps[item]) {
         const members = grps[item];
         const memberHtml = members.map(m => renderGroupTree(m, addresses, grps, pid, 1)).join('');
-        return `<div class="pill-expand-container"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${members.length})</span>${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
+        return `<div class="pill-expand-container"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${members.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
       }
       const rawResolved = type==='service' ? resolveService(item, parsed?.services, parsed?.serviceGroups) : resolveObject(item, parsed?.addresses, parsed?.groups);
       const resolved = rawResolved.filter(r => r.type !== 'group');
       const memberHtml = resolved.map(r => {
         const rMatched = state.highlightEnabled && state.searchAST && checkSingleResolvedMatch(r, type);
         const val = r.value && r.value!==r.name && r.value!=='*' ? r.value : '';
-        return `<div class="pill-expand-member ${rMatched?'matched':''}"><span class="mem-name">${esc(r.name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(r.name)}')" title="Quick Search">🔍</span></div>`;
+        return `<div class="pill-expand-member ${rMatched?'matched':''}"><span class="mem-name">${esc(r.name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||r.name)}')" title="Search">🔍</button></div>`;
       }).join('');
-      return `<div class="pill-expand-container"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${resolved.length})</span>${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
+      return `<div class="pill-expand-container"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${resolved.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
     }
 
-    return `<span class="pill expandable ${isMatched?'matched':''}" onclick="togglePill('${esc(pid)}')" title="Click to expand">${esc(item)}${star}${copyBtn}</span>`;
+    return `<span class="pill expandable ${isMatched?'matched':''}" onclick="togglePill('${esc(pid)}')" title="Click to expand">${esc(item)}${star}${qsBtn}${copyBtn}</span>`;
   }).join('') + '</div>';
 }
 
@@ -2403,11 +2427,11 @@ function renderUrlCategoryPill(name, parsed) {
   if(isExp) {
     const memberHtml = members.map(m=>`<div style="padding:2px 8px;font-size:11px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;margin:1px 0">${esc(m)}</div>`).join('');
     return `<div style="display:inline-block;vertical-align:top;margin:2px">
-      <span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></span>
+      <span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">🔍</button></span>
       <div style="padding-left:12px;border-left:2px solid var(--border);margin-left:8px;margin-top:4px">${memberHtml}</div>
     </div>`;
   }
-  return `<span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<span class="pill-quick-search" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Quick Search">🔍</span></span>`;
+  return `<span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">🔍</button></span>`;
 }
 function toggleUrlCat(ucid){if(expandedUrlCats.has(ucid))expandedUrlCats.delete(ucid);else expandedUrlCats.add(ucid);renderContent(true);}
 
@@ -2640,9 +2664,9 @@ function renderObjects(addresses, groups) {
       html+=`<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">${T('headAddresses')} <span class="tab-count">${devAddrs.length}</span></h4>
         <table class="route-table"><thead><tr><th>${T('colObjName')}</th><th>${T('colObjType')}</th><th>${T('colObjValue')}</th><th style="width:32px"></th></tr></thead>
         <tbody>${devAddrs.map(a=>`<tr${a._chained?' style="border-left:3px solid var(--yellow)"':''}>
-          <td style="font-weight:600;color:${a._chained?'var(--accent)':'var(--text)'}">${esc(a.name)}</td>
+          <td style="font-weight:600;color:${a._chained?'var(--accent)':'var(--text)'}">${esc(a.name)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(a.name)}')" title="Search">🔍</button></td>
           <td><span class="obj-card-type">${esc(a.type)}</span></td>
-          <td>${esc(a.value)}</td>
+          <td>${esc(a.value)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(a.value)}')" title="Search">🔍</button></td>
           <td><button class="rule-copy-btn" onclick="navigator.clipboard.writeText('${esc(a.name)}\\t${esc(a.value)}')" title="Copy name + value">📋</button></td>
         </tr>`).join('')}</tbody></table></div>`;
     }
@@ -2668,7 +2692,8 @@ function renderObjects(addresses, groups) {
             <span style="display:inline-flex;align-items:center;margin-right:6px;color:var(--accent)">${arrow}</span>
             <span class="obj-group-name">${esc(g.name)}</span>
             <span class="obj-group-count">(${g.members.length})</span>
-            <button class="rule-copy-btn" onclick="event.stopPropagation();navigator.clipboard.writeText('${esc(membersText)}')" title="Copy group name + all members" style="margin-left:auto">📋</button>
+            <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(g.name)}')" title="Search" style="margin-left:auto">🔍</button>
+            <button class="rule-copy-btn" onclick="event.stopPropagation();navigator.clipboard.writeText('${esc(membersText)}')" title="Copy group name + all members">📋</button>
           </div>
           <div class="obj-group-members">${memberRows}</div>
         </div>`;
@@ -2718,8 +2743,8 @@ function renderF5Virtuals(virtuals) {
       let row=`<tr class="${isChained?'chained':''}" style="cursor:pointer" onclick="toggleF5LtmRow('${esc(vs.name)}')">
         <td><span class="f5-ltm-expand ${isExp?'open':''}">▶</span></td>
         <td onclick="event.stopPropagation()"><button class="rule-copy-btn" onclick="copyF5VsRow('${_n}','${_i}','${_po}','${_pl}')" title="Copy row">📋</button></td>
-        <td><b>${esc(vs.name)}</b>${isChained?'<span class="chain-pill dnat">DNAT → IP</span>':''}</td>
-        <td style="font-family:monospace">${esc(vs.ip)}</td>
+        <td><b>${esc(vs.name)}</b>${isChained?'<span class="chain-pill dnat">DNAT → IP</span>':''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(vs.name)}')" title="Search">🔍</button></td>
+        <td style="font-family:monospace">${esc(vs.ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(vs.ip)}')" title="Search">🔍</button></td>
         <td>${esc(vs.port)}</td>
         <td>${esc(vs.pool||'—')}</td>
         <td>${dot}<span style="font-size:11px">${vs.status}</span></td>
@@ -2729,6 +2754,7 @@ function renderF5Virtuals(virtuals) {
           <div style="font-size:12px;font-weight:600;margin-bottom:6px">Pool: ${esc(pool.name)} (${pool.members.length} members)</div>
           ${pool.members.map(m=>`<div class="f5-pool-member-row ${m.status==='disabled'?'disabled':''}">
             <span class="f5-pool-member-ip">${esc(m.ip)}:${esc(m.port)}</span>
+            <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(m.ip)}')" title="Search">🔍</button>
             <span class="f5-pool-member-status ${m.status}">${m.status}</span>
           </div>`).join('')}
         </div></td></tr>`;
@@ -2760,10 +2786,11 @@ function renderF5Pools(pools) {
       const disabledCount=(p.members||[]).filter(m=>m.status==='disabled').length;
       return `<div class="f5-pool-card">
         <div class="f5-pool-header">
-          <div><span class="f5-name">${esc(p.name)}</span><span class="text-sm text-muted" style="margin-left:8px">(${(p.members||[]).length} members${disabledCount>0?`, ${disabledCount} disabled`:''})</span></div>
+          <div><span class="f5-name">${esc(p.name)}</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(p.name)}')" title="Search">🔍</button><span class="text-sm text-muted" style="margin-left:8px">(${(p.members||[]).length} members${disabledCount>0?`, ${disabledCount} disabled`:''})</span></div>
         </div>
         <div>${(p.members||[]).map(m=>`<div class="f5-pool-member-row ${m.status==='disabled'?'disabled':''}">
           <span class="f5-pool-member-ip">${esc(m.ip)}:${esc(m.port)}</span>
+          <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(m.ip)}')" title="Search">🔍</button>
           <span class="f5-pool-member-status ${m.status}">${m.status}</span>
           <span class="text-sm text-muted">${esc(m.name)}</span>
         </div>`).join('')}</div>
@@ -2786,7 +2813,7 @@ function renderFqdn(list) {
   if(!state.appliedSearch && !state.forceShowFqdn && filtered.length>0) {
     // Build filter dropdowns
     const types=new Set(), owners=new Set(), geos=new Set();
-    list.forEach(r=>{if(r.type)types.add(r.type);if(r.owner)owners.add(r.owner);if(r.geoInfo)geos.add(r.geoInfo);});
+    list.forEach(r=>{if(r.type)types.add(r.type);if(r.owner)owners.add(r.owner);if(r.geoInfo&&r.geoInfo!=='null')geos.add(r.geoInfo);});
     const filterHtml=`<div class="flex gap-2 items-center mb-2" style="flex-wrap:wrap">
       <select class="filter-select" onchange="state.filters.fqdnTypeFilter=this.value;renderContent()"><option value="">Type (All)</option>${Array.from(types).sort().map(t=>`<option value="${esc(t)}" ${state.filters.fqdnTypeFilter===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
       <select class="filter-select" onchange="state.filters.fqdnOwnerFilter=this.value;renderContent()"><option value="">Owner (All)</option>${Array.from(owners).sort().map(o=>`<option value="${esc(o)}" ${state.filters.fqdnOwnerFilter===o?'selected':''}>${esc(o)}</option>`).join('')}</select>
@@ -2805,21 +2832,22 @@ function renderFqdn(list) {
   const arrow=(k)=>fqdnSortState.key===k?`<span class="sort-arrow">${fqdnSortState.dir==='asc'?'▲':'▼'}</span>`:'';
   // Build filter dropdowns
   const types=new Set(), owners=new Set(), geos=new Set();
-  list.forEach(r=>{if(r.type)types.add(r.type);if(r.owner)owners.add(r.owner);if(r.geoInfo)geos.add(r.geoInfo);});
+  list.forEach(r=>{if(r.type)types.add(r.type);if(r.owner)owners.add(r.owner);if(r.geoInfo&&r.geoInfo!=='null')geos.add(r.geoInfo);});
   const filterHtml=`<div class="flex gap-2 items-center mb-2" style="flex-wrap:wrap">
     <select class="filter-select" onchange="state.filters.fqdnTypeFilter=this.value;renderContent()"><option value="">Type (All)</option>${Array.from(types).sort().map(t=>`<option value="${esc(t)}" ${state.filters.fqdnTypeFilter===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
     <select class="filter-select" onchange="state.filters.fqdnOwnerFilter=this.value;renderContent()"><option value="">Owner (All)</option>${Array.from(owners).sort().map(o=>`<option value="${esc(o)}" ${state.filters.fqdnOwnerFilter===o?'selected':''}>${esc(o)}</option>`).join('')}</select>
     <select class="filter-select" onchange="state.filters.fqdnGeoFilter=this.value;renderContent()"><option value="">Geo (All)</option>${Array.from(geos).sort().map(g=>`<option value="${esc(g)}" ${state.filters.fqdnGeoFilter===g?'selected':''}>${esc(g)}</option>`).join('')}</select>
   </div>`;
   return filterHtml+`<div class="stats-bar">${filtered.length>2000?T('statsFqdnCapped',filtered.length):T('statsFqdn',filtered.length)}</div>
-    <table class="fqdn-table"><thead><tr>
+    <table class="fqdn-table"><colgroup><col style="width:7%"><col style="width:13%"><col style="width:28%"><col style="width:11%"><col style="width:16%"><col style="width:8%"><col style="width:17%"></colgroup><thead><tr>
       <th onclick="sortFqdn('owner')">Owner${arrow('owner')}</th>
       <th onclick="sortFqdn('domain')">Domain${arrow('domain')}</th>
       <th onclick="sortFqdn('fqdn')">FQDN${arrow('fqdn')}</th>
       <th onclick="sortFqdn('type')">Type${arrow('type')}</th>
       <th onclick="sortFqdn('ip')">IP${arrow('ip')}</th>
       <th onclick="sortFqdn('geoInfo')">Geo${arrow('geoInfo')}</th>
-    </tr></thead><tbody>${display.map(r=>`<tr${r._chainedFromRule?' style="border-left:3px solid var(--yellow)"':''}><td>${esc(r.owner)}</td><td>${esc(r.domain)}</td><td>${esc(r.fqdn)}</td><td>${esc(r.type)}</td><td>${esc(r.ip)}</td><td>${esc(r.geoInfo)}</td></tr>`).join('')}</tbody></table>`;
+      <th></th>
+    </tr></thead><tbody>${display.map(r=>`<tr${r._chainedFromRule?' style="border-left:3px solid var(--yellow)"':''}><td>${esc(r.owner)}</td><td>${esc(r.domain)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.domain)}')" title="Search">🔍</button></td><td>${esc(r.fqdn)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.fqdn)}')" title="Search">🔍</button></td><td>${esc(r.type)}</td><td>${esc(r.ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.ip)}')" title="Search">🔍</button></td><td>${esc(r.geoInfo)}</td><td></td></tr>`).join('')}</tbody></table>`;
 }
 
 // Copy Tab
