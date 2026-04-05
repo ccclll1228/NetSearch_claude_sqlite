@@ -630,7 +630,7 @@ input,textarea { font-family:inherit; }
           <rect x="5" y="22" width="4" height="1"/><rect x="10" y="22" width="4" height="1"/>
         </svg>
       </div>
-      <div class="logo-title">NetSearch<br><span class="logo-sub">Config Visualizer</span></div>
+      <div class="logo-title">NetSearch<br><span class="logo-sub" id="logoSub">Config Visualizer</span></div>
     </div>
     <div class="header-search">
       <button class="search-mode-btn" id="searchModeBtn" onclick="toggleSearchMode()" title="Toggle search mode">Keyword</button>
@@ -659,13 +659,13 @@ input,textarea { font-family:inherit; }
           </ul>
         </div>
       </div>
-      <label class="filter-toggle"><input type="checkbox" id="ignoreCidr" /> Ignore CIDR</label>
+      <label class="filter-toggle"><input type="checkbox" id="ignoreCidr" /> <span id="lblIgnoreCidr">Ignore CIDR</span></label>
     </div>
     <div class="header-actions">
-      <button class="btn btn-icon" onclick="openBulkSearch()">📋 Bulk</button>
-      <button class="btn btn-primary btn-icon" onclick="openImportModal()">📥 Import</button>
-      <div id="serverStatusBar" style="font-size:11px;color:var(--text-secondary);font-family:var(--font-mono);white-space:nowrap;">載入中...</div>
-      <button id="reloadBtn" onclick="triggerReload()" class="btn btn-sm" style="font-size:11px;padding:3px 10px;">🔄 重載</button>
+      <button class="btn btn-icon" id="btnBulk" onclick="openBulkSearch()">📋 Bulk</button>
+      <button class="btn btn-primary btn-icon" id="btnImportHeader" onclick="openImportModal()">📥 Import</button>
+      <div id="serverStatusBar" style="font-size:11px;color:var(--text-secondary);font-family:var(--font-mono);white-space:nowrap;">Loading...</div>
+      <button id="reloadBtn" onclick="triggerReload()" class="btn btn-sm" style="font-size:11px;padding:3px 10px;">🔄 Reload</button>
       <button class="btn btn-sm" onclick="toggleLang()" id="langBtn">EN</button>
     </div>
   </div>
@@ -681,22 +681,22 @@ input,textarea { font-family:inherit; }
     <select class="filter-select" id="fromZoneFilter"><option value="">FROM ZONE (All)</option></select>
     <select class="filter-select" id="toZoneFilter"><option value="">TO ZONE (All)</option></select>
     <select class="filter-select" id="tagFilter"><option value="">TAG (All)</option></select>
-    <label class="filter-toggle"><input type="checkbox" id="filterSource" /> Src</label>
-    <label class="filter-toggle"><input type="checkbox" id="filterDest" /> Dst</label>
+    <label class="filter-toggle"><input type="checkbox" id="filterSource" /> <span id="lblFilterSrc">Src</span></label>
+    <label class="filter-toggle"><input type="checkbox" id="filterDest" /> <span id="lblFilterDst">Dst</span></label>
     <span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>
-    <label class="filter-toggle"><input type="checkbox" id="secHideDisabled" /> Hide Disabled</label>
-    <label class="filter-toggle"><input type="checkbox" id="secShowDisabledOnly" /> Disabled Only</label>
+    <label class="filter-toggle"><input type="checkbox" id="secHideDisabled" /> <span id="lblHideDisabled">Hide Disabled</span></label>
+    <label class="filter-toggle"><input type="checkbox" id="secShowDisabledOnly" /> <span id="lblDisabledOnly">Disabled Only</span></label>
     <span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>
-    <label class="filter-toggle"><input type="checkbox" id="showDisabledMembersOnly" /> F5 Disabled</label>
-    <button class="btn btn-sm btn-expand-collapse" onclick="expandAllPills()" title="Expand All">
+    <label class="filter-toggle"><input type="checkbox" id="showDisabledMembersOnly" /> <span id="lblF5Disabled">F5 Disabled</span></label>
+    <button class="btn btn-sm btn-expand-collapse" id="btnExpandAll" onclick="expandAllPills()" title="Expand All">
       <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>
-      Expand
+      <span id="lblExpand">Expand</span>
     </button>
-    <button class="btn btn-sm btn-expand-collapse" onclick="collapseAllPills()" title="Collapse All">
+    <button class="btn btn-sm btn-expand-collapse" id="btnCollapseAll" onclick="collapseAllPills()" title="Collapse All">
       <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>
-      Collapse
+      <span id="lblCollapse">Collapse</span>
     </button>
-    <button class="btn btn-sm" onclick="clearAllFilters()" style="color:var(--red)" title="Clear all filters">✕ Clear</button>
+    <button class="btn btn-sm" id="btnClearFilters" onclick="clearAllFilters()" style="color:var(--red)" title="Clear all filters">✕ Clear</button>
   </div>
 
   <!-- Tabs -->
@@ -728,27 +728,27 @@ input,textarea { font-family:inherit; }
       </div>
 
       <!-- Config Files -->
-      <h3 style="margin:16px 0 8px;">Config Files (Palo Alto / FortiGate / Juniper SRX / F5)</h3>
+      <h3 id="importConfigTitle" style="margin:16px 0 8px;">Config Files (Palo Alto / FortiGate / Juniper SRX / F5)</h3>
       <div class="dropzone" id="configDropzone" onclick="document.getElementById('configFileInput').click()"
            ondragover="event.preventDefault();this.classList.add('dragover')"
            ondragleave="this.classList.remove('dragover')"
            ondrop="handleConfigDrop(event)">
-        Click to select configs, or drag & drop
+        <span id="lblDropConfig">Click to select configs, or drag & drop</span>
         <input type="file" id="configFileInput" multiple onchange="stageConfigFiles(this.files)" />
       </div>
       <!-- Staged Config Queue -->
       <div id="stagedConfigQueue" class="hidden" style="margin-top:8px"></div>
 
-      <div style="margin:12px 0;text-align:center;color:var(--text-muted)">— or paste config text —</div>
+      <div id="importPasteSep" style="margin:12px 0;text-align:center;color:var(--text-muted)">— or paste config text —</div>
       <textarea id="pasteArea" rows="4" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:12px;resize:vertical" placeholder="Paste CLI config text here..."></textarea>
-      <button class="btn btn-sm mt-2" onclick="importPastedText()">Import Pasted Text</button>
+      <button class="btn btn-sm mt-2" id="btnImportPaste" onclick="importPastedText()">Import Pasted Text</button>
 
       <h3 style="margin:20px 0 8px;">📋 FQDN / Domain List</h3>
       <div class="dropzone" id="fqdnDropzone" onclick="document.getElementById('fqdnFileInput').click()"
            ondragover="event.preventDefault();this.classList.add('dragover')"
            ondragleave="this.classList.remove('dragover')"
            ondrop="handleFqdnDrop(event)">
-        Click to select CSV / TXT, or drag & drop
+        <span id="lblDropFqdn">Click to select CSV / TXT, or drag & drop</span>
         <input type="file" id="fqdnFileInput" multiple onchange="stageFqdnFiles(this.files)" />
       </div>
       <!-- Staged FQDN Queue -->
@@ -760,8 +760,8 @@ input,textarea { font-family:inherit; }
       </div>
 
       <div style="margin-top:16px;display:flex;gap:8px">
-        <button class="btn btn-sm" onclick="clearAllConfigs()" style="color:var(--red)">Clear All Configs</button>
-        <button class="btn btn-sm" onclick="clearAllFqdn()" style="color:var(--red)">Clear FQDN</button>
+        <button class="btn btn-sm" id="btnClearConfigs" onclick="clearAllConfigs()" style="color:var(--red)">Clear All Configs</button>
+        <button class="btn btn-sm" id="btnClearFqdn" onclick="clearAllFqdn()" style="color:var(--red)">Clear FQDN</button>
       </div>
     </div>
   </div>
@@ -771,20 +771,20 @@ input,textarea { font-family:inherit; }
 <div class="modal-overlay hidden" id="bulkSearchModal">
   <div class="modal" style="max-width:500px">
     <div class="modal-header">
-      <h2>Bulk Search</h2>
+      <h2 id="bulkModalTitle">Bulk Search</h2>
       <button class="modal-close" onclick="closeBulkSearch()">&times;</button>
     </div>
     <div class="modal-body">
       <textarea class="bulk-textarea" id="bulkInput" placeholder="Enter one search term per line (IP, FQDN, keyword)...&#10;&#10;Example:&#10;192.168.1.0/24&#10;example.com&#10;vs_web_prod"></textarea>
       <div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <span class="text-sm text-muted">Logic:</span>
-        <label class="filter-toggle"><input type="radio" name="bulkMode" value="OR" checked /> OR (any match)</label>
-        <label class="filter-toggle"><input type="radio" name="bulkMode" value="AND" /> AND (all match)</label>
-        <label class="filter-toggle"><input type="radio" name="bulkMode" value="AND NOT" /> AND NOT (exclude)</label>
+        <span class="text-sm text-muted" id="lblBulkLogic">Logic:</span>
+        <label class="filter-toggle"><input type="radio" name="bulkMode" value="OR" checked /> <span id="lblBulkOr">OR (any match)</span></label>
+        <label class="filter-toggle"><input type="radio" name="bulkMode" value="AND" /> <span id="lblBulkAnd">AND (all match)</span></label>
+        <label class="filter-toggle"><input type="radio" name="bulkMode" value="AND NOT" /> <span id="lblBulkAndNot">AND NOT (exclude)</span></label>
       </div>
       <div style="margin-top:12px;display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="applyBulkSearch()" style="flex:1">Run Search</button>
-        <button class="btn" onclick="applyBulkSearchNew()" style="flex:1" title="Clear current search and run new">New Search</button>
+        <button class="btn btn-primary" id="btnBulkRun" onclick="applyBulkSearch()" style="flex:1">Run Search</button>
+        <button class="btn" id="btnBulkNew" onclick="applyBulkSearchNew()" style="flex:1" title="Clear current search and run new">New Search</button>
       </div>
     </div>
   </div>
@@ -797,8 +797,8 @@ input,textarea { font-family:inherit; }
       <h3 id="confirmTitle" style="margin-bottom:8px"></h3>
       <p id="confirmMessage" style="color:var(--text-secondary);margin-bottom:20px"></p>
       <div style="display:flex;gap:8px;justify-content:center">
-        <button class="btn" onclick="closeConfirm()">Cancel</button>
-        <button class="btn btn-primary" onclick="doConfirm()" style="background:var(--red);border-color:var(--red)">Confirm</button>
+        <button class="btn" id="btnConfirmCancel" onclick="closeConfirm()">Cancel</button>
+        <button class="btn btn-primary" id="btnConfirmOk" onclick="doConfirm()" style="background:var(--red);border-color:var(--red)">Confirm</button>
       </div>
     </div>
   </div>
@@ -846,6 +846,185 @@ const TABS = [
   { id:'debug', label:{ en:'Debug', zh:'解析除錯' } },
 ];
 
+// ===== I18N =====
+const i18n = {
+  en: {
+    logoSub:'Config Visualizer',
+    searchModeKeyword:'Keyword', searchModeExact:'Exact',
+    searchPlaceholder:'Enter IP, CIDR, Port, or Keyword, then press Enter...',
+    ignoreCidr:'Ignore CIDR',
+    btnBulk:'📋 Bulk', btnImport:'📥 Import',
+    btnReload:'🔄 Reload', btnReloading:'Reloading...',
+    statusLoading:'Loading...', statusNotLoaded:'Not loaded',
+    statusData:'Data: {0}',
+    sourceLabel:'Source:', toggleAll:'All ({0})',
+    fromZoneAll:'FROM ZONE (All)', toZoneAll:'TO ZONE (All)', tagAll:'TAG (All)',
+    filterSrc:'Src', filterDst:'Dst',
+    hideDisabled:'Hide Disabled', disabledOnly:'Disabled Only', f5Disabled:'F5 Disabled',
+    btnExpand:'Expand', btnCollapse:'Collapse', btnClear:'✕ Clear',
+    clickEnable:'Click to enable', clickDisable:'Click to disable',
+    itemsLabel:'{0} items',
+    noSecRules:'No matching security rules found.',
+    noNatRules:'No matching NAT rules found.',
+    noRoutes:'No matching routing entries found.',
+    noObjects:'No matching addresses or groups found.',
+    noF5Vs:'No matching F5 Virtual Servers found.',
+    noF5Pools:'No matching F5 Pools found.',
+    noFqdn:'No matching FQDN records found.',
+    noConfigs:'No configuration files imported.',
+    fqdnPrompt:'Enter a keyword above or select filters to view FQDN records.',
+    fqdnShowAll:'Show All FQDN ({0} records)',
+    statsSecRules:'Total: {0} matching rule(s), from {1} device(s)',
+    statsNatRules:'Total: {0} matching NAT rule(s), from {1} device(s)',
+    statsRoutes:'Total: {0} route(s), from {1} device(s)',
+    statsObjects:'Total: {0} matching Objects, from {1} device(s)',
+    statsF5Vs:'Total: {0} Virtual Server(s), from {1} device(s)',
+    statsF5VsDisabled:' (showing disabled members only)',
+    statsF5Pools:'Total: {0} Pool(s), from {1} device(s)',
+    statsFqdn:'Total: {0} record(s)',
+    statsFqdnCapped:'Total: {0} record(s) (showing first 2000)',
+    colRuleAction:'Rule / Action', colFromTo:'From / To',
+    colSource:'Source', colDestination:'Destination', colService:'Service',
+    colApplication:'Application', colUrlCategory:'URL Category',
+    colNum:'#', colName:'Name', colDest:'Destination', colNexthop:'Nexthop', colIface:'Interface',
+    headAddresses:'Addresses', headAddrGroups:'Address Groups',
+    colObjName:'Name', colObjType:'Type', colObjValue:'Value',
+    colF5Name:'VS Name', colF5Dest:'Destination IP', colF5Port:'Port', colF5Pool:'Pool', colF5Status:'Status',
+    noPoolData:'Pool "{0}" — no member data',
+    natFrom:'From', natTo:'To', natSource:'Source', natDest:'Destination',
+    natService:'Service', natSnat:'SNAT →', natDnat:'→ DNAT',
+    titleExpandAll:'Expand all objects', titleCollapseAll:'Collapse all objects',
+    titleQuickSearch:'Quick Search', titleExpand:'Click to expand', titleCopy:'Copy',
+    hlOn:'Highlight ON — click to disable', hlOff:'Highlight OFF — click to enable',
+    modeHintCidrExact:'Exact (Ignore CIDR)', modeHintCidrKw:'Keyword (Ignore CIDR)',
+    modeHintCidr:'CIDR Overlap', modeHintExactIp:'Exact IP', modeHintIpPrefix:'IP Prefix',
+    modeHintExact:'Exact Match', modeHintKw:'Keyword / Port',
+    hintPress:'Press Enter to filter: {0} — {1}',
+    stagedFiles:'Staged: {0} file(s)', stagedFqdn:'Staged FQDN: {0} file(s)',
+    btnImportAll:'Import All', btnClearQueue:'Clear',
+    recentSearches:'Recent Searches', clearHistory:'Clear History',
+    fieldSettings:'Field Settings & Order',
+    btnDefault:'Default', btnSelectAll:'Select All', btnDeselectAll:'Deselect All',
+    previewLabel:'Preview', btnGenerate:'Generate Preview',
+    btnCopyClipboard:'📋 Copy to Clipboard',
+    loadMore:'Load More ({0}/{1})', totalRows:'Total: {0} rows (all shown)',
+    regenerateWarning:'⚠️ Regenerate',
+    noPreview:'Click "Generate Preview" to see results.',
+    noPreviewFilter:'Enter a search term or select a zone/tag filter to enable preview generation.',
+    confirmRemoveTitle:'Remove Device', confirmRemoveMsg:'Are you sure you want to remove {0}?',
+    confirmClearTitle:'Clear All Configs', confirmClearMsg:'Are you sure you want to clear all imported configs?',
+    confirmClearFqdnTitle:'Clear FQDN Data', confirmClearFqdnMsg:'Are you sure you want to clear all FQDN data?',
+    confirmCancel:'Cancel', confirmOk:'Confirm',
+    importTitle:'Import Configs & Data',
+    importConfigTitle:'Config Files (Palo Alto / FortiGate / Juniper SRX / F5)',
+    importDropConfig:'Click to select configs, or drag & drop',
+    importDropFqdn:'Click to select CSV / TXT, or drag & drop',
+    importPasteSep:'— or paste config text —',
+    importPasteBtn:'Import Pasted Text',
+    importClearConfigs:'Clear All Configs', importClearFqdn:'Clear FQDN',
+    pastePlaceholder:'Paste CLI config text here...',
+    bulkTitle:'Bulk Search', bulkLogic:'Logic:',
+    bulkOr:'OR (any match)', bulkAnd:'AND (all match)', bulkAndNot:'AND NOT (exclude)',
+    bulkRun:'Run Search', bulkNew:'New Search',
+    devInfoF5:'{0} VS, {1} Pools', devInfoFw:'{0} Sec, {1} NAT, {2} Routes',
+    devFqdnRecords:'{0} records',
+    copiedClipboard:'✓ Copied to clipboard!',
+    copyFeedbackZh:'✓ 已複製！',
+    truncated:'... (truncated)',
+  },
+  zh: {
+    logoSub:'設定檔視覺化',
+    searchModeKeyword:'關鍵字', searchModeExact:'精確',
+    searchPlaceholder:'輸入 IP、CIDR、Port 或關鍵字，按 Enter 搜尋...',
+    ignoreCidr:'忽略 CIDR',
+    btnBulk:'📋 批次搜尋', btnImport:'📥 匯入',
+    btnReload:'🔄 重載', btnReloading:'重載中...',
+    statusLoading:'載入中...', statusNotLoaded:'尚未載入',
+    statusData:'資料版本：{0}',
+    sourceLabel:'來源：', toggleAll:'全部（{0}）',
+    fromZoneAll:'FROM ZONE（全部）', toZoneAll:'TO ZONE（全部）', tagAll:'TAG（全部）',
+    filterSrc:'來源', filterDst:'目的',
+    hideDisabled:'隱藏停用', disabledOnly:'只看停用', f5Disabled:'F5 停用',
+    btnExpand:'展開', btnCollapse:'收合', btnClear:'✕ 清除',
+    clickEnable:'點擊啟用', clickDisable:'點擊停用',
+    itemsLabel:'{0} 項',
+    noSecRules:'找不到符合的安全規則。',
+    noNatRules:'找不到符合的 NAT 規則。',
+    noRoutes:'找不到符合的路由項目。',
+    noObjects:'找不到符合的地址或群組。',
+    noF5Vs:'找不到符合的 F5 Virtual Server。',
+    noF5Pools:'找不到符合的 F5 Pool。',
+    noFqdn:'找不到符合的 FQDN 記錄。',
+    noConfigs:'尚未匯入設定檔。',
+    fqdnPrompt:'請輸入關鍵字或選擇篩選條件以檢視 FQDN 記錄。',
+    fqdnShowAll:'顯示全部 FQDN（{0} 筆）',
+    statsSecRules:'共 {0} 條符合規則，來自 {1} 台設備',
+    statsNatRules:'共 {0} 條符合 NAT 規則，來自 {1} 台設備',
+    statsRoutes:'共 {0} 條路由，來自 {1} 台設備',
+    statsObjects:'共 {0} 個符合物件，來自 {1} 台設備',
+    statsF5Vs:'共 {0} 台 Virtual Server，來自 {1} 台設備',
+    statsF5VsDisabled:'（只顯示停用成員）',
+    statsF5Pools:'共 {0} 個 Pool，來自 {1} 台設備',
+    statsFqdn:'共 {0} 筆記錄',
+    statsFqdnCapped:'共 {0} 筆記錄（僅顯示前 2000 筆）',
+    colRuleAction:'規則 / 動作', colFromTo:'來源區 / 目的區',
+    colSource:'來源', colDestination:'目的', colService:'服務',
+    colApplication:'應用程式', colUrlCategory:'URL 類別',
+    colNum:'#', colName:'名稱', colDest:'目的地', colNexthop:'下一跳', colIface:'介面',
+    headAddresses:'地址', headAddrGroups:'地址群組',
+    colObjName:'名稱', colObjType:'類型', colObjValue:'值',
+    colF5Name:'VS 名稱', colF5Dest:'目的 IP', colF5Port:'埠號', colF5Pool:'Pool', colF5Status:'狀態',
+    noPoolData:'Pool "{0}" — 無成員資料',
+    natFrom:'來源區', natTo:'目的區', natSource:'來源', natDest:'目的',
+    natService:'服務', natSnat:'SNAT →', natDnat:'→ DNAT',
+    titleExpandAll:'展開所有物件', titleCollapseAll:'收合所有物件',
+    titleQuickSearch:'快速搜尋', titleExpand:'點擊展開', titleCopy:'複製',
+    hlOn:'醒目標示已開啟 — 點擊停用', hlOff:'醒目標示已停用 — 點擊開啟',
+    modeHintCidrExact:'精確（忽略 CIDR）', modeHintCidrKw:'關鍵字（忽略 CIDR）',
+    modeHintCidr:'CIDR 範圍', modeHintExactIp:'精確 IP', modeHintIpPrefix:'IP 前綴',
+    modeHintExact:'精確比對', modeHintKw:'關鍵字 / Port',
+    hintPress:'按 Enter 篩選：{0} — {1}',
+    stagedFiles:'待匯入：{0} 個檔案', stagedFqdn:'待匯入 FQDN：{0} 個檔案',
+    btnImportAll:'全部匯入', btnClearQueue:'清除',
+    recentSearches:'最近搜尋', clearHistory:'清除記錄',
+    fieldSettings:'欄位設定與順序',
+    btnDefault:'預設', btnSelectAll:'全選', btnDeselectAll:'全不選',
+    previewLabel:'預覽', btnGenerate:'產生預覽',
+    btnCopyClipboard:'📋 複製到剪貼簿',
+    loadMore:'載入更多（{0}/{1}）', totalRows:'共 {0} 筆（全部顯示）',
+    regenerateWarning:'⚠️ 需重新產生',
+    noPreview:'點擊「產生預覽」以查看結果。',
+    noPreviewFilter:'請輸入搜尋關鍵字或選擇 Zone/Tag 篩選以啟用預覽。',
+    confirmRemoveTitle:'移除設備', confirmRemoveMsg:'確定要移除 {0}？',
+    confirmClearTitle:'清除所有設定', confirmClearMsg:'確定要清除所有已匯入的設定？',
+    confirmClearFqdnTitle:'清除 FQDN 資料', confirmClearFqdnMsg:'確定要清除所有 FQDN 資料？',
+    confirmCancel:'取消', confirmOk:'確認',
+    importTitle:'匯入設定與資料',
+    importConfigTitle:'設定檔（Palo Alto / FortiGate / Juniper SRX / F5）',
+    importDropConfig:'點擊選擇設定檔，或拖放至此',
+    importDropFqdn:'點擊選擇 CSV / TXT，或拖放至此',
+    importPasteSep:'— 或貼上設定文字 —',
+    importPasteBtn:'匯入貼上的文字',
+    importClearConfigs:'清除所有設定', importClearFqdn:'清除 FQDN',
+    pastePlaceholder:'在此貼上 CLI 設定文字...',
+    bulkTitle:'批次搜尋', bulkLogic:'邏輯：',
+    bulkOr:'OR（任一符合）', bulkAnd:'AND（全部符合）', bulkAndNot:'AND NOT（排除）',
+    bulkRun:'執行搜尋', bulkNew:'新搜尋',
+    devInfoF5:'{0} VS，{1} Pool', devInfoFw:'{0} 安全，{1} NAT，{2} 路由',
+    devFqdnRecords:'{0} 筆記錄',
+    copiedClipboard:'✓ 已複製到剪貼簿！',
+    copyFeedbackZh:'✓ 已複製！',
+    truncated:'... （已截斷）',
+  }
+};
+function T(key, ...args) {
+  let s = (i18n[state.lang] || i18n.en)[key];
+  if (s === undefined) s = i18n.en[key];
+  if (s === undefined) return key;
+  args.forEach((v, i) => { s = s.replace('{' + i + '}', v); });
+  return s;
+}
+
 // ===== UTILITY =====
 let _idCounter = 0;
 const genId = () => 'id_' + (++_idCounter) + '_' + Math.random().toString(36).slice(2,8);
@@ -868,28 +1047,28 @@ function updateSearchHint() {
   const clearBtn=document.getElementById('searchClear');
   clearBtn.style.display=val?'block':'none';
   if(!val){hint.innerHTML='';return;}
-  let mode='';
+  let modeKey='';
   if(state.ignoreCIDR){
-    mode=state.searchMode==='exact'?'Exact (Ignore CIDR)':'Keyword (Ignore CIDR)';
+    modeKey=state.searchMode==='exact'?'modeHintCidrExact':'modeHintCidrKw';
   } else if(isCIDR(val)){
-    mode='CIDR Overlap';
+    modeKey='modeHintCidr';
   } else if(isExactIP(val)){
-    mode='Exact IP';
+    modeKey='modeHintExactIp';
   } else if(isIPish(val)){
-    mode='IP Prefix';
+    modeKey='modeHintIpPrefix';
   } else if(state.searchMode==='exact'){
-    mode='Exact Match';
+    modeKey='modeHintExact';
   } else {
-    mode='Keyword / Port';
+    modeKey='modeHintKw';
   }
-  hint.innerHTML=`Press Enter to filter: <span class="hint-mode">${esc(val)}</span> — ${mode}`;
+  hint.innerHTML=T('hintPress',`<span class="hint-mode">${esc(val)}</span>`,T(modeKey));
 }
 
 function quickSearch(value) {
   document.getElementById('searchInput').value=value;
   state.search=value;state.appliedSearch=value;state.searchAST=parseSearch(value);
   state.searchMode='exact';
-  document.getElementById('searchModeBtn').textContent='Exact';
+  document.getElementById('searchModeBtn').textContent=T('searchModeExact');
   copyData=[];
   addToSearchHistory(value);
   updateSearchHint();
@@ -2264,7 +2443,7 @@ function renderDeviceGroupHeader(group, totalCount) {
     <span class="device-group-chevron ${isCollapsed?'collapsed':''}">▼</span>
     ${tl?`<span class="device-group-type ${tc}">${tl}</span>`:''}
     <span class="device-group-hostname">${esc(displayHostname(group.hostname))}</span>
-    <span class="device-group-count">(${group.items.length} items)</span>
+    <span class="device-group-count">${T('itemsLabel',group.items.length)}</span>
   </div>`;
 }
 
@@ -2289,14 +2468,14 @@ let _lastFilteredSecRules = [];
 let _lastFilteredNatRules = [];
 
 function renderSecRules(rules) {
-  if(rules.length===0) return '<div class="empty-state">No matching security rules found.</div>';
+  if(rules.length===0) return `<div class="empty-state">${T('noSecRules')}</div>`;
   const groups = groupByDevice(rules);
-  const stats = `<div class="stats-bar">Total: ${rules.length} matching rule(s), from ${groups.length} device(s)</div>`;
+  const stats = `<div class="stats-bar">${T('statsSecRules',rules.length,groups.length)}</div>`;
   _lastFilteredSecRules = rules;
   return stats + groups.map(group => {
     const gid = `grp_${group.hostname}`;
     const isCollapsed = collapsedGroups.has(gid);
-    const header = `<div class="rule-body-header"><span>Rule / Action</span><span>From / To</span><span>Source</span><span>Destination</span><span>Service</span><span>Application</span><span>URL Category</span></div>`;
+    const header = `<div class="rule-body-header"><span>${T('colRuleAction')}</span><span>${T('colFromTo')}</span><span>${T('colSource')}</span><span>${T('colDestination')}</span><span>${T('colService')}</span><span>${T('colApplication')}</span><span>${T('colUrlCategory')}</span></div>`;
     const cards = group.items.map(r => {
       const globalIdx = _lastFilteredSecRules.indexOf(r);
       const ruleKey = `sec_${globalIdx}`;
@@ -2312,10 +2491,10 @@ function renderSecRules(rules) {
           <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
             <span class="rule-action ${r.action}">${esc(r.action)}</span>
             <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredSecRules[${globalIdx}])" title="Copy this rule as TSV">📋</button>
-            <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();expandAllRulePills('${ruleKey}')" title="展開所有物件">
+            <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();expandAllRulePills('${ruleKey}')" title="${T('titleExpandAll')}">
               <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>
             </button>
-            <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();collapseAllRulePills('${ruleKey}')" title="收合所有物件">
+            <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();collapseAllRulePills('${ruleKey}')" title="${T('titleCollapseAll')}">
               <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>
             </button>
             ${r._chainedFromFqdn?'<span class="chain-pill fqdn">FQDN→IP</span>':''}
@@ -2371,9 +2550,9 @@ function startNatColResize(e, key) {
 }
 
 function renderNatRules(rules) {
-  if(rules.length===0) return '<div class="empty-state">No matching NAT rules found.</div>';
+  if(rules.length===0) return `<div class="empty-state">${T('noNatRules')}</div>`;
   const groups = groupByDevice(rules);
-  const stats = `<div class="stats-bar">Total: ${rules.length} matching NAT rule(s), from ${groups.length} device(s)</div>`;
+  const stats = `<div class="stats-bar">${T('statsNatRules',rules.length,groups.length)}</div>`;
   _lastFilteredNatRules = rules;
 
   // Determine active columns
@@ -2383,7 +2562,7 @@ function renderNatRules(rules) {
   if(hasSnat) _natActiveCols.push('snat');
   if(hasDnat) _natActiveCols.push('dnat');
   const tpl = _natTpl();
-  const colLabels = {from:'From',to:'To',src:'Source',dst:'Destination',svc:'Service',snat:'SNAT →',dnat:'→ DNAT'};
+  const colLabels = {from:T('natFrom'),to:T('natTo'),src:T('natSource'),dst:T('natDest'),svc:T('natService'),snat:T('natSnat'),dnat:T('natDnat')};
 
   const headerRow = `<div class="nat-col-header-row" style="grid-template-columns:${tpl}">
     ${_natActiveCols.map((k,i)=>`<div class="nat-col-head">${esc(colLabels[k])}${i<_natActiveCols.length-1?`<div class="nat-resize-handle" onmousedown="startNatColResize(event,'${k}')"></div>`:''}</div>`).join('')}
@@ -2395,14 +2574,14 @@ function renderNatRules(rules) {
     const cards = group.items.slice(0,500).map(r => {
       const globalIdx = _lastFilteredNatRules.indexOf(r);
       const cells = [
-        `<div class="rule-field"><div class="rule-field-label">From</div>${renderPills(r.from,r._parsed)}</div>`,
-        `<div class="rule-field"><div class="rule-field-label">To</div>${renderPills(r.to,r._parsed)}</div>`,
-        `<div class="rule-field"><div class="rule-field-label">Source</div>${renderPills(r.source,r._parsed)}</div>`,
-        `<div class="rule-field"><div class="rule-field-label">Destination</div>${renderPills(r.destination,r._parsed)}</div>`,
-        `<div class="rule-field"><div class="rule-field-label">Service</div>${renderPills(r.service,r._parsed,'service')}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">${T('natFrom')}</div>${renderPills(r.from,r._parsed)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">${T('natTo')}</div>${renderPills(r.to,r._parsed)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">${T('natSource')}</div>${renderPills(r.source,r._parsed)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">${T('natDest')}</div>${renderPills(r.destination,r._parsed)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">${T('natService')}</div>${renderPills(r.service,r._parsed,'service')}</div>`,
       ];
-      if(hasSnat) cells.push(`<div class="rule-field"><div class="rule-field-label">SNAT →</div>${r.sourceTranslation&&r.sourceTranslation.length>0?renderPills(r.sourceTranslation,r._parsed):'<span style="color:var(--text-muted);font-size:11px">—</span>'}</div>`);
-      if(hasDnat) cells.push(`<div class="rule-field"><div class="rule-field-label">→ DNAT</div>${r.destinationTranslation&&r.destinationTranslation.length>0?renderPills(r.destinationTranslation,r._parsed):'<span style="color:var(--text-muted);font-size:11px">—</span>'}</div>`);
+      if(hasSnat) cells.push(`<div class="rule-field"><div class="rule-field-label">${T('natSnat')}</div>${r.sourceTranslation&&r.sourceTranslation.length>0?renderPills(r.sourceTranslation,r._parsed):'<span style="color:var(--text-muted);font-size:11px">—</span>'}</div>`);
+      if(hasDnat) cells.push(`<div class="rule-field"><div class="rule-field-label">${T('natDnat')}</div>${r.destinationTranslation&&r.destinationTranslation.length>0?renderPills(r.destinationTranslation,r._parsed):'<span style="color:var(--text-muted);font-size:11px">—</span>'}</div>`);
       return `
     <div class="rule-card ${r.disabled?'rule-disabled':''} ${r._chainedFromFqdn?'chained':''}">
       <div class="rule-header">
@@ -2420,13 +2599,13 @@ function renderNatRules(rules) {
 }
 
 function renderRoutes(routes) {
-  if(routes.length===0) return '<div class="empty-state">No matching routing entries found.</div>';
+  if(routes.length===0) return `<div class="empty-state">${T('noRoutes')}</div>`;
   const groups = groupByDevice(routes);
-  const stats = `<div class="stats-bar">Total: ${routes.length} route(s), from ${groups.length} device(s)</div>`;
+  const stats = `<div class="stats-bar">${T('statsRoutes',routes.length,groups.length)}</div>`;
   return stats + groups.map(group => {
     const gid = `grp_rt_${group.hostname}`;
     const isCollapsed = collapsedGroups.has(gid);
-    const tableHtml = `<table class="route-table"><thead><tr><th>#</th><th>Name</th><th>Destination</th><th>Nexthop</th><th>Interface</th></tr></thead>
+    const tableHtml = `<table class="route-table"><thead><tr><th>${T('colNum')}</th><th>${T('colName')}</th><th>${T('colDest')}</th><th>${T('colNexthop')}</th><th>${T('colIface')}</th></tr></thead>
       <tbody>${group.items.map((r,i)=>`<tr${r._chained?' style="border-left:3px solid var(--yellow)"':''}><td class="text-muted">${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.destination)}</td><td>${esc(r.nexthop)}</td><td>${esc(r.interface)}</td></tr>`).join('')}</tbody></table>`;
     return `<div class="device-group">${renderDeviceGroupHeader(group)}
       <div class="device-group-body ${isCollapsed?'collapsed':''}">${tableHtml}</div></div>`;
@@ -2434,7 +2613,7 @@ function renderRoutes(routes) {
 }
 
 function renderObjects(addresses, groups) {
-  if(addresses.length===0&&groups.length===0) return '<div class="empty-state">No matching addresses or groups found.</div>';
+  if(addresses.length===0&&groups.length===0) return `<div class="empty-state">${T('noObjects')}</div>`;
   // Group by device
   const addrByDevice = new Map();
   addresses.forEach(a=>{if(!addrByDevice.has(a._hostname))addrByDevice.set(a._hostname,[]);addrByDevice.get(a._hostname).push(a);});
@@ -2442,7 +2621,7 @@ function renderObjects(addresses, groups) {
   groups.forEach(g=>{if(!grpByDevice.has(g._hostname))grpByDevice.set(g._hostname,[]);grpByDevice.get(g._hostname).push(g);});
   const allDevices = new Set([...addrByDevice.keys(),...grpByDevice.keys()]);
   
-  let html = `<div class="stats-bar">Total: ${addresses.length+groups.length} matching Objects, from ${allDevices.size} device(s)</div>`;
+  let html = `<div class="stats-bar">${T('statsObjects',addresses.length+groups.length,allDevices.size)}</div>`;
   
   for(const hn of allDevices){
     const gid=`grp_obj_${hn}`;
@@ -2458,8 +2637,8 @@ function renderObjects(addresses, groups) {
     
     // Addresses table
     if(devAddrs.length>0){
-      html+=`<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Addresses <span class="tab-count">${devAddrs.length}</span></h4>
-        <table class="route-table"><thead><tr><th>Name</th><th>Type</th><th>Value</th><th style="width:32px"></th></tr></thead>
+      html+=`<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">${T('headAddresses')} <span class="tab-count">${devAddrs.length}</span></h4>
+        <table class="route-table"><thead><tr><th>${T('colObjName')}</th><th>${T('colObjType')}</th><th>${T('colObjValue')}</th><th style="width:32px"></th></tr></thead>
         <tbody>${devAddrs.map(a=>`<tr${a._chained?' style="border-left:3px solid var(--yellow)"':''}>
           <td style="font-weight:600;color:${a._chained?'var(--accent)':'var(--text)'}">${esc(a.name)}</td>
           <td><span class="obj-card-type">${esc(a.type)}</span></td>
@@ -2470,7 +2649,7 @@ function renderObjects(addresses, groups) {
 
     // Groups cards
     if(devGrps.length>0){
-      html+=`<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Address Groups <span class="tab-count">${devGrps.length}</span></h4>`;
+      html+=`<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">${T('headAddrGroups')} <span class="tab-count">${devGrps.length}</span></h4>`;
       html+=devGrps.map(g=>{
         const safeGName = g.name.replace(/'/g,"\\'");
         const outerPid = `obj_grp_${g.name}_${hn}`;
@@ -2513,9 +2692,9 @@ function renderF5Virtuals(virtuals) {
       return pool&&(pool.members||[]).some(m=>m.status==='disabled');
     });
   }
-  if(filtered.length===0) return '<div class="empty-state">No matching F5 Virtual Servers found.</div>';
+  if(filtered.length===0) return `<div class="empty-state">${T('noF5Vs')}</div>`;
   const groups = groupByDevice(filtered);
-  const stats = `<div class="stats-bar">Total: ${filtered.length} Virtual Server(s), from ${groups.length} device(s)${state.filters.showDisabledMembersOnly?' (showing disabled members only)':''}</div>`;
+  const stats = `<div class="stats-bar">${T('statsF5Vs',filtered.length,groups.length)}${state.filters.showDisabledMembersOnly?T('statsF5VsDisabled'):''}</div>`;
   const arrow=(k)=>f5LtmSort.key===k?`<span class="sort-arrow">${f5LtmSort.dir==='asc'?'▲':'▼'}</span>`:'';
   return stats + groups.map(group => {
     const gid = `grp_${group.hostname}`;
@@ -2525,11 +2704,11 @@ function renderF5Virtuals(virtuals) {
     const tableHtml = `<table class="f5-ltm-table"><thead><tr>
       <th style="width:30px"></th>
       <th style="width:24px"></th>
-      <th onclick="sortF5Ltm('name')">VS Name${arrow('name')}</th>
-      <th onclick="sortF5Ltm('ip')">Destination IP${arrow('ip')}</th>
-      <th onclick="sortF5Ltm('port')">Port${arrow('port')}</th>
-      <th onclick="sortF5Ltm('pool')">Pool${arrow('pool')}</th>
-      <th onclick="sortF5Ltm('status')">Status${arrow('status')}</th>
+      <th onclick="sortF5Ltm('name')">${T('colF5Name')}${arrow('name')}</th>
+      <th onclick="sortF5Ltm('ip')">${T('colF5Dest')}${arrow('ip')}</th>
+      <th onclick="sortF5Ltm('port')">${T('colF5Port')}${arrow('port')}</th>
+      <th onclick="sortF5Ltm('pool')">${T('colF5Pool')}${arrow('pool')}</th>
+      <th onclick="sortF5Ltm('status')">${T('colF5Status')}${arrow('status')}</th>
     </tr></thead><tbody>${sorted.map(vs=>{
       const pool=vs._parsed?.pools?.find(p=>p.name===vs.pool);
       const isExp=f5LtmExpandedRows.has(vs.name);
@@ -2554,7 +2733,7 @@ function renderF5Virtuals(virtuals) {
           </div>`).join('')}
         </div></td></tr>`;
       } else if(isExp&&!pool&&vs.pool){
-        row+=`<tr><td colspan="6" style="padding:8px 12px 8px 36px"><span class="text-muted text-sm">Pool "${esc(vs.pool)}" — no member data</span></td></tr>`;
+        row+=`<tr><td colspan="6" style="padding:8px 12px 8px 36px"><span class="text-muted text-sm">${T('noPoolData',esc(vs.pool))}</span></td></tr>`;
       }
       return row;
     }).join('')}</tbody></table>`;
@@ -2571,9 +2750,9 @@ function renderF5Pools(pools) {
   if(state.filters.showDisabledMembersOnly){
     filtered=filtered.filter(p=>(p.members||[]).some(m=>m.status==='disabled'));
   }
-  if(filtered.length===0) return '<div class="empty-state">No matching F5 Pools found.</div>';
+  if(filtered.length===0) return `<div class="empty-state">${T('noF5Pools')}</div>`;
   const groups = groupByDevice(filtered);
-  const stats = `<div class="stats-bar">Total: ${filtered.length} Pool(s), from ${groups.length} device(s)${state.filters.showDisabledMembersOnly?' (showing disabled members only)':''}</div>`;
+  const stats = `<div class="stats-bar">${T('statsF5Pools',filtered.length,groups.length)}${state.filters.showDisabledMembersOnly?T('statsF5VsDisabled'):''}</div>`;
   return stats + groups.map(group => {
     const gid = `grp_${group.hostname}`;
     const isCollapsed = collapsedGroups.has(gid);
@@ -2616,11 +2795,11 @@ function renderFqdn(list) {
     if(state.filters.fqdnTypeFilter||state.filters.fqdnOwnerFilter||state.filters.fqdnGeoFilter) {
       // Show filtered results
     } else {
-      return filterHtml+`<div class="empty-state"><p>Enter a keyword above or select filters to view FQDN records.</p><button class="btn btn-primary mt-2" onclick="state.forceShowFqdn=true;renderContent()">Show All FQDN (${list.length} records)</button></div>`;
+      return filterHtml+`<div class="empty-state"><p>${T('fqdnPrompt')}</p><button class="btn btn-primary mt-2" onclick="state.forceShowFqdn=true;renderContent()">${T('fqdnShowAll',list.length)}</button></div>`;
     }
   }
 
-  if(filtered.length===0) return '<div class="empty-state">No matching FQDN records found.</div>';
+  if(filtered.length===0) return `<div class="empty-state">${T('noFqdn')}</div>`;
   const sorted=[...filtered].sort((a,b)=>smartSort(a,b,fqdnSortState.key,fqdnSortState.dir));
   const display=sorted.slice(0,2000);
   const arrow=(k)=>fqdnSortState.key===k?`<span class="sort-arrow">${fqdnSortState.dir==='asc'?'▲':'▼'}</span>`:'';
@@ -2632,7 +2811,7 @@ function renderFqdn(list) {
     <select class="filter-select" onchange="state.filters.fqdnOwnerFilter=this.value;renderContent()"><option value="">Owner (All)</option>${Array.from(owners).sort().map(o=>`<option value="${esc(o)}" ${state.filters.fqdnOwnerFilter===o?'selected':''}>${esc(o)}</option>`).join('')}</select>
     <select class="filter-select" onchange="state.filters.fqdnGeoFilter=this.value;renderContent()"><option value="">Geo (All)</option>${Array.from(geos).sort().map(g=>`<option value="${esc(g)}" ${state.filters.fqdnGeoFilter===g?'selected':''}>${esc(g)}</option>`).join('')}</select>
   </div>`;
-  return filterHtml+`<div class="stats-bar">Total: ${filtered.length} record(s)${filtered.length>2000?' (showing first 2000)':''}</div>
+  return filterHtml+`<div class="stats-bar">${filtered.length>2000?T('statsFqdnCapped',filtered.length):T('statsFqdn',filtered.length)}</div>
     <table class="fqdn-table"><thead><tr>
       <th onclick="sortFqdn('owner')">Owner${arrow('owner')}</th>
       <th onclick="sortFqdn('domain')">Domain${arrow('domain')}</th>
@@ -2702,12 +2881,12 @@ function renderCopyTab(d) {
   let fieldSettingsHtml=`<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
     <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;min-width:200px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <b style="font-size:12px">Field Settings & Order</b>
+        <b style="font-size:12px">${T('fieldSettings')}</b>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
-        <button class="btn btn-sm" onclick="resetCopyFields()">Default</button>
-        <button class="btn btn-sm" onclick="selectAllCopyFields()">Select All</button>
-        <button class="btn btn-sm" onclick="deselectAllCopyFields()">Deselect All</button>
+        <button class="btn btn-sm" onclick="resetCopyFields()">${T('btnDefault')}</button>
+        <button class="btn btn-sm" onclick="selectAllCopyFields()">${T('btnSelectAll')}</button>
+        <button class="btn btn-sm" onclick="deselectAllCopyFields()">${T('btnDeselectAll')}</button>
       </div>`;
   
   groupOrder.forEach(grp=>{
@@ -2735,25 +2914,25 @@ function renderCopyTab(d) {
   const hasAnyFilter=!!(state.appliedSearch||state.filters.fromZone||state.filters.toZone||state.filters.tag);
   let previewHtml=`<div style="flex:1;min-width:300px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-      <b style="font-size:12px;flex-shrink:0">Preview${copyData.length>0?` (first ${Math.min(copyData.length,copyDisplayLimit)} rows)`:''} ${copyData.length>0?`<span class="tab-count">${copyData.length} items</span>`:''}</b>
+      <b style="font-size:12px;flex-shrink:0">${T('previewLabel')}${copyData.length>0?` (first ${Math.min(copyData.length,copyDisplayLimit)} rows)`:''} ${copyData.length>0?`<span class="tab-count">${copyData.length} items</span>`:''}</b>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        ${isDirty?'<span class="text-sm" style="color:var(--yellow)">⚠️ Regenerate</span>':''}
-        <button class="btn btn-primary btn-sm" onclick="generateCopyData()" ${!hasAnyFilter?'disabled title="Enter a search term or select a filter first"':''}>Generate Preview</button>
-        <button class="btn btn-sm" onclick="copyTSV()" ${copyData.length===0?'disabled':''}>📋 Copy to Clipboard</button>
+        ${isDirty?`<span class="text-sm" style="color:var(--yellow)">${T('regenerateWarning')}</span>`:''}
+        <button class="btn btn-primary btn-sm" onclick="generateCopyData()" ${!hasAnyFilter?'disabled title="Enter a search term or select a filter first"':''}>${T('btnGenerate')}</button>
+        <button class="btn btn-sm" onclick="copyTSV()" ${copyData.length===0?'disabled':''}>${T('btnCopyClipboard')}</button>
       </div>
     </div>`;
 
   if(!hasAnyFilter){
-    previewHtml+=`<div class="empty-state" style="padding:30px">Enter a search term or select a zone/tag filter to enable preview generation.</div>`;
+    previewHtml+=`<div class="empty-state" style="padding:30px">${T('noPreviewFilter')}</div>`;
   } else if(copyData.length>0){
     const selFields=copyFields.filter(f=>f.selected);
     const showCount=Math.min(copyData.length,copyDisplayLimit);
     const previewCellVal=(key,val)=>MULTILINE_KEYS.has(key)&&val&&val.includes(', ')?val.split(', ').join(' / '):val;
     previewHtml+=`<div class="copy-preview"><table><thead><tr>${selFields.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead><tbody>${copyData.slice(0,showCount).map(row=>`<tr>${selFields.map(f=>{const v=previewCellVal(f.key,row[f.key]||'');return `<td title="${esc(v)}">${esc(v)}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`;
-    if(copyData.length>showCount) previewHtml+=`<div style="text-align:center;margin-top:8px"><button class="btn btn-sm" onclick="copyDisplayLimit+=50;renderContent()">Load More (${showCount}/${copyData.length})</button></div>`;
-    else previewHtml+=`<div class="text-sm text-muted mt-2">Total: ${copyData.length} rows (all shown)</div>`;
+    if(copyData.length>showCount) previewHtml+=`<div style="text-align:center;margin-top:8px"><button class="btn btn-sm" onclick="copyDisplayLimit+=50;renderContent()">${T('loadMore',showCount,copyData.length)}</button></div>`;
+    else previewHtml+=`<div class="text-sm text-muted mt-2">${T('totalRows',copyData.length)}</div>`;
   } else {
-    previewHtml+=`<div class="empty-state" style="padding:30px">Click "Generate Preview" to see results.</div>`;
+    previewHtml+=`<div class="empty-state" style="padding:30px">${T('noPreview')}</div>`;
   }
   previewHtml+=`</div>`;
 
@@ -3040,16 +3219,16 @@ function copyTSV() {
 }
 
 function showCopyFeedback(){
-  const el=document.createElement('div');el.className='copy-feedback';el.textContent='✓ Copied to clipboard!';
+  const el=document.createElement('div');el.className='copy-feedback';el.textContent=T('copiedClipboard');
   document.body.appendChild(el);setTimeout(()=>el.remove(),1500);
 }
 
 function renderRawConfig() {
-  if(state.rawConfigs.length===0) return '<div class="empty-state">No configuration files imported.</div>';
+  if(state.rawConfigs.length===0) return `<div class="empty-state">${T('noConfigs')}</div>`;
   return state.rawConfigs.map(c=>`
     <div class="raw-config-block">
       <div class="raw-config-header"><span>${esc(c.filename)}</span></div>
-      <pre class="raw-config-pre">${esc(c.text.substring(0,50000))}${c.text.length>50000?'\n\n... (truncated)':''}</pre>
+      <pre class="raw-config-pre">${esc(c.text.substring(0,50000))}${c.text.length>50000?'\n\n'+T('truncated'):''}</pre>
     </div>
   `).join('');
 }
@@ -3070,7 +3249,7 @@ const PA_COLORS = {
 
 // Debug Tab
 function renderDebugTab() {
-  if(state.parsedConfigs.length===0) return '<div class="empty-state">No configuration files imported.</div>';
+  if(state.parsedConfigs.length===0) return `<div class="empty-state">${T('noConfigs')}</div>`;
   return state.parsedConfigs.map(c=>{
     const p=c.parsed;
     const tc=p.type==='PA'?'pa':(p.type==='FortiGate'?'fortigate':(p.type==='SRX'?'srx':'f5'));
@@ -3136,7 +3315,7 @@ function updateTagFilter() {
   const src = state.activeTab==='nat' ? 'natRules' : 'secRules';
   state.parsedConfigs.forEach(c=>(c.parsed[src]||[]).forEach(r=>(r.tag||[]).forEach(t=>tags.add(t))));
   const cur=state.filters.tag;
-  fillSelect('tagFilter','TAG (All)',tags);
+  fillSelect('tagFilter',T('tagAll'),tags);
   if(cur&&tags.has(cur)) document.getElementById('tagFilter').value=cur;
   else if(cur) state.filters.tag='';
 }
@@ -3147,8 +3326,8 @@ function updateFilterOptions() {
     (c.parsed.secRules||[]).forEach(r=>{(r.from||[]).forEach(z=>zones.add(z));(r.to||[]).forEach(z=>zones.add(z));});
     (c.parsed.natRules||[]).forEach(r=>{(r.from||[]).forEach(z=>zones.add(z));(r.to||[]).forEach(z=>zones.add(z));});
   });
-  fillSelect('fromZoneFilter','FROM ZONE (All)',zones);
-  fillSelect('toZoneFilter','TO ZONE (All)',zones);
+  fillSelect('fromZoneFilter',T('fromZoneAll'),zones);
+  fillSelect('toZoneFilter',T('toZoneAll'),zones);
   updateTagFilter();
   renderDeviceToggleBar();
 }
@@ -3157,13 +3336,13 @@ function renderDeviceToggleBar(){
   const bar=document.getElementById('sourceDeviceBar');
   if(!bar) return;
   const allActive=state.disabledHosts.size===0;
-  let html=`<span class="text-sm text-muted" style="font-weight:700;margin-right:4px">Source:</span>`;
-  html+=`<button class="device-toggle-btn ${allActive?'active all':''}" onclick="toggleAllDevices()">All (${state.parsedConfigs.length})</button>`;
+  let html=`<span class="text-sm text-muted" style="font-weight:700;margin-right:4px">${T('sourceLabel')}</span>`;
+  html+=`<button class="device-toggle-btn ${allActive?'active all':''}" onclick="toggleAllDevices()">${T('toggleAll',state.parsedConfigs.length)}</button>`;
   state.parsedConfigs.forEach(c=>{
     const p=c.parsed;
     const isDisabled=state.disabledHosts.has(p.hostname);
     const tc=p.type==='PA'?'pa':(p.type==='FortiGate'?'fortigate':(p.type==='SRX'?'srx':'f5'));
-    html+=`<button class="device-toggle-btn ${isDisabled?'disabled':'active '+tc}" onclick="toggleDevice('${esc(p.hostname)}')" title="${isDisabled?'Click to enable':'Click to disable'}">${esc(displayHostname(p.hostname))}</button>`;
+    html+=`<button class="device-toggle-btn ${isDisabled?'disabled':'active '+tc}" onclick="toggleDevice('${esc(p.hostname)}')" title="${isDisabled?T('clickEnable'):T('clickDisable')}">${esc(displayHostname(p.hostname))}</button>`;
   });
   bar.innerHTML=html;
 }
@@ -3226,32 +3405,56 @@ function updateStatusBar() {
   if (!el) return;
   if (_serverLastLoaded) {
     const d = new Date(_serverLastLoaded);
-    const fmt = d.toLocaleString('zh-TW', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-    el.textContent = `資料版本：${fmt}`;
+    const locale = state.lang === 'zh' ? 'zh-TW' : 'en-US';
+    const fmt = d.toLocaleString(locale, { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    el.textContent = T('statusData', fmt);
   } else {
-    el.textContent = '尚未載入';
+    el.textContent = T('statusNotLoaded');
   }
 }
 
 async function triggerReload() {
   const btn = document.getElementById('reloadBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '重載中...'; }
+  if (btn) { btn.disabled = true; btn.textContent = T('btnReloading'); }
   try {
     await fetch('/api/reload', { method: 'POST' });
     await loadFromServer();
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '🔄 重載'; }
+    if (btn) { btn.disabled = false; btn.textContent = T('btnReload'); }
   }
 }
 
 // ===== EVENT HANDLERS =====
 function switchTab(id){state.activeTab=id;updateTagFilter();renderContent();}
-function toggleSearchMode(){state.searchMode=state.searchMode==='keyword'?'exact':'keyword';document.getElementById('searchModeBtn').textContent=state.searchMode==='keyword'?'Keyword':'Exact';renderContent();}
-function toggleHighlight(){state.highlightEnabled=!state.highlightEnabled;const btn=document.getElementById('searchHlBtn');if(btn){btn.classList.toggle('on',state.highlightEnabled);btn.title=state.highlightEnabled?'Highlight ON — click to disable':'Highlight OFF — click to enable';}renderContent();}
+function toggleSearchMode(){state.searchMode=state.searchMode==='keyword'?'exact':'keyword';document.getElementById('searchModeBtn').textContent=T(state.searchMode==='keyword'?'searchModeKeyword':'searchModeExact');renderContent();}
+function toggleHighlight(){state.highlightEnabled=!state.highlightEnabled;const btn=document.getElementById('searchHlBtn');if(btn){btn.classList.toggle('on',state.highlightEnabled);btn.title=T(state.highlightEnabled?'hlOn':'hlOff');}renderContent();}
 function toggleSearchHelp(){const el=document.getElementById('searchHelpPopup');el.classList.toggle('hidden');}
 // Close search help on outside click
 document.addEventListener('click',e=>{const popup=document.getElementById('searchHelpPopup');const btn=document.getElementById('searchHelpBtn');if(popup&&!popup.classList.contains('hidden')&&!popup.contains(e.target)&&e.target!==btn){popup.classList.add('hidden');}});
-function toggleLang(){state.lang=state.lang==='en'?'zh':'en';document.getElementById('langBtn').textContent=state.lang==='en'?'EN':'中文';renderContent();}
+function toggleLang(){state.lang=state.lang==='en'?'zh':'en';document.getElementById('langBtn').textContent=state.lang==='en'?'EN':'中文';applyLang();renderContent();}
+function applyLang(){
+  const L=(id,key,...args)=>{const el=document.getElementById(id);if(el)el.textContent=T(key,...args);};
+  L('logoSub','logoSub');
+  const smBtn=document.getElementById('searchModeBtn');
+  if(smBtn)smBtn.textContent=T(state.searchMode==='keyword'?'searchModeKeyword':'searchModeExact');
+  const si=document.getElementById('searchInput');if(si)si.placeholder=T('searchPlaceholder');
+  const pa=document.getElementById('pasteArea');if(pa)pa.placeholder=T('pastePlaceholder');
+  L('lblIgnoreCidr','ignoreCidr');
+  const btnB=document.getElementById('btnBulk');if(btnB)btnB.textContent=T('btnBulk');
+  const btnI=document.getElementById('btnImportHeader');if(btnI)btnI.textContent=T('btnImport');
+  L('lblFilterSrc','filterSrc');L('lblFilterDst','filterDst');
+  L('lblHideDisabled','hideDisabled');L('lblDisabledOnly','disabledOnly');L('lblF5Disabled','f5Disabled');
+  L('lblExpand','btnExpand');L('lblCollapse','btnCollapse');L('btnClearFilters','btnClear');
+  L('importTitle','importTitle');L('importConfigTitle','importConfigTitle');
+  L('lblDropConfig','importDropConfig');L('lblDropFqdn','importDropFqdn');
+  L('importPasteSep','importPasteSep');L('btnImportPaste','importPasteBtn');
+  L('btnClearConfigs','importClearConfigs');L('btnClearFqdn','importClearFqdn');
+  L('bulkModalTitle','bulkTitle');L('lblBulkLogic','bulkLogic');
+  L('lblBulkOr','bulkOr');L('lblBulkAnd','bulkAnd');L('lblBulkAndNot','bulkAndNot');
+  L('btnBulkRun','bulkRun');L('btnBulkNew','bulkNew');
+  L('btnConfirmCancel','confirmCancel');L('btnConfirmOk','confirmOk');
+  updateStatusBar();
+}
 function sortFqdn(key){if(fqdnSortState.key===key)fqdnSortState.dir=fqdnSortState.dir==='asc'?'desc':'asc';else{fqdnSortState.key=key;fqdnSortState.dir='asc';}renderContent();}
 function toggleCopyField(idx){copyFields[idx].selected=!copyFields[idx].selected;renderContent();}
 
@@ -3329,7 +3532,7 @@ function renderStagedQueue(){
   const cq=document.getElementById('stagedConfigQueue');
   if(stagedConfigFiles.length>0){
     cq.classList.remove('hidden');
-    cq.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="text-sm" style="font-weight:600">Staged: ${stagedConfigFiles.length} file(s)</span><div><button class="btn btn-primary btn-sm" onclick="importStagedConfigs()">Import All</button> <button class="btn btn-sm" onclick="stagedConfigFiles=[];renderStagedQueue()">Clear</button></div></div>` +
+    cq.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="text-sm" style="font-weight:600">${T('stagedFiles',stagedConfigFiles.length)}</span><div><button class="btn btn-primary btn-sm" onclick="importStagedConfigs()">${T('btnImportAll')}</button> <button class="btn btn-sm" onclick="stagedConfigFiles=[];renderStagedQueue()">${T('btnClearQueue')}</button></div></div>` +
       stagedConfigFiles.map((f,i)=>`<div class="text-sm" style="padding:2px 0">${esc(f.name)} <button class="btn btn-sm" onclick="stagedConfigFiles.splice(${i},1);renderStagedQueue()" style="color:var(--red);padding:0 4px">✕</button></div>`).join('');
   } else {
     cq.classList.add('hidden');cq.innerHTML='';
@@ -3338,7 +3541,7 @@ function renderStagedQueue(){
   const fq=document.getElementById('stagedFqdnQueue');
   if(stagedFqdnFilesList.length>0){
     fq.classList.remove('hidden');
-    fq.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="text-sm" style="font-weight:600">Staged FQDN: ${stagedFqdnFilesList.length} file(s)</span><div><button class="btn btn-primary btn-sm" onclick="importStagedFqdn()">Import All</button> <button class="btn btn-sm" onclick="stagedFqdnFilesList=[];renderStagedQueue()">Clear</button></div></div>` +
+    fq.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="text-sm" style="font-weight:600">${T('stagedFqdn',stagedFqdnFilesList.length)}</span><div><button class="btn btn-primary btn-sm" onclick="importStagedFqdn()">${T('btnImportAll')}</button> <button class="btn btn-sm" onclick="stagedFqdnFilesList=[];renderStagedQueue()">${T('btnClearQueue')}</button></div></div>` +
       stagedFqdnFilesList.map((f,i)=>`<div class="text-sm" style="padding:2px 0">${esc(f.name)} <button class="btn btn-sm" onclick="stagedFqdnFilesList.splice(${i},1);renderStagedQueue()" style="color:var(--red);padding:0 4px">✕</button></div>`).join('');
   } else {
     fq.classList.add('hidden');fq.innerHTML='';
@@ -3506,7 +3709,7 @@ function addConfig(filename,text){
 function removeConfig(id){
   const cfg=state.parsedConfigs.find(c=>c.id===id);
   const name=cfg?displayHostname(cfg.parsed.hostname):'this device';
-  showConfirm('Remove Device',`Are you sure you want to remove ${name}?`,()=>{
+  showConfirm(T('confirmRemoveTitle'),T('confirmRemoveMsg',name),()=>{
     state.rawConfigs=state.rawConfigs.filter(c=>c.id!==id);
     state.parsedConfigs=state.parsedConfigs.filter(c=>c.id!==id);
     updateDeviceList();renderContent();
@@ -3514,14 +3717,14 @@ function removeConfig(id){
 }
 
 function clearAllConfigs(){
-  showConfirm('Clear All Configs','Are you sure you want to clear all imported configs?',()=>{
+  showConfirm(T('confirmClearTitle'),T('confirmClearMsg'),()=>{
     state.rawConfigs=[];state.parsedConfigs=[];
     updateDeviceList();renderContent();
   });
 }
 
 function clearAllFqdn(){
-  showConfirm('Clear FQDN Data','Are you sure you want to clear all FQDN data?',()=>{
+  showConfirm(T('confirmClearFqdnTitle'),T('confirmClearFqdnMsg'),()=>{
     state.fqdnRecords=[];state.forceShowFqdn=false;
     updateDeviceList();renderContent();
   });
@@ -3534,11 +3737,11 @@ function updateDeviceList(){
     const p=c.parsed;
     const typeClass=p.type==='PA'?'pa':(p.type==='FortiGate'?'fortigate':(p.type==='SRX'?'srx':'f5'));
     const typeLabel=p.type==='PA'?'Palo Alto':(p.type==='FortiGate'?'FortiGate':(p.type==='SRX'?'Juniper SRX':'F5'));
-    const info=p.type==='F5'?`${p.virtuals.length} VS, ${p.pools.length} Pools`:`${(p.secRules||[]).length} Sec, ${(p.natRules||[]).length} NAT, ${(p.routes||[]).length} Routes`;
+    const info=p.type==='F5'?T('devInfoF5',p.virtuals.length,p.pools.length):T('devInfoFw',(p.secRules||[]).length,(p.natRules||[]).length,(p.routes||[]).length);
     html+=`<div class="device-item"><div><span class="device-type ${typeClass}">${typeLabel}</span> <b>${esc(displayHostname(p.hostname))}</b> <span class="text-sm text-muted">(${c.filename}) — ${info}</span></div><button class="btn btn-sm" onclick="removeConfig('${c.id}')" style="color:var(--red)">✕</button></div>`;
   });
   if(state.fqdnRecords.length>0){
-    html+=`<div class="device-item"><div><span class="device-type" style="background:#ECFDF5;color:#16A34A">FQDN</span> <b>${state.fqdnRecords.length} records</b></div></div>`;
+    html+=`<div class="device-item"><div><span class="device-type" style="background:#ECFDF5;color:#16A34A">FQDN</span> <b>${T('devFqdnRecords',state.fqdnRecords.length)}</b></div></div>`;
   }
   el.innerHTML=html;
 }
@@ -3601,7 +3804,7 @@ function renderSearchHistory() {
   if(filtered.length===0){el.classList.add('hidden');return;}
   const badgeColors = {keyword:'keyword',ip:'ip',cidr:'cidr',fqdn:'fqdn'};
   el.innerHTML=
-    `<div class="search-history-label">Recent Searches</div>`+
+    `<div class="search-history-label">${T('recentSearches')}</div>`+
     filtered.slice(0,12).map((h,i)=>{
       const q=_hq(h), type=_ht(h), tm=_htime(h);
       return `<div class="search-history-item" onclick="selectHistory(${i})">
@@ -3609,7 +3812,7 @@ function renderSearchHistory() {
         <span class="remove-btn" onclick="event.stopPropagation();removeHistory(${i})">&times;</span>
       </div>`;
     }).join('')+
-    `<button class="sh-clear-all" onclick="event.stopPropagation();clearAllHistory()">Clear History</button>`;
+    `<button class="sh-clear-all" onclick="event.stopPropagation();clearAllHistory()">${T('clearHistory')}</button>`;
 }
 
 function selectHistory(idx) {
@@ -3723,6 +3926,7 @@ document.getElementById('searchInput').addEventListener('keydown',e=>{
 });
 
 // ===== INIT =====
+applyLang();
 renderContent();
 loadFromServer();
 </script>
