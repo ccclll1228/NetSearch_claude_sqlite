@@ -4,6 +4,18 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [1.5.0] - 2026-04-05
+
+### Fixed
+- **Sec Rules 欄位標題覆蓋問題** — 向下捲動時 rule card 內容會蓋過 sticky 欄位標題列。根本原因：disabled rule card 的 `opacity`/`filter` 觸發 stacking context，在某些渲染路徑下覆蓋 sticky header。修正方式：`.rule-card` 加上 `position:relative; z-index:1`，`.rule-body-header` z-index 從 `3` 提升至 `10`，確保欄位標題永遠在最上層。
+
+### Removed
+- **`NetSearch-prototype.html`** — 原始單檔 prototype，功能已完整移植至 `server.js` + `public/index.html`，不再需要。
+- **`requirements.txt`** — 以 Python pip 格式撰寫的 Node.js 依賴說明，內容與 `package.json` 重複且格式錯誤。
+- **`docs/superpowers/`** — Backend 設計 spec 與實作計畫（`2026-04-04-netsearch-backend-design.md`、`2026-04-04-netsearch-backend.md`），功能已全數實作完成，僅為歷史文件。
+
+---
+
 ## [1.4.0] - 2026-04-05
 
 ### Added
