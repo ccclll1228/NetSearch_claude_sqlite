@@ -4,6 +4,18 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [1.8.0] - 2026-04-12
+
+### Performance
+
+- **Tab 切換加速（~80%）** — `switchTab()` 改傳 `expandOnly=true` 當快取有效時，跳過 `getFilteredData()` 重算
+- **Objects tab 展開群組加速（~90%+）** — `togglePill()` 對 `obj_grp_*` pid 改為 targeted DOM patch：直接更新單一群組卡片的 members div，完全不觸發 `renderContent()`
+- **群組 HTML 快取** — `_groupTreeHtmlCache` 記住每個已展開群組的 HTML 輸出，收合後再展開同一群組幾乎瞬間（`_groupTreeHtmlCache.clear()` 在每次全量 render 時清除）
+- **Sec/NAT Rules pill 展開加速** — 新增 `renderOnePill()` helper、`_pillContext` map（pid → 渲染資料），`togglePill()` 改用 `querySelectorAll('[data-ppid]')` 就地替換 pill 的 `outerHTML`，不重繪整個規則 tab
+- **NAT Rules 展開/收合按鈕** — 每條 NAT rule header 加入與 Sec Rules 一致的「展開全部」／「收合全部」按鈕；`renderPills()` 補上 `ruleKey` ctx，使各條規則 pill 展開狀態相互獨立，並套用 pill targeted patch 優化
+
+---
+
 ## [1.7.0] - 2026-04-05
 
 ### Changed

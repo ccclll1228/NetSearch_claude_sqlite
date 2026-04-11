@@ -2243,8 +2243,11 @@ function renderTabs() {
 
 let _cachedFilterData = null;
 let _filterCacheDirty = true;
+let _lastObjGroupMeta = new Map(); // key: outerPid → {g, addresses_dict, groups_dict}
+const _groupTreeHtmlCache = new Map(); // key: outerPid → rendered member HTML string
+let _pillContext = new Map(); // key: pid → {item, type, parsed, ctx} for targeted pill updates
 
-function invalidateFilterCache() { _filterCacheDirty = true; }
+function invalidateFilterCache() { _filterCacheDirty = true; _groupTreeHtmlCache.clear(); }
 
 function renderContent(expandOnly=false) {
   let d;
@@ -2259,6 +2262,8 @@ function renderContent(expandOnly=false) {
       return `<button class="tab-btn ${state.activeTab===t.id?'active':''}" onclick="switchTab('${t.id}')">${t.label[state.lang]}${cn}</button>`;
     }).join('');
   } else {
+    _groupTreeHtmlCache.clear();
+    _pillContext.clear();
     d = renderTabs();
     // Cache tab counts for reuse
     const counts = {};
@@ -2374,50 +2379,98 @@ function renderGroupTree(name, addresses, groups, pathId, depth) {
   return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||name)}')" title="Search">${SVG_QS}</button></div>`;
 }
 
+// Renders a single pill's content (collapsed or expanded) — used by renderPills() and togglePill() fast path
+function renderOnePill(item, type, parsed, ctx, pid) {
+  const isExpanded = expandedPills.has('__ALL__') || expandedPills.has(pid);
+  const isMatched = state.highlightEnabled && state.searchAST && (() => {
+    if(!parsed) return false;
+    const terms = extractTerms(state.searchAST);
+    if(terms.some(t => item.toLowerCase().includes(t.toLowerCase()))) return true;
+    if(!terms.some(t => isCIDR(t) || isExactIP(t) || isIPish(t))) return false;
+    const resolved = type==='service' ? resolveService(item, parsed.services, parsed.serviceGroups) : resolveObject(item, parsed.addresses, parsed.groups);
+    return resolved.some(r => checkSingleResolvedMatch(r, type));
+  })();
+  const star = isMatched ? '<span class="pill-star">✦</span>' : '';
+  const hn = (parsed?.hostname||'').replace(/'/g,"\\'");
+  const copyBtn = `<button class="pill-cb" onclick="event.stopPropagation();copyPillText(pillCopyText('${esc(item)}','${hn}','${type}'))" title="Copy">${SVG_COPY}</button>`;
+  const qsBtn = `<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(item)}')" title="Search">${SVG_QS}</button>`;
+
+  if(isExpanded) {
+    const addresses = parsed?.addresses || {};
+    const grps = parsed?.groups || {};
+    if(type === 'object' && grps[item]) {
+      const members = grps[item];
+      const memberHtml = members.map(m => renderGroupTree(m, addresses, grps, pid, 1)).join('');
+      return `<div class="pill-expand-container" data-ppid="${esc(pid)}"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${members.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
+    }
+    const rawResolved = type==='service' ? resolveService(item, parsed?.services, parsed?.serviceGroups) : resolveObject(item, parsed?.addresses, parsed?.groups);
+    const resolved = rawResolved.filter(r => r.type !== 'group');
+    const memberHtml = resolved.map(r => {
+      const rMatched = state.highlightEnabled && state.searchAST && checkSingleResolvedMatch(r, type);
+      const val = r.value && r.value!==r.name && r.value!=='*' ? r.value : '';
+      return `<div class="pill-expand-member ${rMatched?'matched':''}"><span class="mem-name">${esc(r.name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||r.name)}')" title="Search">${SVG_QS}</button></div>`;
+    }).join('');
+    return `<div class="pill-expand-container" data-ppid="${esc(pid)}"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${resolved.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
+  }
+
+  return `<span class="pill expandable ${isMatched?'matched':''}" data-ppid="${esc(pid)}" onclick="togglePill('${esc(pid)}')" title="Click to expand">${esc(item)}${star}${qsBtn}${copyBtn}</span>`;
+}
+
 function renderPills(list, parsed, type='object', ctx='') {
   if(!list||list.length===0) return '<span class="text-muted text-sm">—</span>';
   return '<div class="pills">' + list.map(item => {
     const pid = ctx ? `${item}_${parsed?.hostname||''}_${ctx}` : `${item}_${parsed?.hostname||''}`;
-    const isExpanded = expandedPills.has('__ALL__') || expandedPills.has(pid);
-    const isMatched = state.highlightEnabled && state.searchAST && (() => {
-      if(!parsed) return false;
-      const terms = extractTerms(state.searchAST);
-      // Fast path: check pill name directly — avoids resolveObject for name searches
-      if(terms.some(t => item.toLowerCase().includes(t.toLowerCase()))) return true;
-      // Only resolve members for IP/CIDR searches (needed to highlight which group contains searched IP)
-      if(!terms.some(t => isCIDR(t) || isExactIP(t) || isIPish(t))) return false;
-      const resolved = type==='service' ? resolveService(item, parsed.services, parsed.serviceGroups) : resolveObject(item, parsed.addresses, parsed.groups);
-      return resolved.some(r => checkSingleResolvedMatch(r, type));
-    })();
-    const star = isMatched ? '<span class="pill-star">✦</span>' : '';
-    const hn = (parsed?.hostname||'').replace(/'/g,"\\'");
-    const copyBtn = `<button class="pill-cb" onclick="event.stopPropagation();copyPillText(pillCopyText('${esc(item)}','${hn}','${type}'))" title="Copy">${SVG_COPY}</button>`;
-    const qsBtn = `<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(item)}')" title="Search">${SVG_QS}</button>`;
-
-    if(isExpanded) {
-      const addresses = parsed?.addresses || {};
-      const grps = parsed?.groups || {};
-      if(type === 'object' && grps[item]) {
-        const members = grps[item];
-        const memberHtml = members.map(m => renderGroupTree(m, addresses, grps, pid, 1)).join('');
-        return `<div class="pill-expand-container"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${members.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
-      }
-      const rawResolved = type==='service' ? resolveService(item, parsed?.services, parsed?.serviceGroups) : resolveObject(item, parsed?.addresses, parsed?.groups);
-      const resolved = rawResolved.filter(r => r.type !== 'group');
-      const memberHtml = resolved.map(r => {
-        const rMatched = state.highlightEnabled && state.searchAST && checkSingleResolvedMatch(r, type);
-        const val = r.value && r.value!==r.name && r.value!=='*' ? r.value : '';
-        return `<div class="pill-expand-member ${rMatched?'matched':''}"><span class="mem-name">${esc(r.name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||r.name)}')" title="Search">${SVG_QS}</button></div>`;
-      }).join('');
-      return `<div class="pill-expand-container"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${resolved.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
-    }
-
-    return `<span class="pill expandable ${isMatched?'matched':''}" onclick="togglePill('${esc(pid)}')" title="Click to expand">${esc(item)}${star}${qsBtn}${copyBtn}</span>`;
+    _pillContext.set(pid, {item, type, parsed, ctx}); // store for targeted DOM updates
+    return renderOnePill(item, type, parsed, ctx, pid);
   }).join('') + '</div>';
 }
 
 
-function togglePill(pid) { if(expandedPills.has(pid)) expandedPills.delete(pid); else expandedPills.add(pid); renderContent(true); }
+function togglePill(pid) {
+  const wasExpanded = expandedPills.has(pid);
+  if(wasExpanded) expandedPills.delete(pid); else expandedPills.add(pid);
+
+  // Fast path: targeted DOM patch for Objects tab group cards
+  if(state.activeTab === 'objects' && pid.startsWith('obj_grp_')) {
+    const membersEl = document.getElementById('grpmembers-' + pid);
+    const arrowEl   = document.getElementById('grparrow-'   + pid);
+    if(membersEl && arrowEl) {
+      const nowExpanded = !wasExpanded;
+      const ARROW_COLLAPSE = `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>`;
+      const ARROW_EXPAND   = `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>`;
+      if(nowExpanded) {
+        const meta = _lastObjGroupMeta.get(pid);
+        if(!meta) { renderContent(true); return; }
+        let html = _groupTreeHtmlCache.get(pid);
+        if(!html) {
+          html = meta.g.members.map(m => renderGroupTreeFull(m, meta.addresses_dict, meta.groups_dict, 1)).join('');
+          _groupTreeHtmlCache.set(pid, html);
+        }
+        membersEl.innerHTML = html;
+      } else {
+        membersEl.innerHTML = '';
+      }
+      arrowEl.innerHTML = nowExpanded ? ARROW_COLLAPSE : ARROW_EXPAND;
+      return; // skip full renderContent
+    }
+  }
+
+  // Fast path: targeted pill update for Sec/NAT/other tabs
+  // Works for top-level expandable pills (those stored in _pillContext by renderPills)
+  // Sub-node pids (inside renderGroupTree) are NOT in _pillContext → fallback below
+  const pctx = _pillContext.get(pid);
+  if(pctx) {
+    const els = [...document.querySelectorAll(`[data-ppid="${CSS.escape(pid)}"]`)];
+    if(els.length > 0) {
+      const html = renderOnePill(pctx.item, pctx.type, pctx.parsed, pctx.ctx, pid);
+      els.forEach(el => { el.outerHTML = html; });
+      return;
+    }
+  }
+
+  // Fallback: full partial re-render (URL cats, nested sub-group nodes, etc.)
+  renderContent(true);
+}
 
 let expandedUrlCats = new Set();
 function renderUrlCategoryPill(name, parsed) {
@@ -2602,15 +2655,19 @@ function renderNatRules(rules) {
     const isCollapsed = collapsedGroups.has(gid);
     const cards = group.items.slice(0,500).map(r => {
       const globalIdx = _lastFilteredNatRules.indexOf(r);
+      const hn = r._parsed?.hostname || '';
+      const ruleKey = `nat_${globalIdx}`;
+      const expandableItems = [...(r.from||[]),...(r.to||[]),...(r.source||[]),...(r.destination||[]),...(r.service||[]),...(r.sourceTranslation||[]),...(r.destinationTranslation||[])];
+      _ruleExpandMap[ruleKey] = { hostname: hn, items: expandableItems, ctx: ruleKey };
       const cells = [
-        `<div class="rule-field"><div class="rule-field-label">${T('natFrom')}</div>${renderPills(r.from,r._parsed)}</div>`,
-        `<div class="rule-field"><div class="rule-field-label">${T('natTo')}</div>${renderPills(r.to,r._parsed)}</div>`,
-        `<div class="rule-field"><div class="rule-field-label">${T('natSource')}</div>${renderPills(r.source,r._parsed)}</div>`,
-        `<div class="rule-field"><div class="rule-field-label">${T('natDest')}</div>${renderPills(r.destination,r._parsed)}</div>`,
-        `<div class="rule-field"><div class="rule-field-label">${T('natService')}</div>${renderPills(r.service,r._parsed,'service')}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">${T('natFrom')}</div>${renderPills(r.from,r._parsed,'object',ruleKey)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">${T('natTo')}</div>${renderPills(r.to,r._parsed,'object',ruleKey)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">${T('natSource')}</div>${renderPills(r.source,r._parsed,'object',ruleKey)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">${T('natDest')}</div>${renderPills(r.destination,r._parsed,'object',ruleKey)}</div>`,
+        `<div class="rule-field"><div class="rule-field-label">${T('natService')}</div>${renderPills(r.service,r._parsed,'service',ruleKey)}</div>`,
       ];
-      if(hasSnat) cells.push(`<div class="rule-field"><div class="rule-field-label">${T('natSnat')}</div>${r.sourceTranslation&&r.sourceTranslation.length>0?renderPills(r.sourceTranslation,r._parsed):'<span style="color:var(--text-muted);font-size:11px">—</span>'}</div>`);
-      if(hasDnat) cells.push(`<div class="rule-field"><div class="rule-field-label">${T('natDnat')}</div>${r.destinationTranslation&&r.destinationTranslation.length>0?renderPills(r.destinationTranslation,r._parsed):'<span style="color:var(--text-muted);font-size:11px">—</span>'}</div>`);
+      if(hasSnat) cells.push(`<div class="rule-field"><div class="rule-field-label">${T('natSnat')}</div>${r.sourceTranslation&&r.sourceTranslation.length>0?renderPills(r.sourceTranslation,r._parsed,'object',ruleKey):'<span style="color:var(--text-muted);font-size:11px">—</span>'}</div>`);
+      if(hasDnat) cells.push(`<div class="rule-field"><div class="rule-field-label">${T('natDnat')}</div>${r.destinationTranslation&&r.destinationTranslation.length>0?renderPills(r.destinationTranslation,r._parsed,'object',ruleKey):'<span style="color:var(--text-muted);font-size:11px">—</span>'}</div>`);
       return `
     <div class="rule-card ${r.disabled?'rule-disabled':''} ${r._chainedFromFqdn?'chained':''}">
       <div class="rule-header">
@@ -2618,6 +2675,12 @@ function renderNatRules(rules) {
         <div style="display:flex;align-items:center;gap:4px">
           ${r.tag&&r.tag.length>0?r.tag.map(t=>`<span class="rule-tag-chip">${esc(t)}</span>`).join(''):''}
           <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredNatRules[${globalIdx}])" title="Copy">${SVG_COPY}</button>
+          <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();expandAllRulePills('${ruleKey}')" title="${T('titleExpandAll')}">
+            <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>
+          </button>
+          <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();collapseAllRulePills('${ruleKey}')" title="${T('titleCollapseAll')}">
+            <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>
+          </button>
         </div>
       </div>
       <div class="nat-rule-body" style="grid-template-columns:${tpl}">${cells.join('')}</div>
@@ -2643,6 +2706,7 @@ function renderRoutes(routes) {
 
 function renderObjects(addresses, groups) {
   if(addresses.length===0&&groups.length===0) return `<div class="empty-state">${T('noObjects')}</div>`;
+  _lastObjGroupMeta.clear();
   // Group by device
   const addrByDevice = new Map();
   addresses.forEach(a=>{if(!addrByDevice.has(a._hostname))addrByDevice.set(a._hostname,[]);addrByDevice.get(a._hostname).push(a);});
@@ -2686,21 +2750,30 @@ function renderObjects(addresses, groups) {
         const addresses_dict = g._parsed?.addresses || {};
         const groups_dict    = g._parsed?.groups    || {};
         const membersText = g.name+'\\n'+g.members.join('\\n');
-        const memberRows = isGrpExp
-          ? g.members.map(m => renderGroupTreeFull(m, addresses_dict, groups_dict, 1)).join('')
-          : '';
-        const arrow = isGrpExp
-          ? `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>`
-          : `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>`;
+        // Store meta for targeted DOM patch in togglePill()
+        _lastObjGroupMeta.set(outerPid, {g, addresses_dict, groups_dict});
+        // Render member rows (with tree cache)
+        let memberRows = '';
+        if(isGrpExp) {
+          if(_groupTreeHtmlCache.has(outerPid)) {
+            memberRows = _groupTreeHtmlCache.get(outerPid);
+          } else {
+            memberRows = g.members.map(m => renderGroupTreeFull(m, addresses_dict, groups_dict, 1)).join('');
+            _groupTreeHtmlCache.set(outerPid, memberRows);
+          }
+        }
+        const ARROW_COLLAPSE = `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>`;
+        const ARROW_EXPAND   = `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>`;
+        const arrow = isGrpExp ? ARROW_COLLAPSE : ARROW_EXPAND;
         return `<div class="obj-group-card${g._chained?' chained':''}">
           <div class="obj-group-header" onclick="event.stopPropagation();togglePill('${outerPid}')">
-            <span style="display:inline-flex;align-items:center;margin-right:6px;color:var(--accent)">${arrow}</span>
+            <span id="grparrow-${esc(outerPid)}" style="display:inline-flex;align-items:center;margin-right:6px;color:var(--accent)">${arrow}</span>
             <span class="obj-group-name">${esc(g.name)}</span>
             <span class="obj-group-count">(${g.members.length})</span>
             <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(g.name)}')" title="Search" style="margin-left:auto">${SVG_QS}</button>
             <button class="rule-copy-btn" onclick="event.stopPropagation();navigator.clipboard.writeText('${esc(membersText)}')" title="Copy group name + all members">${SVG_COPY}</button>
           </div>
-          <div class="obj-group-members">${memberRows}</div>
+          <div id="grpmembers-${esc(outerPid)}" class="obj-group-members">${memberRows}</div>
         </div>`;
       }).join('');
       html+=`</div>`;
@@ -3458,7 +3531,7 @@ async function triggerReload() {
 }
 
 // ===== EVENT HANDLERS =====
-function switchTab(id){state.activeTab=id;updateTagFilter();renderContent();}
+function switchTab(id){state.activeTab=id;updateTagFilter();renderContent(!_filterCacheDirty&&!!_cachedFilterData);}
 function toggleSearchMode(){state.searchMode=state.searchMode==='keyword'?'exact':'keyword';document.getElementById('searchModeBtn').textContent=T(state.searchMode==='keyword'?'searchModeKeyword':'searchModeExact');renderContent();}
 function toggleHighlight(){state.highlightEnabled=!state.highlightEnabled;const btn=document.getElementById('searchHlBtn');if(btn){btn.classList.toggle('on',state.highlightEnabled);btn.title=T(state.highlightEnabled?'hlOn':'hlOff');}renderContent();}
 function toggleSearchHelp(){const el=document.getElementById('searchHelpPopup');el.classList.toggle('hidden');}
