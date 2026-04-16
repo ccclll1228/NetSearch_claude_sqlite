@@ -4,6 +4,20 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [1.9.0] - 2026-04-16
+
+### Added
+- **FQDN tab 一鍵複製篩選結果** — stats bar 新增 `Copy Columns ▾` 下拉選欄位 + `Copy` 按鈕：
+  - `Copy Columns ▾`：點開後顯示 6 個欄位的勾選框（Owner、Domain、FQDN、Type、IP、Geo），預設勾選 FQDN + IP
+  - 任意組合勾選後點 Copy，輸出 TSV 含 header 列，貼到 Excel 自動分欄
+  - 勾選狀態在篩選 / 排序 re-render 間保留，不重置
+  - 複製範圍為當前篩選全量（不受 2000 筆顯示上限影響）
+
+### Fixed
+- **FQDN 尾巴點（trailing dot）** — Domain、FQDN、IP 欄的結尾 `.` 在顯示、quickSearch、複製時一律去除（`customercare.asia.` → `customercare.asia`）；原始資料不動，搜尋 / 排序邏輯不受影響
+
+---
+
 ## [1.8.0] - 2026-04-12
 
 ### Performance

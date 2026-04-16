@@ -2548,6 +2548,16 @@ function copyRuleTSV(ruleData) {
 // Store filtered rules for copy access
 let _lastFilteredSecRules = [];
 let _lastFilteredNatRules = [];
+let _lastFilteredFqdnRows = [];
+const stripDot = s => String(s||'').replace(/\.$/,'');
+const FQDN_COPY_FIELDS = [
+  {key:'owner',   label:'Owner',  selected:false},
+  {key:'domain',  label:'Domain', selected:false},
+  {key:'fqdn',    label:'FQDN',   selected:true},
+  {key:'type',    label:'Type',   selected:false},
+  {key:'ip',      label:'IP',     selected:true},
+  {key:'geoInfo', label:'Geo',    selected:false},
+];
 
 function renderSecRules(rules) {
   if(rules.length===0) return `<div class="empty-state">${T('noSecRules')}</div>`;
@@ -2906,6 +2916,7 @@ function renderFqdn(list) {
 
   if(filtered.length===0) return `<div class="empty-state">${T('noFqdn')}</div>`;
   const sorted=[...filtered].sort((a,b)=>smartSort(a,b,fqdnSortState.key,fqdnSortState.dir));
+  _lastFilteredFqdnRows = sorted;
   const display=sorted.slice(0,2000);
   const arrow=(k)=>fqdnSortState.key===k?`<span class="sort-arrow">${fqdnSortState.dir==='asc'?'▲':'▼'}</span>`:'';
   // Build filter dropdowns
@@ -2916,7 +2927,8 @@ function renderFqdn(list) {
     <select class="filter-select" onchange="state.filters.fqdnOwnerFilter=this.value;renderContent()"><option value="">Owner (All)</option>${Array.from(owners).sort().map(o=>`<option value="${esc(o)}" ${state.filters.fqdnOwnerFilter===o?'selected':''}>${esc(o)}</option>`).join('')}</select>
     <select class="filter-select" onchange="state.filters.fqdnGeoFilter=this.value;renderContent()"><option value="">Geo (All)</option>${Array.from(geos).sort().map(g=>`<option value="${esc(g)}" ${state.filters.fqdnGeoFilter===g?'selected':''}>${esc(g)}</option>`).join('')}</select>
   </div>`;
-  return filterHtml+`<div class="stats-bar">${filtered.length>2000?T('statsFqdnCapped',filtered.length):T('statsFqdn',filtered.length)}</div>
+  const colPickerHtml=FQDN_COPY_FIELDS.map((f,i)=>`<label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;color:var(--text)"><input type="checkbox" ${f.selected?'checked':''} onchange="FQDN_COPY_FIELDS[${i}].selected=this.checked" style="accent-color:var(--accent);cursor:pointer">${f.label}</label>`).join('');
+  return filterHtml+`<div class="stats-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${filtered.length>2000?T('statsFqdnCapped',filtered.length):T('statsFqdn',filtered.length)}<details style="position:relative;display:inline-block"><summary style="list-style:none;cursor:pointer;padding:2px 7px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;color:var(--text-muted);background:var(--bg-card)">Copy Columns ▾</summary><div style="position:absolute;top:calc(100% + 4px);left:0;z-index:300;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4)">${colPickerHtml}</div></details><button class="rule-copy-btn" onclick="copyFqdnTSV()" title="Copy filtered results as TSV">${SVG_COPY} Copy</button></div>
     <table class="fqdn-table"><colgroup><col style="width:7%"><col style="width:13%"><col style="width:28%"><col style="width:11%"><col style="width:16%"><col style="width:8%"><col style="width:17%"></colgroup><thead><tr>
       <th onclick="sortFqdn('owner')">Owner${arrow('owner')}</th>
       <th onclick="sortFqdn('domain')">Domain${arrow('domain')}</th>
@@ -2925,7 +2937,18 @@ function renderFqdn(list) {
       <th onclick="sortFqdn('ip')">IP${arrow('ip')}</th>
       <th onclick="sortFqdn('geoInfo')">Geo${arrow('geoInfo')}</th>
       <th></th>
-    </tr></thead><tbody>${display.map(r=>`<tr${r._chainedFromRule?' style="border-left:3px solid var(--yellow)"':''}><td>${esc(r.owner)}</td><td>${esc(r.domain)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.domain)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.fqdn)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.fqdn)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type)}</td><td>${esc(r.ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.ip)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.geoInfo)}</td><td></td></tr>`).join('')}</tbody></table>`;
+    </tr></thead><tbody>${display.map(r=>{const d=stripDot(r.domain),fq=stripDot(r.fqdn),ip=stripDot(r.ip);return`<tr${r._chainedFromRule?' style="border-left:3px solid var(--yellow)"':''}><td>${esc(r.owner)}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type)}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.geoInfo)}</td><td></td></tr>`;}).join('')}</tbody></table>`;
+}
+
+function copyFqdnTSV() {
+  if(_lastFilteredFqdnRows.length===0) return;
+  const sel=FQDN_COPY_FIELDS.filter(f=>f.selected);
+  if(sel.length===0) return;
+  const header=sel.map(f=>f.label).join('\t');
+  const DOT_KEYS=new Set(['domain','fqdn','ip']);
+  const body=_lastFilteredFqdnRows.map(r=>sel.map(f=>(DOT_KEYS.has(f.key)?stripDot(r[f.key]):String(r[f.key]||'')).replace(/\t/g,' ')).join('\t')).join('\n');
+  const tsv=header+'\n'+body;
+  navigator.clipboard.writeText(tsv).then(()=>showCopyFeedback()).catch(()=>{const ta=document.createElement('textarea');ta.value=tsv;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showCopyFeedback();});
 }
 
 // Copy Tab
