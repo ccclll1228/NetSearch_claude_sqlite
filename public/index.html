@@ -2232,6 +2232,7 @@ function renderTabs() {
     objects:d.addresses.length+d.groups.length, f5_vs:d.f5Virtuals.length,
     f5_pools:d.f5Pools.length, fqdn:d.fqdnList.length, copy:'', raw:'', debug:''
   };
+  d._tabCounts = counts;
   const tb = document.getElementById('tabBar');
   tb.innerHTML = TABS.map(t => {
     const c = counts[t.id];
@@ -2265,10 +2266,6 @@ function renderContent(expandOnly=false) {
     _groupTreeHtmlCache.clear();
     _pillContext.clear();
     d = renderTabs();
-    // Cache tab counts for reuse
-    const counts = {};
-    TABS.forEach(t => { counts[t.id] = ''; });
-    d._tabCounts = d._tabCounts || counts;
     _cachedFilterData = d;
     _filterCacheDirty = false;
   }
