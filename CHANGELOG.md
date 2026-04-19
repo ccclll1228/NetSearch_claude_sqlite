@@ -4,6 +4,55 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.0.0] - 2026-04-19
+
+### Changed — IBM Carbon Design System 全面改版
+
+前端 UI 從自訂 Cyber 深色主題完整遷移至 IBM Carbon Design System（Light Theme）。所有 CSS 採 `--cds-*` token 命名，移除所有 rgba cyan/purple glow 殘留。
+
+**主題架構**
+- `--cds-*` token 系統 + alias bridge（`--bg`、`--accent` 等舊變數重導向至 `--cds-*`）
+- 主題：`#161616` Masthead + `#f4f4f4` Gray 10 body + `#ffffff` White cards
+- 字型：自架 IBM Plex Sans（UI）+ IBM Plex Mono（程式碼/IP）via `@fontsource`
+- `--cds-radius: 0px`（Carbon 方角）；Carbon Tag 例外使用 `--cds-radius-tag: 24px`
+
+**Masthead（Header）**
+- `#161616` Gray 100 底，48px 高，無 gradient
+- Search input：`#262626` 底，bottom-border only，Blue 40 focus
+- Buttons：0px radius，Carbon Secondary/Primary
+
+**Filter Bar + Device Chips + Tab Bar**
+- Filter bar：`layer-01` 白底，`border-subtle` 下邊框
+- Device toggle chips：Carbon Tag，`--cds-device-*` 語意 token（PA=Purple，FG=Red，F5=Blue，SRX=Teal）
+- Tab bar：`layer-01` 底，Blue 60 active indicator，tab count badge 使用 `highlight` token
+
+**Rule Cards + Data Tables**
+- Rule card：Carbon Tile，`layer-01` 底，`border-subtle` border；allow/deny/chained 左邊框使用 `support-*` token；hover 移除 cyan glow
+- Action badge：Carbon Tag，allow=Green 50，deny=Red 60
+- NAT col header / Data table th：`layer-02` 底，`font-sans` 12px/600
+- Device group header：`layer-02` 底，0px radius，hover 無 glow
+
+**Pills + Object Cards + F5 Cards**
+- Pill：`cds-background` 底，`border-subtle` border，0px radius；matched → `highlight` Blue 10
+- Pill expand header：`cds-interactive` Blue 60 底，白色文字（移除舊版黑字）
+- chain-pill：Carbon Tag，fqdn=Green / nat=Blue / dnat=Yellow
+- rule-tag-chip：`layer-02` 底，`text-secondary`，移除紫色 rgba
+- obj-card / f5-card / f5-pool-card：`layer-01` 底，0px radius
+- f5-pool-member-status：Carbon Tag，support tokens
+- ltm-dot：移除 glow
+
+**Modal + Overlays + Utilities**
+- Modal overlay：`rgba(0,0,0,0.5)`，移除 `backdrop-filter:blur`
+- Modal：`#ffffff` 白底，modal-header `layer-02` 底
+- Dropzone：`layer-02` 底，`border-subtle` 虛線；hover → `highlight` Blue 10
+- Bulk textarea：bottom-border only，focus outline 2px Blue 60
+- Copy feedback toast：`#defbe6`（Green 10 solid）底，深色文字，✓ icon
+- Search help popup：`#ffffff` solid 底，加強 shadow，OR/AND/NOT badge 改 solid Carbon Tag
+- Search hint bar：`#e0e0e0`（Gray 20）solid 底，全寬顯示，無邊框
+- Search history sh-badge：Carbon Tag 白字，type 對應 cds token
+
+---
+
 ## [1.9.0] - 2026-04-16
 
 ### Added
