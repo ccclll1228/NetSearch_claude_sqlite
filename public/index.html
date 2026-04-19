@@ -2395,12 +2395,14 @@ function expandAllRulePills(key) {
   const e = _ruleExpandMap[key]; if(!e) return;
   const parsed = state.parsedConfigs.find(c=>c.parsed.hostname===e.hostname)?.parsed;
   const groups = parsed?.groups || {};
+  const pids = [];
   e.items.forEach(item => {
     const pid = `${item}_${e.hostname}_${e.ctx}`;
     expandedPills.add(pid);
+    pids.push(pid);
     if(groups[item]) collectAllGroupTreeIds(item, groups, pid, expandedPills);
   });
-  renderContent(true);
+  _patchPidsDirect(pids);
 }
 function _materializeSentinel(tab) {
   const sentinel = `__ALL_${tab}__`;
@@ -2427,14 +2429,18 @@ function collapseAllRulePills(key) {
   _materializeSentinel(key.startsWith('sec_') ? 'sec' : 'nat');
   const parsed = state.parsedConfigs.find(c=>c.parsed.hostname===e.hostname)?.parsed;
   const groups = parsed?.groups || {};
-  const toRemove = new Set();
+  const pids = [];
   e.items.forEach(item => {
     const pid = `${item}_${e.hostname}_${e.ctx}`;
-    toRemove.add(pid);
-    if(groups[item]) collectAllGroupTreeIds(item, groups, pid, toRemove);
+    pids.push(pid);
+    expandedPills.delete(pid);
+    if(groups[item]) {
+      const treePids = new Set();
+      collectAllGroupTreeIds(item, groups, pid, treePids);
+      treePids.forEach(id => expandedPills.delete(id));
+    }
   });
-  toRemove.forEach(id => expandedPills.delete(id));
-  renderContent(true);
+  _patchPidsDirect(pids);
 }
 
 function pillCopyText(item, hostname, type) {
@@ -2578,7 +2584,16 @@ function togglePill(pid) {
     }
   }
 
-  // Fallback: full partial re-render (URL cats, nested sub-group nodes, etc.)
+  // Fallback: re-render the root pill that contains this nested node (e.g. sub-group tree clicks)
+  const rootPid = _findRootPid(pid);
+  if (rootPid) {
+    const rootCtx = _pillContext.get(rootPid);
+    const rootEls = [...document.querySelectorAll(`[data-ppid="${CSS.escape(rootPid)}"]`)];
+    if (rootEls.length > 0) {
+      rootEls.forEach(el => { if (el.isConnected) el.outerHTML = renderOnePill(rootCtx.item, rootCtx.type, rootCtx.parsed, rootCtx.ctx, rootPid); });
+      return;
+    }
+  }
   renderContent(true);
 }
 
@@ -3784,6 +3799,22 @@ function _patchPillsChunked(els) {
     if (i < els.length) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+}
+
+function _patchPidsDirect(pids) {
+  for (const pid of pids) {
+    const pctx = _pillContext.get(pid);
+    if (!pctx) continue;
+    document.querySelectorAll(`[data-ppid="${CSS.escape(pid)}"]`)
+      .forEach(el => { if (el.isConnected) el.outerHTML = renderOnePill(pctx.item, pctx.type, pctx.parsed, pctx.ctx, pid); });
+  }
+}
+
+function _findRootPid(pid) {
+  if (_pillContext.has(pid)) return pid;
+  const idx = pid.lastIndexOf('__');
+  if (idx === -1) return null;
+  return _findRootPid(pid.substring(0, idx));
 }
 
 function clearAllFilters(){
