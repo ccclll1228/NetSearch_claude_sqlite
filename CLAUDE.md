@@ -103,6 +103,10 @@ Single ~3600-line file. All CSS, JS, and HTML are inline. Key sections in order:
 `lib/parser.js` and `public/index.html` contain near-identical parser implementations. `lib/parser.js` is the server-side copy; the inline copy in `index.html` is used only for the drag-drop debug flow. If parsing logic changes, update both.
 
 
+## MCP Tools
+- Always use Context7 when referencing any library documentation
+- Before writing code using any npm package or framework, use Context7 to fetch up-to-date docs first
+
 ## Workflow Orchestration
 ### 1. Plan Mode Default
 - Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
