@@ -75,8 +75,15 @@ Single ~3600-line file. All CSS, JS, and HTML are inline. Key sections in order:
 
 - `_resolveObjCache` (WeakMap on `groups` object) caches full group resolution at depth=0
 - `_matchNameOnlyCache` (Map, cleared each `getFilteredData()` call) caches recursive group name walks
-- `allRuleIps` is capped at 50 entries before symmetric chaining to prevent O(N×M) freeze on large groups
+- `allRuleIps` is capped at 50 entries for routes/addresses/f5 chaining to prevent O(N×M) freeze on large groups
+- `allRuleIpsForFqdn` is uncapped — CIDRs pre-converted to `{num,mask}` pairs for fast bitwise IP matching in FQDN tab
 - `esc()` uses string replacement (not `createElement`) for HTML escaping
+- Pill expand/collapse uses targeted DOM patching — never calls `renderContent()` for expand/collapse actions:
+  - `_patchPillsChunked()` — rAF batches of 30 pills for Tab Expand/Collapse All (sec/nat)
+  - `_patchPidsDirect(pids)` — synchronous patch for single rule card expand/collapse
+  - `_findRootPid(pid)` — strips `__suffix` to locate top-level `_pillContext` entry for nested node toggle
+  - `_patchGeneration` counter — cancels stale rAF loops when a new render/patch starts
+- `_pillContext` Map (pid → `{item, type, parsed, ctx}`) and `_ruleExpandMap` (ruleKey → `{hostname, items, ctx}`) are populated during `renderPills()` and required by all DOM patch functions
 
 ### Configuration (`config/settings.json`)
 
