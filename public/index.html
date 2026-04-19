@@ -255,6 +255,10 @@ tr:hover .pill-qs, .obj-group-header:hover .pill-qs,
 }
 .filter-toggle:hover { background:var(--cds-layer-hover); }
 .filter-toggle input { accent-color:var(--cds-interactive); }
+/* Ignore CIDR lives in the dark header — force visible text and checkbox */
+label:has(#ignoreCidr) { color:#ffffff; }
+label:has(#ignoreCidr):hover { color:#161616; }
+#ignoreCidr { color-scheme:dark; accent-color:#78a9ff; }
 
 /* Device toggle chips — Carbon Tag style */
 .device-toggle-btn {
