@@ -1145,15 +1145,12 @@ function clearSearch() {
   state.search='';state.appliedSearch='';state.searchAST=null;
   copyData=[];
   document.getElementById('searchHint').innerHTML='';
-  document.getElementById('searchClear').style.display='none';
   renderContent();
 }
 
 function updateSearchHint() {
   const val=document.getElementById('searchInput').value.trim();
   const hint=document.getElementById('searchHint');
-  const clearBtn=document.getElementById('searchClear');
-  clearBtn.style.display=val?'block':'none';
   if(!val){hint.innerHTML='';return;}
   let modeKey='';
   if(state.ignoreCIDR){
@@ -2465,7 +2462,36 @@ function pillCopyText(item, hostname, type) {
     const srv=parsed?.services?.[item];
     return srv?`${item}\t${srv.protocol}/${srv.port}`:item;
   }
-  const resolved=resolveObject(item,parsed?.addresses,parsed?.groups).filter(r=>r.type!=='group'&&r.value&&r.value!==item&&r.value!=='*');
+  const addresses=parsed?.addresses||{};
+  const groups=parsed?.groups||{};
+  if(groups[item]){
+    const lines=[item];
+    const walk=(name,depth,seen)=>{
+      if(depth>12||seen.has(name))return;
+      const indent='  '.repeat(depth);
+      const members=groups[name];
+      if(!members){
+        const addr=addresses[name];
+        const val=addr&&addr.value&&addr.value!==name&&addr.value!=='*'?addr.value:'';
+        lines.push(indent+name+(val?'\t'+val:''));
+        return;
+      }
+      const seen2=new Set(seen);seen2.add(name);
+      members.forEach(m=>{
+        if(groups[m]){
+          lines.push(indent+m);
+          walk(m,depth+1,seen2);
+        }else{
+          const addr=addresses[m];
+          const val=addr&&addr.value&&addr.value!==m&&addr.value!=='*'?addr.value:'';
+          lines.push(indent+m+(val?'\t'+val:''));
+        }
+      });
+    };
+    walk(item,1,new Set());
+    return lines.join('\n');
+  }
+  const resolved=resolveObject(item,addresses,groups).filter(r=>r.type!=='group'&&r.value&&r.value!==item&&r.value!=='*');
   if(resolved.length===0) return item;
   if(resolved.length===1) return `${item}\t${resolved[0].value}`;
   return `${item}\n`+resolved.map(r=>`  ${r.name}\t${r.value}`).join('\n');
