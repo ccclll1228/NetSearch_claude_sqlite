@@ -1989,8 +1989,11 @@ function getFilteredData() {
   });
   const allRuleIps=new Set();
   Object.values(termRuleIpsMap).forEach(a=>a.forEach(ip=>allRuleIps.add(ip)));
+  // Snapshot before cap: FQDN chaining only needs IP-in-CIDR bitwise checks (cheap),
+  // so we keep all rule IPs for FQDN even when the group is large.
+  const allRuleIpsForFqdn=new Set(allRuleIps);
   // Searching a large address group (e.g. 243 members) populates allRuleIps with hundreds of IPs.
-  // Chaining every address/route/FQDN against that many IPs is O(N×M) and freezes the browser.
+  // Chaining every address/route/f5 against that many IPs is O(N×M) and freezes the browser.
   // Cap: if the set is too large the chaining would be too broad anyway, so skip it.
   if(allRuleIps.size > 50) allRuleIps.clear();
 
@@ -2225,6 +2228,13 @@ function getFilteredData() {
     });
   });
 
+// Pre-compute numeric ranges from rule IPs for fast FQDN IP-in-CIDR matching
+  const fqdnRuleIpRanges=[];
+  for(const rip of allRuleIpsForFqdn){
+    if(isExactIP(rip)){fqdnRuleIpRanges.push({num:ipToNum(rip)>>>0,mask:0xFFFFFFFF});}
+    else if(isCIDR(rip)){const[base,bits]=rip.split('/');const mask=bits==='32'?0xFFFFFFFF:(~(0xFFFFFFFF>>>+bits))>>>0;fqdnRuleIpRanges.push({num:(ipToNum(base)&mask)>>>0,mask});}
+  }
+
 // FQDN — with symmetric chaining: Rule IPs → match FQDN IP
   fqdnRecords.forEach(r => {
     let match=false;
@@ -2251,10 +2261,10 @@ function getFilteredData() {
       match=true; // no filter active — show all
     }
     // Symmetric: rule matched → its IPs → match this FQDN record's IP
-    if(!match && allRuleIps.size>0 && r.ip && r.ip.toLowerCase()!=='null' && isExactIP(r.ip)){
-      for(const rip of allRuleIps){
-        if(isExactIP(rip)&&r.ip===rip){match=true;chainedFromRule=true;break;}
-        if(isCIDR(rip)&&ipInCIDR(r.ip,rip)){match=true;chainedFromRule=true;break;}
+    if(!match && fqdnRuleIpRanges.length>0 && r.ip && r.ip.toLowerCase()!=='null' && isExactIP(r.ip)){
+      const rn=ipToNum(r.ip)>>>0;
+      for(const range of fqdnRuleIpRanges){
+        if(((rn&range.mask)>>>0)===range.num){match=true;chainedFromRule=true;break;}
       }
     }
     if(match) result.fqdnList.push({...r, _chainedFromRule:chainedFromRule});
