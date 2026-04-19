@@ -2398,8 +2398,29 @@ function expandAllRulePills(key) {
   });
   renderContent(true);
 }
+function _materializeSentinel(tab) {
+  const sentinel = `__ALL_${tab}__`;
+  if(!expandedPills.has(sentinel)) return;
+  expandedPills.delete(sentinel);
+  if(tab === 'sec' || tab === 'nat') {
+    const prefix = tab + '_';
+    for(const [key, e] of Object.entries(_ruleExpandMap)) {
+      if(!key.startsWith(prefix)) continue;
+      const parsed = state.parsedConfigs.find(c=>c.parsed.hostname===e.hostname)?.parsed;
+      const groups = parsed?.groups||{};
+      e.items.forEach(item => {
+        const pid = `${item}_${e.hostname}_${e.ctx}`;
+        expandedPills.add(pid);
+        if(groups[item]) collectAllGroupTreeIds(item, groups, pid, expandedPills);
+      });
+    }
+  } else if(tab === 'objects') {
+    for(const outerPid of _lastObjGroupMeta.keys()) expandedPills.add(outerPid);
+  }
+}
 function collapseAllRulePills(key) {
   const e = _ruleExpandMap[key]; if(!e) return;
+  _materializeSentinel(key.startsWith('sec_') ? 'sec' : 'nat');
   const parsed = state.parsedConfigs.find(c=>c.parsed.hostname===e.hostname)?.parsed;
   const groups = parsed?.groups || {};
   const toRemove = new Set();
@@ -2513,6 +2534,7 @@ function renderPills(list, parsed, type='object', ctx='') {
 
 
 function togglePill(pid) {
+  _materializeSentinel(state.activeTab);
   const wasExpanded = expandedPills.has(pid);
   if(wasExpanded) expandedPills.delete(pid); else expandedPills.add(pid);
 
