@@ -2336,6 +2336,9 @@ let _filterCacheDirty = true;
 let _lastObjGroupMeta = new Map(); // key: outerPid → {g, addresses_dict, groups_dict}
 const _groupTreeHtmlCache = new Map(); // key: outerPid → rendered member HTML string
 let _pillContext = new Map(); // key: pid → {item, type, parsed, ctx} for targeted pill updates
+const ARROW_COLLAPSE = `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>`;
+const ARROW_EXPAND   = `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>`;
+let _patchGeneration = 0;
 
 function invalidateFilterCache() { _filterCacheDirty = true; _groupTreeHtmlCache.clear(); }
 
@@ -2352,6 +2355,7 @@ function renderContent(expandOnly=false) {
       return `<button class="tab-btn ${state.activeTab===t.id?'active':''}" onclick="switchTab('${t.id}')">${t.label[state.lang]}${cn}</button>`;
     }).join('');
   } else {
+    _patchGeneration++; // cancel any in-flight rAF patch loops
     _groupTreeHtmlCache.clear();
     _pillContext.clear();
     d = renderTabs();
@@ -2544,8 +2548,6 @@ function togglePill(pid) {
     const arrowEl   = document.getElementById('grparrow-'   + pid);
     if(membersEl && arrowEl) {
       const nowExpanded = !wasExpanded;
-      const ARROW_COLLAPSE = `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>`;
-      const ARROW_EXPAND   = `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>`;
       if(nowExpanded) {
         const meta = _lastObjGroupMeta.get(pid);
         if(!meta) { renderContent(true); return; }
@@ -2880,8 +2882,6 @@ function renderObjects(addresses, groups) {
             _groupTreeHtmlCache.set(outerPid, memberRows);
           }
         }
-        const ARROW_COLLAPSE = `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>`;
-        const ARROW_EXPAND   = `<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>`;
         const arrow = isGrpExp ? ARROW_COLLAPSE : ARROW_EXPAND;
         return `<div class="obj-group-card${g._chained?' chained':''}">
           <div class="obj-group-header" onclick="event.stopPropagation();togglePill('${outerPid}')">
@@ -3710,24 +3710,49 @@ document.getElementById('secHideDisabled').addEventListener('change',e=>{state.f
 document.getElementById('secShowDisabledOnly').addEventListener('change',e=>{state.filters.secShowDisabledOnly=e.target.checked;state.filters.natShowDisabledOnly=e.target.checked;if(e.target.checked){state.filters.secHideDisabled=false;state.filters.natHideDisabled=false;}document.getElementById('secHideDisabled').checked=false;renderContent();});
 document.getElementById('showDisabledMembersOnly').addEventListener('change',e=>{state.filters.showDisabledMembersOnly=e.target.checked;renderContent();});
 
-function expandAllPills(){
-  if(state.activeTab==='f5_vs'){
-    if(_cachedFilterData) _cachedFilterData.f5Virtuals.forEach(vs=>f5LtmExpandedRows.add(vs.name));
+function expandAllPills() {
+  if (state.activeTab === 'f5_vs') {
+    if (_cachedFilterData) _cachedFilterData.f5Virtuals.forEach(vs => f5LtmExpandedRows.add(vs.name));
     renderContent(true);
+  } else if (state.activeTab === 'objects') {
+    expandedPills.add('__ALL_objects__');
+    for (const [outerPid, meta] of _lastObjGroupMeta) {
+      const membersEl = document.getElementById('grpmembers-' + outerPid);
+      const arrowEl   = document.getElementById('grparrow-'   + outerPid);
+      if (!membersEl || !arrowEl) continue;
+      let html = _groupTreeHtmlCache.get(outerPid);
+      if (!html) {
+        html = meta.g.members.map(m => renderGroupTreeFull(m, meta.addresses_dict, meta.groups_dict, 1)).join('');
+        _groupTreeHtmlCache.set(outerPid, html);
+      }
+      membersEl.innerHTML = html;
+      arrowEl.innerHTML = ARROW_COLLAPSE;
+    }
   } else {
     expandedPills.add(`__ALL_${state.activeTab}__`);
-    renderContent();
+    _materializeSentinel(state.activeTab);
+    _patchPillsChunked([...document.querySelectorAll('.pill.expandable[data-ppid]')]);
   }
 }
-function collapseAllPills(){
-  if(state.activeTab==='f5_vs'){
+function collapseAllPills() {
+  if (state.activeTab === 'f5_vs') {
     f5LtmExpandedRows.clear();
     renderContent(true);
+  } else if (state.activeTab === 'objects') {
+    expandedPills.delete('__ALL_objects__');
+    _clearTabPills('objects');
+    for (const outerPid of _lastObjGroupMeta.keys()) {
+      const membersEl = document.getElementById('grpmembers-' + outerPid);
+      const arrowEl   = document.getElementById('grparrow-'   + outerPid);
+      if (!membersEl || !arrowEl) continue;
+      membersEl.innerHTML = '';
+      arrowEl.innerHTML = ARROW_EXPAND;
+    }
   } else {
     const tab = state.activeTab;
     expandedPills.delete(`__ALL_${tab}__`);
     _clearTabPills(tab);
-    renderContent();
+    _patchPillsChunked([...document.querySelectorAll('.pill-expand-container[data-ppid]')]);
   }
 }
 function _clearTabPills(tab) {
@@ -3739,6 +3764,26 @@ function _clearTabPills(tab) {
     else if(tab === 'nat' && /_nat_\d+$/.test(pid)) toRemove.push(pid);
   }
   toRemove.forEach(pid => expandedPills.delete(pid));
+}
+
+function _patchPillsChunked(els) {
+  if (!els.length) return;
+  const gen = ++_patchGeneration;
+  const CHUNK = 30; let i = 0;
+  function tick() {
+    if (gen !== _patchGeneration) return; // cancelled by tab switch / filter change / new expand
+    const end = Math.min(i + CHUNK, els.length);
+    for (; i < end; i++) {
+      const el = els[i];
+      if (!el.isConnected) continue;
+      const pid = el.getAttribute('data-ppid');
+      const pctx = _pillContext.get(pid);
+      if (!pctx) continue;
+      el.outerHTML = renderOnePill(pctx.item, pctx.type, pctx.parsed, pctx.ctx, pid);
+    }
+    if (i < els.length) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }
 
 function clearAllFilters(){
