@@ -1939,6 +1939,7 @@ function getFilteredData() {
   });
   const allFqdnIps=new Set();
   Object.values(termFqdnIpsMap).forEach(a=>a.forEach(ip=>allFqdnIps.add(ip)));
+  _lastAllFqdnIps = allFqdnIps;
 
   // Rule→IP map (Symmetric Chaining): only positive terms to avoid NOT-branch terms
   // (e.g. DENY_NON_SERVICE) from matching rules and flooding allRuleIps with unrelated IPs
@@ -2347,6 +2348,7 @@ function renderTabs() {
 
 let _cachedFilterData = null;
 let _filterCacheDirty = true;
+let _lastAllFqdnIps = new Set(); // IPs resolved from FQDN records for the current search — used for pill highlight chaining
 let _lastObjGroupMeta = new Map(); // key: outerPid → {g, addresses_dict, groups_dict}
 const _groupTreeHtmlCache = new Map(); // key: outerPid → rendered member HTML string
 let _pillContext = new Map(); // key: pid → {item, type, parsed, ctx} for targeted pill updates
@@ -2517,7 +2519,19 @@ function renderOnePill(item, type, parsed, ctx, pid) {
     if(!parsed) return false;
     const terms = extractTerms(state.searchAST);
     if(terms.some(t => item.toLowerCase().includes(t.toLowerCase()))) return true;
-    if(!terms.some(t => isCIDR(t) || isExactIP(t) || isIPish(t))) return false;
+    const hasIPTerm = terms.some(t => isCIDR(t) || isExactIP(t) || isIPish(t));
+    if(!hasIPTerm) {
+      // Non-IP search (e.g. FQDN hostname): check if any FQDN-resolved IP falls within this pill's CIDR/IP
+      if(_lastAllFqdnIps.size === 0 || type === 'service') return false;
+      const resolved = resolveObject(item, parsed.addresses, parsed.groups);
+      return resolved.some(r => {
+        const v = r.value;
+        if(!v) return false;
+        if(isCIDR(v)) { for(const fip of _lastAllFqdnIps){if(ipInCIDR(fip,v))return true;} return false; }
+        if(isExactIP(v)) return _lastAllFqdnIps.has(v);
+        return false;
+      });
+    }
     const resolved = type==='service' ? resolveService(item, parsed.services, parsed.serviceGroups) : resolveObject(item, parsed.addresses, parsed.groups);
     return resolved.some(r => checkSingleResolvedMatch(r, type));
   })();
@@ -2642,7 +2656,14 @@ function checkSingleResolvedMatch(r, type) {
       return (r.name&&String(r.name).toLowerCase().includes(s))||(r.value&&String(r.value).toLowerCase().includes(s))||(r.port&&String(r.port).toLowerCase().includes(s));
     });
   }
-  return terms.some(t => matchObject(r.name, r.value, t, state.searchMode==='exact', state.ignoreCIDR));
+  if(terms.some(t => matchObject(r.name, r.value, t, state.searchMode==='exact', state.ignoreCIDR))) return true;
+  // Non-IP search: check if any FQDN-resolved IP falls in this member's CIDR/IP
+  if(_lastAllFqdnIps.size > 0 && !terms.some(t => isCIDR(t)||isExactIP(t)||isIPish(t))) {
+    const v = r.value;
+    if(v && isCIDR(v)) { for(const fip of _lastAllFqdnIps){if(ipInCIDR(fip,v))return true;} }
+    if(v && isExactIP(v)) return _lastAllFqdnIps.has(v);
+  }
+  return false;
 }
 
 function groupByDevice(items) {
