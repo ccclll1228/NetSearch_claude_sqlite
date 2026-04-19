@@ -2509,7 +2509,8 @@ function renderGroupTree(name, addresses, groups, pathId, depth) {
   }
   const addr = addresses && addresses[name];
   const val = addr && addr.value && addr.value !== name ? addr.value : '';
-  return `<div class="pill-expand-member" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||name)}')" title="Search">${SVG_QS}</button></div>`;
+  const rMatched = state.highlightEnabled && state.searchAST && checkSingleResolvedMatch({name, value: addr ? addr.value : ''}, 'object');
+  return `<div class="pill-expand-member ${rMatched?'matched':''}" style="${padStyle}"><span class="mem-name">${esc(name)}</span>${val?`<span class="mem-value">${esc(val)}</span>`:''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val||name)}')" title="Search">${SVG_QS}</button></div>`;
 }
 
 // Renders a single pill's content (collapsed or expanded) — used by renderPills() and togglePill() fast path
