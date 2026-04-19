@@ -1547,7 +1547,7 @@ const parsePAConfig = (text) => {
     const rtM=line.match(/virtual-router\s+\S+\s+routing-table\s+ip\s+static-route\s+("[^"]+"|'[^']+'|\S+)\s+(.*)/);
     if(rtM){const rn=String(rtM[1]).replace(/['"]/g,'');if(!acc.routes[rn])acc.routes[rn]={name:rn};const rest=rtM[2];
       const dm=rest.match(/^destination\s+(\S+)/);if(dm)acc.routes[rn].destination=String(dm[1]);
-      const nm=rest.match(/^nexthop\s+\S+\s+ip-address\s+(\S+)/);if(nm)acc.routes[rn].nexthop=String(nm[1]);
+      const nm=rest.match(/^nexthop\s+ip-address\s+(\S+)/);if(nm)acc.routes[rn].nexthop=String(nm[1]);
       const im=rest.match(/^interface\s+(\S+)/);if(im)acc.routes[rn].interface=String(im[1]);
       continue;
     }
@@ -2455,7 +2455,7 @@ function renderGroupTree(name, addresses, groups, pathId, depth) {
   if(groups && groups[name]) {
     const members = groups[name];
     const nodeId = `${pathId}__${esc(name)}`;
-    const isExp = expandedPills.has(nodeId);
+    const isExp = expandedPills.has(nodeId) || expandedPills.has(`__ALL_${state.activeTab}__`);
     const arrow = isExp ? '▼' : '▶';
     const subHtml = isExp ? members.map(m => renderGroupTree(m, addresses, groups, nodeId, depth+1)).join('') : '';
     return `<div class="pill-expand-member" style="${padStyle};cursor:pointer" onclick="event.stopPropagation();togglePill('${nodeId}')"><span style="margin-right:4px;font-size:10px;color:var(--accent)">${arrow}</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button></div>${subHtml}`;
@@ -2467,7 +2467,7 @@ function renderGroupTree(name, addresses, groups, pathId, depth) {
 
 // Renders a single pill's content (collapsed or expanded) — used by renderPills() and togglePill() fast path
 function renderOnePill(item, type, parsed, ctx, pid) {
-  const isExpanded = expandedPills.has('__ALL__') || expandedPills.has(pid);
+  const isExpanded = expandedPills.has(`__ALL_${state.activeTab}__`) || expandedPills.has(pid);
   const isMatched = state.highlightEnabled && state.searchAST && (() => {
     if(!parsed) return false;
     const terms = extractTerms(state.searchAST);
@@ -2602,8 +2602,8 @@ function groupByDevice(items) {
   return Array.from(map.values());
 }
 
-function renderDeviceGroupHeader(group, totalCount) {
-  const gid = `grp_${group.hostname}`;
+function renderDeviceGroupHeader(group, gid) {
+  if(!gid) gid = `grp_${group.hostname}`;
   const isCollapsed = collapsedGroups.has(gid);
   const tc = group.type==='PA'?'pa':(group.type==='FortiGate'?'fortigate':(group.type==='SRX'?'srx':'f5'));
   const tl = group.type==='PA'?'Palo Alto':(group.type==='FortiGate'?'FortiGate':(group.type==='SRX'?'Juniper SRX':(group.type==='F5'?'F5':'')));
@@ -2781,7 +2781,7 @@ function renderNatRules(rules) {
       </div>
       <div class="nat-rule-body" style="grid-template-columns:${tpl}">${cells.join('')}</div>
     </div>`;}).join('');
-    return `<div class="device-group">${renderDeviceGroupHeader(group)}
+    return `<div class="device-group">${renderDeviceGroupHeader(group, gid)}
       <div class="device-group-body ${isCollapsed?'collapsed':''}">${headerRow}${cards}</div></div>`;
   }).join('');
 }
@@ -2795,7 +2795,7 @@ function renderRoutes(routes) {
     const isCollapsed = collapsedGroups.has(gid);
     const tableHtml = `<table class="route-table"><thead><tr><th>${T('colNum')}</th><th>${T('colName')}</th><th>${T('colDest')}</th><th>${T('colNexthop')}</th><th>${T('colIface')}</th></tr></thead>
       <tbody>${group.items.map((r,i)=>`<tr${r._chained?' style="border-left:3px solid var(--yellow)"':''}><td class="text-muted">${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.destination)}</td><td>${esc(r.nexthop)}</td><td>${esc(r.interface)}</td></tr>`).join('')}</tbody></table>`;
-    return `<div class="device-group">${renderDeviceGroupHeader(group)}
+    return `<div class="device-group">${renderDeviceGroupHeader(group, gid)}
       <div class="device-group-body ${isCollapsed?'collapsed':''}">${tableHtml}</div></div>`;
   }).join('');
 }
@@ -2821,7 +2821,7 @@ function renderObjects(addresses, groups) {
     const type=firstItem?._parsed?.type||'';
     
     html+=`<div class="device-group">`;
-    html+=renderDeviceGroupHeader({hostname:hn,type,items:[...devAddrs,...devGrps]});
+    html+=renderDeviceGroupHeader({hostname:hn,type,items:[...devAddrs,...devGrps]}, gid);
     html+=`<div class="device-group-body ${isCollapsed?'collapsed':''}" style="display:${isCollapsed?'none':'flex'};gap:16px;flex-wrap:wrap">`;
     
     // Addresses table
@@ -2842,7 +2842,7 @@ function renderObjects(addresses, groups) {
       html+=devGrps.map(g=>{
         const safeGName = g.name.replace(/'/g,"\\'");
         const outerPid = `obj_grp_${g.name}_${hn}`;
-        const isGrpExp = expandedPills.has(outerPid);
+        const isGrpExp = expandedPills.has(outerPid) || expandedPills.has(`__ALL_${state.activeTab}__`);
         const addresses_dict = g._parsed?.addresses || {};
         const groups_dict    = g._parsed?.groups    || {};
         const membersText = g.name+'\\n'+g.members.join('\\n');
@@ -3693,7 +3693,7 @@ function expandAllPills(){
     if(_cachedFilterData) _cachedFilterData.f5Virtuals.forEach(vs=>f5LtmExpandedRows.add(vs.name));
     renderContent(true);
   } else {
-    expandedPills=new Set(['__ALL__']);
+    expandedPills.add(`__ALL_${state.activeTab}__`);
     renderContent();
   }
 }
@@ -3702,9 +3702,21 @@ function collapseAllPills(){
     f5LtmExpandedRows.clear();
     renderContent(true);
   } else {
-    expandedPills=new Set();
+    const tab = state.activeTab;
+    expandedPills.delete(`__ALL_${tab}__`);
+    _clearTabPills(tab);
     renderContent();
   }
+}
+function _clearTabPills(tab) {
+  const toRemove = [];
+  for(const pid of expandedPills) {
+    if(pid.startsWith('__')) continue;
+    if(tab === 'objects' && pid.startsWith('obj_grp_')) toRemove.push(pid);
+    else if(tab === 'sec' && /_sec_\d+$/.test(pid)) toRemove.push(pid);
+    else if(tab === 'nat' && /_nat_\d+$/.test(pid)) toRemove.push(pid);
+  }
+  toRemove.forEach(pid => expandedPills.delete(pid));
 }
 
 function clearAllFilters(){
