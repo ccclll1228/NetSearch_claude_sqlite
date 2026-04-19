@@ -221,6 +221,10 @@ tr:hover .pill-qs, .obj-group-header:hover .pill-qs,
 .btn-icon { padding:0 12px; gap:6px; }
 .btn-expand-collapse { display:inline-flex; align-items:center; gap:4px; letter-spacing:0.16px; }
 .rule-expand-btn { display:inline-flex; align-items:center; justify-content:center; padding:0 6px; height:24px; }
+.btn-clear { background:transparent; color:var(--cds-support-error); border:1px solid var(--cds-support-error); }
+.btn-clear:hover { background:var(--cds-support-error); color:#ffffff; border-color:var(--cds-support-error); }
+.btn-danger { background:#da1e28; color:#ffffff; border:1px solid #da1e28; border-radius:0; }
+.btn-danger:hover { background:#b81922; border-color:#b81922; }
 
 /* ── Filter Bar — IBM Carbon toolbar ── */
 .filter-bar {
@@ -787,7 +791,7 @@ tr:hover .pill-qs, .obj-group-header:hover .pill-qs,
       <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>
       <span id="lblCollapse">Collapse</span>
     </button>
-    <button class="btn btn-sm" id="btnClearFilters" onclick="clearAllFilters()" style="color:var(--red)" title="Clear all filters">✕ Clear</button>
+    <button class="btn btn-sm btn-clear" id="btnClearFilters" onclick="clearAllFilters()" title="Clear all filters">✕ Clear</button>
   </div>
 
   <!-- Tabs -->
@@ -851,8 +855,8 @@ tr:hover .pill-qs, .obj-group-header:hover .pill-qs,
       </div>
 
       <div style="margin-top:16px;display:flex;gap:8px">
-        <button class="btn btn-sm" id="btnClearConfigs" onclick="clearAllConfigs()" style="color:var(--red)">Clear All Configs</button>
-        <button class="btn btn-sm" id="btnClearFqdn" onclick="clearAllFqdn()" style="color:var(--red)">Clear FQDN</button>
+        <button class="btn btn-sm btn-danger" id="btnClearConfigs" onclick="clearAllConfigs()">Clear All Configs</button>
+        <button class="btn btn-sm btn-danger" id="btnClearFqdn" onclick="clearAllFqdn()">Clear FQDN</button>
       </div>
     </div>
   </div>
