@@ -31,8 +31,8 @@ flowchart TD
         FE["Init / Data Fetch\nGET /api/data"]
         SE["Search Engine\nparseSearch → AST\nevaluateAST"]
         MA["Matchers\nresolveObject (WeakMap)\n_matchNameOnly (Map)\nobjectListMatchesSearch"]
-        FI["getFilteredData()\nfromZone / toZone / tag\nsrc / dst / disabled\nsymmetric chaining"]
-        RE["Renderers\nrenderSecRules\nrenderNatRules\nrenderRoutes\nrenderObjects\nrenderF5Virtuals\nrenderF5Pools"]
+        FI["getFilteredData()\nfromZone / toZone / tag\nsrc / dst / disabled\nsymmetric chaining\nFQDN IP chaining"]
+        RE["Renderers\nrenderSecRules\nrenderNatRules\nrenderRoutes\nrenderObjects\nrenderF5Virtuals\nrenderF5Pools\nrenderFqdnCopy"]
         PR["Inline Parsers\n(drag-drop debug only)"]
     end
 
