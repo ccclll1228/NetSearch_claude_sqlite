@@ -3376,66 +3376,34 @@ function generateCopyData() {
     return row;
   };
 
-  // ===== Phase 2: FQDN-driven Matching =====
-  if(d.fqdnList && d.fqdnList.length>0){
-    d.fqdnList.forEach(fRec=>{
-      if(!fRec.ip || fRec.ip==='null') return; // skip FQDNs with no IP
-
-      const matchedSec = allSecRules.filter(sec => {
-        if (sec._used) return false;
-        for (const ip of getRuleIps(sec, null)) {
-          if (matchFqdnToIp(ip, fRec)) return true;
-        }
-        return false;
-      });
-
-      // Skip orphan FQDNs that have no matching SEC rule
-      if(matchedSec.length===0) return;
-
-      matchedSec.forEach(sec => {
-        sec._used = true;
-        const matchedNat = allNatRules.find(nat =>
-          !nat._used &&
-          (!nat.hostname || !sec.hostname || nat.hostname === sec.hostname) &&
-          doNamesMatch(sec.rule, nat.rule)
-        );
-        if (matchedNat) matchedNat._used = true;
-        const vsList = getValidVsList(sec, matchedNat);
-        vsList.forEach(v => v._used = true);
-        rows.push(buildRow(fRec, sec, matchedNat, vsList));
-      });
-    });
-
-    // Sec rules not matched to any FQDN IP (e.g. found via rule-name search)
-    allSecRules.forEach(sec=>{
-      if(sec._used) return;
-      sec._used = true;
-      const matchedNat = allNatRules.find(nat =>
-        !nat._used &&
-        (!nat.hostname || !sec.hostname || nat.hostname === sec.hostname) &&
-        doNamesMatch(sec.rule, nat.rule)
-      );
-      if (matchedNat) matchedNat._used = true;
-      const vsList = getValidVsList(sec, matchedNat);
-      vsList.forEach(v => v._used = true);
+  // ===== Phase 2: Sec-rule-driven — one row per (sec rule × FQDN) pair =====
+  // Rule IPs are pre-computed once per sec rule (avoids repeated group resolution).
+  // ALL matching FQDNs are collected per rule so none are silently dropped.
+  // (Old FQDN-driven loop set sec._used after the first match, causing every
+  //  subsequent FQDN for the same large-group rule to be skipped.)
+  allSecRules.forEach(sec => {
+    sec._used = true;
+    const ruleIps = Array.from(getRuleIps(sec, null));
+    const matchedFqdns = (d.fqdnList && d.fqdnList.length > 0 && ruleIps.length > 0)
+      ? d.fqdnList.filter(fRec => {
+          if (!fRec.ip || fRec.ip === 'null') return false;
+          return ruleIps.some(ip => matchFqdnToIp(ip, fRec));
+        })
+      : [];
+    const matchedNat = allNatRules.find(nat =>
+      !nat._used &&
+      (!nat.hostname || !sec.hostname || nat.hostname === sec.hostname) &&
+      doNamesMatch(sec.rule, nat.rule)
+    );
+    if (matchedNat) matchedNat._used = true;
+    const vsList = getValidVsList(sec, matchedNat);
+    vsList.forEach(v => v._used = true);
+    if (matchedFqdns.length === 0) {
       rows.push(buildRow(null, sec, matchedNat, vsList));
-    });
-  } else {
-    // No FQDN: Sec-driven approach
-    allSecRules.forEach(sec=>{
-      if(sec._used) return;
-      sec._used = true;
-      const matchedNat = allNatRules.find(nat =>
-        !nat._used &&
-        (!nat.hostname || !sec.hostname || nat.hostname === sec.hostname) &&
-        doNamesMatch(sec.rule, nat.rule)
-      );
-      if (matchedNat) matchedNat._used = true;
-      const vsList = getValidVsList(sec, matchedNat);
-      vsList.forEach(v => v._used = true);
-      rows.push(buildRow(null, sec, matchedNat, vsList));
-    });
-  }
+    } else {
+      matchedFqdns.forEach(fRec => rows.push(buildRow(fRec, sec, matchedNat, vsList)));
+    }
+  });
 
   // ===== Phase 3: Orphan NAT rules (not matched to any Sec rule) =====
   allNatRules.forEach(nat=>{
