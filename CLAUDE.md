@@ -98,6 +98,15 @@ Single ~3600-line file. All CSS, JS, and HTML are inline. Key sections in order:
 
 `type` can be `"auto"` (detected from file content) or explicit: `"fortigate"`, `"paloalto"`, `"srx"`, `"f5"`.
 
+### resolveObject() is flatten-only — never reuse for hierarchical output
+
+`resolveObject()` expands all address groups to a **flat leaf list** (no depth metadata).
+Use it for search/match scenarios only.
+
+For any output that must preserve tree structure (copy text, tree rendering), write a
+dedicated recursive walker that walks `groups[name]` directly, emitting each sub-group
+name line **before** recursing into its members. See `tasks/lessons.md` for the pattern.
+
 ### Duplicate Code Warning
 
 `lib/parser.js` and `public/index.html` contain near-identical parser implementations. `lib/parser.js` is the server-side copy; the inline copy in `index.html` is used only for the drag-drop debug flow. If parsing logic changes, update both.
