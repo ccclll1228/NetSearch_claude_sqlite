@@ -2496,7 +2496,23 @@ function pillCopyText(item, hostname, type) {
   if(resolved.length===1) return `${item}\t${resolved[0].value}`;
   return `${item}\n`+resolved.map(r=>`  ${r.name}\t${r.value}`).join('\n');
 }
-function copyPillText(text){navigator.clipboard.writeText(text).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);});showCopyFeedback();}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  return Promise.resolve();
+}
+
+function copyPillText(text){copyToClipboard(text).then(()=>showCopyFeedback());}
 function copyF5VsRow(name,ip,port,pool){copyPillText(`${name}\t${ip}\t${port}\t${pool}`);}
 
 // Fully-expanded tree (no per-node toggle) — used in Objects tab
@@ -2727,9 +2743,7 @@ function copyRuleTSV(ruleData) {
     return String(v||'');
   }).join('\t');
   const tsv = header+'\n'+row;
-  navigator.clipboard.writeText(tsv).then(()=>showCopyFeedback()).catch(()=>{
-    const ta=document.createElement('textarea');ta.value=tsv;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showCopyFeedback();
-  });
+  copyToClipboard(tsv).then(()=>showCopyFeedback());
 }
 
 // Store filtered rules for copy access
@@ -2933,7 +2947,7 @@ function renderObjects(addresses, groups) {
           <td style="font-weight:600;color:${a._chained?'var(--accent)':'var(--text)'}">${esc(a.name)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(a.name)}')" title="Search">${SVG_QS}</button></td>
           <td><span class="obj-card-type">${esc(a.type)}</span></td>
           <td>${esc(a.value)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(a.value)}')" title="Search">${SVG_QS}</button></td>
-          <td><button class="rule-copy-btn" onclick="navigator.clipboard.writeText('${esc(a.name)}\\t${esc(a.value)}')" title="Copy name + value">${SVG_COPY}</button></td>
+          <td><button class="rule-copy-btn" onclick="copyToClipboard('${esc(a.name)}\\t${esc(a.value)}').then(()=>showCopyFeedback())" title="Copy name + value">${SVG_COPY}</button></td>
         </tr>`).join('')}</tbody></table></div>`;
     }
 
@@ -2966,7 +2980,7 @@ function renderObjects(addresses, groups) {
             <span class="obj-group-name">${esc(g.name)}</span>
             <span class="obj-group-count">(${g.members.length})</span>
             <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(g.name)}')" title="Search" style="margin-left:auto">${SVG_QS}</button>
-            <button class="rule-copy-btn" onclick="event.stopPropagation();navigator.clipboard.writeText('${esc(membersText)}')" title="Copy group name + all members">${SVG_COPY}</button>
+            <button class="rule-copy-btn" onclick="event.stopPropagation();copyToClipboard('${esc(membersText)}').then(()=>showCopyFeedback())" title="Copy group name + all members">${SVG_COPY}</button>
           </div>
           <div id="grpmembers-${esc(outerPid)}" class="obj-group-members">${memberRows}</div>
         </div>`;
@@ -3133,7 +3147,7 @@ function copyFqdnTSV() {
   const DOT_KEYS=new Set(['domain','fqdn','ip']);
   const body=_lastFilteredFqdnRows.map(r=>sel.map(f=>(DOT_KEYS.has(f.key)?stripDot(r[f.key]):String(r[f.key]||'')).replace(/\t/g,' ')).join('\t')).join('\n');
   const tsv=header+'\n'+body;
-  navigator.clipboard.writeText(tsv).then(()=>showCopyFeedback()).catch(()=>{const ta=document.createElement('textarea');ta.value=tsv;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showCopyFeedback();});
+  copyToClipboard(tsv).then(()=>showCopyFeedback());
 }
 
 // Copy Tab
@@ -3495,9 +3509,7 @@ function copyTSV() {
     }).join('\t')
   ).join('\n');
   const tsv=header+'\n'+body;
-  navigator.clipboard.writeText(tsv).then(()=>{showCopyFeedback();}).catch(()=>{
-    const ta=document.createElement('textarea');ta.value=tsv;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showCopyFeedback();
-  });
+  copyToClipboard(tsv).then(()=>showCopyFeedback());
 }
 
 function showCopyFeedback(){
