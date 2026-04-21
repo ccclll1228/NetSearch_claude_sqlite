@@ -2614,6 +2614,7 @@
       lang: 'en',
       activeTab: 'sec',
       forceShowFqdn: false,
+      searchIndex: null,
       lastGeneratedSearch: '',
       lastGeneratedFilters: { fromZone: '', toZone: '', tag: '' },
       filters: {
@@ -3093,6 +3094,86 @@
         return false;
       }));
     };
+
+    // ===== SEARCH INDEX =====
+    // buildSearchIndex：載入/新增/移除 config 後呼叫一次，預建 IP→物件→規則反向索引
+    // 讓 getFilteredData() 的 IP 搜尋從 O(rules×objects) 降至 O(candidates)
+    function buildSearchIndex(parsedConfigs, fqdnRecords) {
+      const idx = {
+        // cidrList: [{cidr, objectName, device}] — 所有有 CIDR/IP 值的 address 物件
+        cidrList: [],
+        // ipToObjects: Map<ip_string, [{objectName, device}]> — 精確 IP → 物件
+        ipToObjects: new Map(),
+        // nameToRules: Map<"device|objectName", Set<rule>> — 物件名稱 → 直接包含它的規則
+        nameToRules: new Map(),
+        // memberToParents: Map<"device|objectName", Set<string "device|groupName">>
+        // — 反向群組成員索引，用於從 leaf 向上找 parent group → rules
+        memberToParents: new Map(),
+        // fqdnMap: Map<ip, [{fqdn, domain, owner, ...}]> — FQDN IP 快速查找
+        fqdnMap: new Map(),
+      };
+
+      const addIpObj = (ip, objectName, device) => {
+        if (!idx.ipToObjects.has(ip)) idx.ipToObjects.set(ip, []);
+        idx.ipToObjects.get(ip).push({ objectName, device });
+      };
+      const addParent = (memberKey, parentKey) => {
+        if (!idx.memberToParents.has(memberKey)) idx.memberToParents.set(memberKey, new Set());
+        idx.memberToParents.get(memberKey).add(parentKey);
+      };
+      const addRuleLink = (objKey, rule) => {
+        if (!idx.nameToRules.has(objKey)) idx.nameToRules.set(objKey, new Set());
+        idx.nameToRules.get(objKey).add(rule);
+      };
+
+      (parsedConfigs || []).forEach(cfg => {
+        const parsed = cfg.parsed;
+        const device = parsed.hostname;
+        const { addresses, groups, secRules, natRules } = parsed;
+
+        // 建立 address → IP/CIDR 索引
+        Object.entries(addresses || {}).forEach(([name, addr]) => {
+          const v = addr.value;
+          if (!v) return;
+          const k = `${device}|${name}`;
+          if (isExactIP(v)) addIpObj(v, name, device);
+          else if (isCIDR(v)) idx.cidrList.push({ cidr: v, objectName: name, device });
+          // 同時收錄 name 本身（keyword 搜尋時用 nameToRules 做前綴匹配）
+        });
+
+        // 建立 group 反向成員索引
+        Object.entries(groups || {}).forEach(([groupName, members]) => {
+          const groupKey = `${device}|${groupName}`;
+          const mems = Array.isArray(members) ? members : Array.from(members);
+          mems.forEach(m => {
+            const memberKey = `${device}|${m}`;
+            addParent(memberKey, groupKey);
+          });
+        });
+
+        // 建立規則 → 物件 正向索引（同時記錄 rule→parsed 映射）
+        const indexRuleObjects = (rule, objLists) => {
+          _ruleParseMap.set(rule, parsed);
+          objLists.forEach(list => {
+            (list || []).forEach(objName => {
+              const k = `${device}|${objName}`;
+              addRuleLink(k, rule);
+            });
+          });
+        };
+        (secRules || []).forEach(r => indexRuleObjects(r, [r.source, r.destination]));
+        (natRules || []).forEach(r => indexRuleObjects(r, [r.source, r.destination, r.sourceTranslation, r.destinationTranslation]));
+      });
+
+      // FQDN IP 快速表（fqdnRecords 已存在才建）
+      (fqdnRecords || []).forEach(r => {
+        if (!r.ip || !isExactIP(r.ip)) return;
+        if (!idx.fqdnMap.has(r.ip)) idx.fqdnMap.set(r.ip, []);
+        idx.fqdnMap.get(r.ip).push(r);
+      });
+
+      return idx;
+    }
 
     // ===== PARSERS =====
     const parseValue = (str) => {
@@ -3647,50 +3728,105 @@
       const termRuleIpsMap = {};
       const searchSrcOnly = filters.filterSource && !filters.filterDest;
       const searchDstOnly = filters.filterDest && !filters.filterSource;
+
+      // IP 搜尋索引輔助：從 IP/CIDR 搜尋詞找命中物件，再沿 memberToParents 向上找規則
+      // 回傳 { candidateRules: Set<rule>, matchedKeys: Set<"device|objName"> }
+      const resolveIndexCandidates = (term, idx) => {
+        const hits = []; // [{objectName, device}]
+        const matchedKeys = new Set();
+        if (isExactIP(term)) {
+          (idx.ipToObjects.get(term) || []).forEach(h => hits.push(h));
+          idx.cidrList.forEach(e => { if (ipInCIDR(term, e.cidr)) hits.push(e); });
+        } else if (isCIDR(term)) {
+          idx.cidrList.forEach(e => { if (cidrOverlaps(term, e.cidr)) hits.push(e); });
+          idx.ipToObjects.forEach((arr, ip) => { if (ipInCIDR(ip, term)) arr.forEach(h => hits.push(h)); });
+        }
+        const candidateRules = new Set();
+        const seen = new Set();
+        const walk = (objectName, device) => {
+          const k = `${device}|${objectName}`;
+          if (seen.has(k)) return;
+          seen.add(k);
+          matchedKeys.add(k);
+          (idx.nameToRules.get(k) || new Set()).forEach(rule => candidateRules.add(rule));
+          (idx.memberToParents.get(k) || new Set()).forEach(parentKey => {
+            const [dev, grpName] = parentKey.split('|');
+            walk(grpName, dev);
+          });
+        };
+        hits.forEach(({ objectName, device }) => walk(objectName, device));
+        return { candidateRules, matchedKeys };
+      };
+
+      // 當次搜尋的索引命中物件集（供 checkSingleResolvedMatch 標記 ✦）
+      _matchedObjectKeys.clear();
+      // 各 term 對應的命中物件 key 集（供主過濾迴圈的 evaluateAST 快速判斷 IP 物件匹配）
+      const termMatchedKeysMap = {};
+
       positiveTerms.forEach(term => {
+        const isIPTerm = isCIDR(term) || isExactIP(term);
         const s = term.toLowerCase(), isExactMatch = searchMode === 'exact';
         const ips = new Set();
-        const checkMatch = (val) => { if (!val) return false; const sv = String(val).toLowerCase(); return isExactMatch ? sv === s : sv.includes(s); };
-        configs.forEach(parsed => {
-          // Collect IPs from matching security rules
-          (parsed.secRules || []).forEach(rule => {
-            const ruleNameMatch = checkMatch(rule.name);
-            const appMatch = (rule.application || []).some(a => checkMatch(a));
-            const svcMatch = serviceListMatchesSearch(rule.service, term, parsed.services, parsed.serviceGroups, searchMode);
-            const srcMatchObjs = []; const dstMatchObjs = [];
-            if (!searchDstOnly) (rule.source || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) srcMatchObjs.push(obj); });
-            if (!searchSrcOnly) (rule.destination || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) dstMatchObjs.push(obj); });
-            if (ruleNameMatch || appMatch || svcMatch || srcMatchObjs.length > 0 || dstMatchObjs.length > 0) {
-              const objsToResolve = [];
-              if (ruleNameMatch || appMatch || svcMatch) { if (!searchDstOnly) objsToResolve.push(...(rule.source || [])); if (!searchSrcOnly) objsToResolve.push(...(rule.destination || [])); }
-              else { objsToResolve.push(...srcMatchObjs, ...dstMatchObjs); }
-              objsToResolve.forEach(obj => resolveObject(obj, parsed.addresses, parsed.groups).forEach(r => {
-                if (r.value && (isCIDR(r.value) || isExactIP(r.value))) ips.add(r.value);
-              }));
-            }
+
+        if (isIPTerm && state.searchIndex) {
+          // IP 快速路徑：用索引找候選規則，不全掃
+          const { candidateRules, matchedKeys } = resolveIndexCandidates(term, state.searchIndex);
+          termMatchedKeysMap[term] = matchedKeys;
+          matchedKeys.forEach(k => _matchedObjectKeys.add(k));
+          candidateRules.forEach(rule => {
+            const parsed = _ruleParseMap.get(rule);
+            if (!parsed) return;
+            const objsToResolve = [];
+            if (!searchDstOnly) { objsToResolve.push(...(rule.source || [])); if (rule.sourceTranslation) objsToResolve.push(...rule.sourceTranslation); }
+            if (!searchSrcOnly) { objsToResolve.push(...(rule.destination || [])); if (rule.destinationTranslation) objsToResolve.push(...rule.destinationTranslation); }
+            objsToResolve.forEach(obj => resolveObject(obj, parsed.addresses, parsed.groups).forEach(r => {
+              if (r.value && (isCIDR(r.value) || isExactIP(r.value))) ips.add(r.value);
+            }));
           });
-          // Collect IPs from matching NAT rules
-          (parsed.natRules || []).forEach(rule => {
-            const ruleNameMatch = checkMatch(rule.name);
-            const svcMatch = serviceListMatchesSearch(rule.service, term, parsed.services, parsed.serviceGroups, searchMode);
-            const srcMatchObjs = []; const dstMatchObjs = [];
-            if (!searchDstOnly) {
-              (rule.source || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) srcMatchObjs.push(obj); });
-              (rule.sourceTranslation || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) srcMatchObjs.push(obj); });
-            }
-            if (!searchSrcOnly) {
-              (rule.destination || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) dstMatchObjs.push(obj); });
-              (rule.destinationTranslation || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) dstMatchObjs.push(obj); });
-            }
-            if (ruleNameMatch || svcMatch || srcMatchObjs.length > 0 || dstMatchObjs.length > 0) {
-              const objsToResolve = [...srcMatchObjs, ...dstMatchObjs];
-              if (ruleNameMatch || svcMatch) { if (!searchDstOnly) objsToResolve.push(...(rule.source || []), ...(rule.sourceTranslation || [])); if (!searchSrcOnly) objsToResolve.push(...(rule.destination || []), ...(rule.destinationTranslation || [])); }
-              objsToResolve.forEach(obj => resolveObject(obj, parsed.addresses, parsed.groups).forEach(r => {
-                if (r.value && (isCIDR(r.value) || isExactIP(r.value))) ips.add(r.value);
-              }));
-            }
+        } else {
+          // Keyword 搜尋或無索引時：原有全掃邏輯（fallback）
+          const checkMatch = (val) => { if (!val) return false; const sv = String(val).toLowerCase(); return isExactMatch ? sv === s : sv.includes(s); };
+          configs.forEach(parsed => {
+            // Collect IPs from matching security rules
+            (parsed.secRules || []).forEach(rule => {
+              const ruleNameMatch = checkMatch(rule.name);
+              const appMatch = (rule.application || []).some(a => checkMatch(a));
+              const svcMatch = serviceListMatchesSearch(rule.service, term, parsed.services, parsed.serviceGroups, searchMode);
+              const srcMatchObjs = []; const dstMatchObjs = [];
+              if (!searchDstOnly) (rule.source || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) srcMatchObjs.push(obj); });
+              if (!searchSrcOnly) (rule.destination || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) dstMatchObjs.push(obj); });
+              if (ruleNameMatch || appMatch || svcMatch || srcMatchObjs.length > 0 || dstMatchObjs.length > 0) {
+                const objsToResolve = [];
+                if (ruleNameMatch || appMatch || svcMatch) { if (!searchDstOnly) objsToResolve.push(...(rule.source || [])); if (!searchSrcOnly) objsToResolve.push(...(rule.destination || [])); }
+                else { objsToResolve.push(...srcMatchObjs, ...dstMatchObjs); }
+                objsToResolve.forEach(obj => resolveObject(obj, parsed.addresses, parsed.groups).forEach(r => {
+                  if (r.value && (isCIDR(r.value) || isExactIP(r.value))) ips.add(r.value);
+                }));
+              }
+            });
+            // Collect IPs from matching NAT rules
+            (parsed.natRules || []).forEach(rule => {
+              const ruleNameMatch = checkMatch(rule.name);
+              const svcMatch = serviceListMatchesSearch(rule.service, term, parsed.services, parsed.serviceGroups, searchMode);
+              const srcMatchObjs = []; const dstMatchObjs = [];
+              if (!searchDstOnly) {
+                (rule.source || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) srcMatchObjs.push(obj); });
+                (rule.sourceTranslation || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) srcMatchObjs.push(obj); });
+              }
+              if (!searchSrcOnly) {
+                (rule.destination || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) dstMatchObjs.push(obj); });
+                (rule.destinationTranslation || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) dstMatchObjs.push(obj); });
+              }
+              if (ruleNameMatch || svcMatch || srcMatchObjs.length > 0 || dstMatchObjs.length > 0) {
+                const objsToResolve = [...srcMatchObjs, ...dstMatchObjs];
+                if (ruleNameMatch || svcMatch) { if (!searchDstOnly) objsToResolve.push(...(rule.source || []), ...(rule.sourceTranslation || [])); if (!searchSrcOnly) objsToResolve.push(...(rule.destination || []), ...(rule.destinationTranslation || [])); }
+                objsToResolve.forEach(obj => resolveObject(obj, parsed.addresses, parsed.groups).forEach(r => {
+                  if (r.value && (isCIDR(r.value) || isExactIP(r.value))) ips.add(r.value);
+                }));
+              }
+            });
           });
-        });
+        }
         termRuleIpsMap[term] = Array.from(ips);
       });
       const allRuleIps = new Set();
@@ -3726,8 +3862,15 @@
               if ((r.application || []).some(chk)) return true;
               if ((r.from || []).some(chk)) return true;
               if ((r.to || []).some(chk)) return true;
-              // Source / destination (full address-object resolution)
               const am = isEx ? 'exact' : 'keyword';
+              // IP 快速路徑：直接查 termMatchedKeysMap，跳過 resolveObject
+              const mkeys = termMatchedKeysMap[term];
+              if (mkeys) {
+                const ms = !searchDstOnly ? (r.source || []).some(obj => mkeys.has(`${hn}|${obj}`)) : false;
+                const md = !searchSrcOnly ? (r.destination || []).some(obj => mkeys.has(`${hn}|${obj}`)) : false;
+                return ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+              }
+              // Source / destination (full address-object resolution — keyword fallback)
               const ms = !searchDstOnly ? objectListMatchesSearch(r.source, term, parsed.addresses, parsed.groups, am, ignoreCIDR) : false;
               const md = !searchSrcOnly ? objectListMatchesSearch(r.destination, term, parsed.addresses, parsed.groups, am, ignoreCIDR) : false;
               return ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
@@ -3772,6 +3915,13 @@
               if ((r.from || []).some(chk)) return true;
               if ((r.to || []).some(chk)) return true;
               const am = isEx ? 'exact' : 'keyword';
+              // IP 快速路徑：直接查 termMatchedKeysMap，跳過 resolveObject
+              const mkeys = termMatchedKeysMap[term];
+              if (mkeys) {
+                const ms = !searchDstOnly ? ((r.source || []).some(obj => mkeys.has(`${hn}|${obj}`)) || (r.sourceTranslation || []).some(obj => mkeys.has(`${hn}|${obj}`))) : false;
+                const md = !searchSrcOnly ? ((r.destination || []).some(obj => mkeys.has(`${hn}|${obj}`)) || (r.destinationTranslation || []).some(obj => mkeys.has(`${hn}|${obj}`))) : false;
+                return ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+              }
               const ms = !searchDstOnly ? (objectListMatchesSearch(r.source, term, parsed.addresses, parsed.groups, am, ignoreCIDR) || objectListMatchesSearch(r.sourceTranslation || [], term, parsed.addresses, parsed.groups, am, ignoreCIDR)) : false;
               const md = !searchSrcOnly ? (objectListMatchesSearch(r.destination, term, parsed.addresses, parsed.groups, am, ignoreCIDR) || objectListMatchesSearch(r.destinationTranslation || [], term, parsed.addresses, parsed.groups, am, ignoreCIDR)) : false;
               return ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
@@ -4054,6 +4204,8 @@
     let _cachedFilterData = null;
     let _filterCacheDirty = true;
     let _lastAllFqdnIps = new Set(); // IPs resolved from FQDN records for the current search — used for pill highlight chaining
+    let _matchedObjectKeys = new Set(); // 當次 IP 搜尋命中的 "device|objectName" 集合，供 checkSingleResolvedMatch 標記 ✦
+    const _ruleParseMap = new WeakMap(); // rule → parsed，避免直接掛屬性造成循環引用
     let _lastObjGroupMeta = new Map(); // key: outerPid → {g, addresses_dict, groups_dict}
     const _groupTreeHtmlCache = new Map(); // key: outerPid → rendered member HTML string
     let _pillContext = new Map(); // key: pid → {item, type, parsed, ctx} for targeted pill updates
@@ -4408,6 +4560,12 @@
         });
       }
       if (terms.some(t => matchObject(r.name, r.value, t, state.searchMode === 'exact', state.ignoreCIDR))) return true;
+      // IP 搜尋：索引命中物件名稱直接標記 ✦（解決 IP 搜尋時 pill 無高亮的 bug）
+      if (_matchedObjectKeys.size > 0 && r.name) {
+        for (const cfg of state.parsedConfigs) {
+          if (_matchedObjectKeys.has(`${cfg.parsed.hostname}|${r.name}`)) return true;
+        }
+      }
       // Non-IP search: check if any FQDN-resolved IP falls in this member's CIDR/IP
       if (_lastAllFqdnIps.size > 0 && !terms.some(t => isCIDR(t) || isExactIP(t) || isIPish(t))) {
         const v = r.value;
@@ -5390,6 +5548,7 @@
         const data = await res.json();
         state.parsedConfigs = data.parsedConfigs || [];
         state.fqdnRecords = data.fqdnRecords || [];
+        state.searchIndex = buildSearchIndex(state.parsedConfigs, state.fqdnRecords);
         _serverLastLoaded = data.lastLoaded;
         updateDeviceList();
         updateStatusBar();
@@ -5781,6 +5940,7 @@
       }
       state.rawConfigs.push({ id, filename, text });
       state.parsedConfigs.push({ id, filename, parsed });
+      state.searchIndex = buildSearchIndex(state.parsedConfigs, state.fqdnRecords);
       updateDeviceList();
       renderContent();
     }
@@ -5791,6 +5951,7 @@
       showConfirm(T('confirmRemoveTitle'), T('confirmRemoveMsg', name), () => {
         state.rawConfigs = state.rawConfigs.filter(c => c.id !== id);
         state.parsedConfigs = state.parsedConfigs.filter(c => c.id !== id);
+        state.searchIndex = buildSearchIndex(state.parsedConfigs, state.fqdnRecords);
         updateDeviceList(); renderContent();
       });
     }
@@ -5798,6 +5959,7 @@
     function clearAllConfigs() {
       showConfirm(T('confirmClearTitle'), T('confirmClearMsg'), () => {
         state.rawConfigs = []; state.parsedConfigs = [];
+        state.searchIndex = buildSearchIndex([], state.fqdnRecords);
         updateDeviceList(); renderContent();
       });
     }

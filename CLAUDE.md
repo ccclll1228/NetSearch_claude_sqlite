@@ -107,6 +107,15 @@ For any output that must preserve tree structure (copy text, tree rendering), wr
 dedicated recursive walker that walks `groups[name]` directly, emitting each sub-group
 name line **before** recursing into its members. See `tasks/lessons.md` for the pattern.
 
+### Frontend Design System
+
+`DESIGN.md` defines the IBM Carbon-inspired visual language used throughout the UI:
+- Single accent: IBM Blue 60 (`#0f62fe`) — buttons, links, focus states
+- 0px border-radius on all interactive elements (buttons, inputs, cards)
+- IBM Plex Sans (weight 300/400/600 only) + IBM Plex Mono for code/data
+- Depth via background-color layering (`#fff` → `#f4f4f4` → `#e0e0e0`), no box-shadows
+- Bottom-border inputs only (not boxed); 8px spacing grid throughout
+
 ### Duplicate Code Warning
 
 `lib/parser.js` and `public/index.html` contain near-identical parser implementations. `lib/parser.js` is the server-side copy; the inline copy in `index.html` is used only for the drag-drop debug flow. If parsing logic changes, update both.
