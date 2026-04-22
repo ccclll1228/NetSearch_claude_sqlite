@@ -1,8 +1,19 @@
 {
   "port": 3000,
-  "configFiles": [
-    { "path": "/path/to/FW01.txt", "type": "auto" },
-    { "path": "/path/to/LTM01.txt", "type": "auto" }
+  "backupRoot": "/home/oxidized/backups",
+  "devices": [
+    { "name": "FRI-LTM01",  "type": "f5" },
+    { "name": "FRI-LTM02",  "type": "f5" },
+    { "name": "FRI-FW01",   "type": "fortigate" },
+    { "name": "FRI-FW02",   "type": "fortigate" },
+    { "name": "GICT-LTM01", "type": "f5" },
+    { "name": "GICT-LTM02", "type": "f5" },
+    { "name": "GICT-FW01",  "type": "fortigate" },
+    { "name": "GICT-FW02",  "type": "fortigate" },
+    { "name": "SAT-LTM01",  "type": "f5" },
+    { "name": "SAT-LTM02",  "type": "f5" },
+    { "name": "SAT-FW01",   "type": "fortigate" },
+    { "name": "SAT-FW02",   "type": "fortigate" }
   ],
   "fqdnFile": "/path/to/all_fqdn.csv",
   "cronSchedule": ["0 5 * * *", "0 17 * * *"]
