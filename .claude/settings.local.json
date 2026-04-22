@@ -6,12 +6,32 @@
       "Bash(npm --version)",
       "mcp__Claude_Preview__preview_start",
       "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
       "Bash(npx @smithery/cli@latest skill add DennisLiuCk/frontend-design --agent claude-code)",
       "Bash(npm install:*)",
       "Bash(node -e \"const { parseConfig } = require\\('./lib/parser'\\); const result = parseConfig\\('set deviceconfig system hostname TEST-FW01'\\); console.log\\('type:', result.type, '| hostname:', result.hostname\\);\")",
       "Bash(taskkill /F /IM node.exe)",
       "Bash(timeout 8 node server.js)",
-      "Bash(npx ctx7 *)"
+      "Bash(npx ctx7 *)",
+      "Bash(npm run *)",
+      "Read(//root/.claude/**)",
+      "Bash(gh repo *)",
+      "WebFetch(domain:github.com)",
+      "Bash(claude --version)",
+      "Bash(claude plugin *)",
+      "Bash(npx ctx7@latest *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(node *)",
+      "Bash(git commit *)",
+      "Bash(kill 3754418)",
+      "Bash(node server.js)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s http://localhost:3001/api/status)",
+      "Bash(curl -s -X POST http://localhost:3001/api/reload)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "context7"
+  ]
 }

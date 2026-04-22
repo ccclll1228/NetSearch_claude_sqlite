@@ -28,9 +28,10 @@ curl http://localhost:3000/api/status
 NetSearch is a network config visualizer for firewall/LTM configs. The architecture separates parsing (server) from search/display (browser).
 
 ```
-Config files (local paths in config/settings.json)
+config/settings.json (backupRoot + devices[])
         ↓  on startup + cron (05:00, 17:00)
 server.js          — Express server, in-memory state, API routes
+lib/discovery.js   — Resolves latest backup file per device at load time
 lib/parser.js      — All config parsers (FortiGate, PaloAlto, SRX, F5)
 lib/scheduler.js   — node-cron triggers for auto-reload
 cache/parsed.json  — JSON snapshot written after each reload; read on restart
@@ -45,7 +46,16 @@ public/index.html  — ~3600-line single-file frontend (all CSS + JS inline)
 - Holds in-memory state: `parsedConfigs[]`, `fqdnRecords[]`, `lastLoaded`
 - On startup: reads `cache/parsed.json` immediately, then async-parses from disk
 - API routes: `GET /api/data`, `GET /api/status`, `POST /api/reload`
-- Config paths and cron schedule come from `config/settings.json`
+- Calls `resolveDevicePaths()` at the start of `loadAllConfigs()` to get `[{path, type}]` from discovery; cron schedule comes from `config/settings.json`
+
+### Discovery (`lib/discovery.js`)
+
+- `resolveDevicePaths(devices, backupRoot)` — scans `{SITE}_{YYYYMMDD}` folders, newest first
+- Site prefix derived from device name: `FRI-LTM01` → looks in `FRI_*` folders
+- Within a folder, picks the file with the highest `HHMM` timestamp (1700 beats 0500); lexicographic tie-break
+- Any folder or file containing `"UCS"` is excluded
+- Returns `[{path, type}]` — same shape the existing `loadAllConfigs()` loop consumes
+- Skips devices with no match (logs a `[discovery]` warning); never throws
 
 ### Parsers (`lib/parser.js`)
 
@@ -59,7 +69,7 @@ Each parser returns the same shape: `{ type, hostname, addresses{}, groups{}, se
 
 ### Frontend (`public/index.html`)
 
-Single ~3600-line file. All CSS, JS, and HTML are inline. Key sections in order:
+Single ~6200-line file. All CSS, JS, and HTML are inline. Key sections in order:
 1. **CSS** (~700 lines) — CSS variables at `:root`, component styles
 2. **HTML** — header, filter bar, tab bar, modal overlays
 3. **JS state** — `state` object (search, filters, active tab, parsed configs)
@@ -70,6 +80,19 @@ Single ~3600-line file. All CSS, JS, and HTML are inline. Key sections in order:
 8. **Filtering engine** — `getFilteredData()` — runs on every search; builds `allRuleIps`/`allFqdnIps` for symmetric chaining
 9. **Renderers** — `renderSecRules`, `renderNatRules`, `renderF5Virtuals`, `renderObjects`, etc.
 10. **Event handlers + init** — bottom of file
+
+### Search Index (`buildSearchIndex`)
+
+Built once after each config load; stored at `state.searchIndex`. Reduces IP search from O(rules×objects) to O(candidates).
+
+Structure:
+- `cidrList[]` — all address objects with CIDR/IP values, for range matching
+- `ipToObjects` — `Map<ip, [{objectName, device}]>` — exact IP → address objects
+- `nameToRules` — `Map<"device|objectName", Set<rule>>` — object name → rules that reference it directly
+- `memberToParents` — `Map<"device|memberKey", Set<"device|groupName">>` — reverse group membership index (leaf → parent groups)
+- `fqdnMap` — `Map<ip, [{fqdn,...}]>` — FQDN lookup
+
+When a search term is an IP, `resolveIndexCandidates()` walks the index upward (leaf → parent groups → rules) instead of scanning all rules. Non-IP searches fall back to full `getFilteredData()` scan.
 
 ### Key Performance Notes
 
@@ -85,18 +108,49 @@ Single ~3600-line file. All CSS, JS, and HTML are inline. Key sections in order:
   - `_patchGeneration` counter — cancels stale rAF loops when a new render/patch starts
 - `_pillContext` Map (pid → `{item, type, parsed, ctx}`) and `_ruleExpandMap` (ruleKey → `{hostname, items, ctx}`) are populated during `renderPills()` and required by all DOM patch functions
 
+### CSS Token System
+
+All CSS variables use `--cds-*` (Carbon Design System) tokens. Key mapping from legacy names:
+
+| Legacy | `--cds-*` token | Value |
+|--------|----------------|-------|
+| `--bg` | `--cds-background` | `#f4f4f4` |
+| `--bg-card` | `--cds-layer-01` | `#ffffff` |
+| `--bg-elevated` | `--cds-layer-02` | `#e0e0e0` |
+| `--border` | `--cds-border-subtle` | `#c6c6c6` |
+| `--text` | `--cds-text-primary` | `#161616` |
+| `--text-secondary` | `--cds-text-secondary` | `#525252` |
+| `--accent` | `--cds-interactive` | `#0f62fe` |
+| `--accent-light` | `--cds-highlight` | `#edf5ff` |
+| `--green` | `--cds-support-success` | `#24a148` |
+| `--red` | `--cds-support-error` | `#da1e28` |
+| `--radius` | `--cds-radius` | `0px` |
+| `--font-ui` | `--cds-font-sans` | IBM Plex Sans |
+| `--font-mono` | `--cds-font-mono` | IBM Plex Mono |
+
+Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
+
 ### Configuration (`config/settings.json`)
 
 ```json
 {
-  "port": 3000,
-  "configFiles": [{ "path": "...", "type": "auto" }],
-  "fqdnFile": "path/to/fqdn.csv",
+  "port": 3001,
+  "backupRoot": "/home/oxidized/backups",
+  "devices": [
+    { "name": "FRI-LTM01", "type": "f5" },
+    { "name": "FRI-FW01",  "type": "fortigate" }
+  ],
+  "fqdnFile": "/path/to/all_fqdn.csv",
   "cronSchedule": ["0 5 * * *", "0 17 * * *"]
 }
 ```
 
-`type` can be `"auto"` (detected from file content) or explicit: `"fortigate"`, `"paloalto"`, `"srx"`, `"f5"`.
+- `backupRoot` — absolute path to the Oxidized backup root; discovery scans `{SITE}_{YYYYMMDD}` subfolders
+- `devices[].name` — device identifier and filename prefix (e.g. `FRI-LTM01` matches `FRI-LTM01_*.txt`)
+- `devices[].type` — passed through to the parser: `"f5"`, `"fortigate"`, `"paloalto"`, `"srx"`, `"auto"`
+- `configFiles` — **removed**; replaced by `backupRoot + devices[]`
+
+`config/settings.json` is gitignored. Use `config/settings.example.json` as the template.
 
 ### resolveObject() is flatten-only — never reuse for hierarchical output
 
@@ -167,3 +221,18 @@ name line **before** recursing into its members. See `tasks/lessons.md` for the 
 - Simplicity First: Make every change as simple as possible. Impact minimal code.
 - No Laziness: Find root causes. No temporary fixes. Senior developer standards.
 - Minimal Impact: Only touch what's necessary. No side effects with new bugs.
+
+## Project Status (2026-04-22)
+
+### Done
+- [x] `git clone` — repo at `/home/local/SSO/yt0115/NetSearch_claude`
+- [x] `npm install` — all dependencies installed
+- [x] Server running via `npm run dev` on **port 3001** (port 3000 occupied by Grafana)
+- [x] `config/settings.json` — updated to `backupRoot + devices[]` shape; 12 devices loading cleanly
+- [x] `lib/discovery.js` — dynamic backup file discovery (newest folder, highest HHMM timestamp)
+- [x] `config/settings.example.json` — updated to new shape
+
+### TODO
+- [ ] Set real `fqdnFile` path in `config/settings.json` once CSV location is known
+- [ ] Test UI at http://localhost:3001
+- [ ] Deploy (production: `npm start`)
