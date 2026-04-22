@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { parseConfig, parseFqdnFile } = require('./lib/parser');
 const { startScheduler } = require('./lib/scheduler');
+const { resolveDevicePaths } = require('./lib/discovery');
 
 const settings = JSON.parse(fs.readFileSync('./config/settings.json', 'utf8'));
 
@@ -60,7 +61,8 @@ async function loadAllConfigs() {
   try {
     const newParsedConfigs = [];
 
-    for (const entry of settings.configFiles) {
+    const resolvedFiles = resolveDevicePaths(settings.devices || [], settings.backupRoot);
+    for (const entry of resolvedFiles) {
       const filePath = entry.path;
       if (!fs.existsSync(filePath)) {
         console.warn(`[load] File not found, skipping: ${filePath}`);
