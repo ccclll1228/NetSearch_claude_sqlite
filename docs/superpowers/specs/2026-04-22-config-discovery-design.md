@@ -66,8 +66,8 @@ resolveDevicePaths(devices, backupRoot)
    - `"FRI-LTM01"` → `"FRI"`, `"GICT-FW01"` → `"GICT"`, `"SAT-FW01"` → `"SAT"`
 
 2. **List candidate folders** — `fs.readdirSync(backupRoot)` filtered by:
-   - Matches `/^{site}_\d{8}$/` exactly
-   - Does **not** contain `"UCS"` (case-sensitive)
+   - Matches `/^{site}_\d{8}$/` exactly (this already excludes `UCS_*` folders since site is never `"UCS"`)
+   - Does **not** contain `"UCS"` as an additional safety check — keep this filter even though it is currently redundant; it prevents accidental matches if naming conventions change
    - Sorted descending (newest date first)
 
 3. **Search folders newest → oldest** — for each folder:
@@ -76,6 +76,7 @@ resolveDevicePaths(devices, backupRoot)
    - Parse the timestamp suffix: extract the `HHMM` portion from `_{YYYYMMDD}-{HHMM}.txt`
    - Convert to integer for comparison (`"1700"` → `1700`, `"0500"` → `500`)
    - Pick the file with the **highest parsed timestamp** (deterministic; 1700 beats 0500)
+   - **Tie-break** (same HHMM): sort by full filename lexicographically and pick the last — ensures a consistent winner even if two files share a timestamp
    - If a match is found: record `{ path: absolute path, type: device.type }` and stop searching older folders
 
 4. **If no match found across all folders** — log:
@@ -138,7 +139,7 @@ Replace `configFiles[]` with `backupRoot` + `devices[]` to reflect the new shape
 | File | Change |
 |---|---|
 | `lib/discovery.js` | **New** — ~50 lines |
-| `server.js` | +1 import, +1 line in `loadAllConfigs()`, -0 lines elsewhere |
+| `server.js` | +1 import line; in `loadAllConfigs()`: +1 new line (`const resolvedFiles`) + 1 changed line (`for` target) |
 | `config/settings.example.json` | Updated to new shape |
 | `config/settings.json` | Updated to new shape (gitignored) |
 
