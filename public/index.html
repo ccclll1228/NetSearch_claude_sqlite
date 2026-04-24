@@ -4084,13 +4084,19 @@
         });
       });
 
-      // Pre-compute numeric ranges from the search terms themselves (IPs/CIDRs only).
-      // Using allRuleIpsForFqdn (IPs from matched rules) caused every FQDN record to match
-      // when a rule contained large address groups, flooding the FQDN tab with unrelated results.
+      // Phase 1: add IP/CIDR search terms directly — keeps IP search precise (no group expansion).
+      // Phase 2: if no IP/CIDR terms were found, fall back to allRuleIpsForFqdn so that
+      // rule-name / keyword searches still chain matched rules → FQDN records.
       const fqdnRuleIpRanges = [];
       for (const term of positiveTerms) {
         if (isExactIP(term)) { fqdnRuleIpRanges.push({ num: ipToNum(term) >>> 0, mask: 0xFFFFFFFF }); }
         else if (isCIDR(term)) { const [base, bits] = term.split('/'); const mask = bits === '32' ? 0xFFFFFFFF : (~(0xFFFFFFFF >>> +bits)) >>> 0; fqdnRuleIpRanges.push({ num: (ipToNum(base) & mask) >>> 0, mask }); }
+      }
+      if (fqdnRuleIpRanges.length === 0) {
+        for (const rip of allRuleIpsForFqdn) {
+          if (isExactIP(rip)) { fqdnRuleIpRanges.push({ num: ipToNum(rip) >>> 0, mask: 0xFFFFFFFF }); }
+          else if (isCIDR(rip)) { const [base, bits] = rip.split('/'); const mask = bits === '32' ? 0xFFFFFFFF : (~(0xFFFFFFFF >>> +bits)) >>> 0; fqdnRuleIpRanges.push({ num: (ipToNum(base) & mask) >>> 0, mask }); }
+        }
       }
 
       // FQDN — with symmetric chaining: Rule IPs → match FQDN IP
