@@ -2847,7 +2847,7 @@
       let modeKey = '';
       if (state.ignoreCIDR) {
         modeKey = state.searchMode === 'exact' ? 'modeHintCidrExact' : 'modeHintCidrKw';
-      } else if (isCIDR(val)) {
+      } else if (isCIDR(val) || isIPWithMask(val)) {
         modeKey = 'modeHintCidr';
       } else if (isExactIP(val)) {
         modeKey = 'modeHintExactIp';
@@ -2881,6 +2881,8 @@
     };
     const isCIDR = s => /^\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/.test(String(s));
     const isExactIP = s => /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(String(s)) && !isCIDR(s);
+    const isIPWithMask = s => /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}_\d{1,2}$/.test(String(s));
+    const normalizeIP = s => String(s).replace(/_(\d{1,2})$/, '/$1');
     const isIPish = s => /^\d[\d.]*$/.test(String(s)) && !isExactIP(s) && !isCIDR(s);
     const ipInCIDR = (ip, cidr) => {
       try {
@@ -3041,10 +3043,12 @@
 
     const matchObject = (name, value, search, isExact, ignoreCIDR = false) => {
       if (!search) return true;
-      const s = String(search).toLowerCase();
-      const isSC = isCIDR(search), isSI = isExactIP(search);
+      const isSM = isIPWithMask(search);
+      const normalizedSearch = isSM ? normalizeIP(search) : search;
+      const s = String(normalizedSearch).toLowerCase();
+      const isSC = isCIDR(normalizedSearch), isSI = isExactIP(normalizedSearch);
       if (isExact) { if (name && String(name).toLowerCase() === s) return true; if (value && String(value).toLowerCase() === s) return true; }
-      else { if (name && String(name).toLowerCase().includes(s)) return true; const isVI = value && (isExactIP(value) || isCIDR(value)); if (value && (!isVI || (!isSI && !isSC)) && String(value).toLowerCase().includes(s)) return true; }
+      else { const isIPLike = isSI || isSC || isSM || /^\d[\d._/]*$/.test(String(search).toLowerCase()); if (!isIPLike && name && String(name).toLowerCase().includes(s)) return true; const isVI = value && (isExactIP(value) || isCIDR(value)); if (value && (!isVI || (!isSI && !isSC)) && String(value).toLowerCase().includes(s)) return true; }
       if (value) { const v = String(value); if (!ignoreCIDR) { if (isSC) { if (isCIDR(v)) return cidrOverlaps(search, v); if (isExactIP(v)) return ipInCIDR(v, search); } if (isSI) { if (isCIDR(v)) return ipInCIDR(search, v); if (isExactIP(v)) return search === v; } } else if (isSI) { if (v.split('/')[0] === s) return true; } else if (isSC) { if (v.split('/')[0] === s.split('/')[0]) return true; } }
       return false;
     };
@@ -3069,7 +3073,7 @@
       if (!nameList || !Array.isArray(nameList)) return false;
       const isExact = searchMode === 'exact';
       // Fast path: non-IP/CIDR keyword → only compare names, skip full group resolution
-      const isIPSearch = isCIDR(search) || isExactIP(search);
+      const isIPSearch = isCIDR(search) || isExactIP(search) || isIPWithMask(search);
       if (!isIPSearch) return nameList.some(top => _matchNameOnly(top, String(search).toLowerCase(), groups, isExact));
       // IP/CIDR path: full resolution needed to compare IP values
       return nameList.some(top => resolveObject(top, addresses, groups).some(r => matchObject(r.name, r.value, search, isExact, ignoreCIDR)));
@@ -3088,7 +3092,8 @@
     const objectListMatchesFqdnIp = (nameList, fqdnIp, addresses, groups, ignoreCIDR = false) => {
       if (!fqdnIp || !nameList || !Array.isArray(nameList)) return false;
       return nameList.some(top => resolveObject(top, addresses, groups).some(r => {
-        const v = r.value;
+        const vRaw = r.value;
+        const v = vRaw && isIPWithMask(vRaw) ? normalizeIP(vRaw) : vRaw;
         if (v) { if (!ignoreCIDR) { if (isCIDR(v)) return ipInCIDR(fqdnIp, v); if (isExactIP(v)) return fqdnIp === v; } else { if (String(v).split('/')[0] === String(fqdnIp)) return true; } if (String(v).toLowerCase() === String(fqdnIp).toLowerCase()) return true; }
         if (r.name && String(r.name).toLowerCase() === String(fqdnIp).toLowerCase()) return true;
         return false;
@@ -3135,9 +3140,10 @@
         Object.entries(addresses || {}).forEach(([name, addr]) => {
           const v = addr.value;
           if (!v) return;
+          const vNorm = isIPWithMask(v) ? normalizeIP(v) : v;
           const k = `${device}|${name}`;
-          if (isExactIP(v)) addIpObj(v, name, device);
-          else if (isCIDR(v)) idx.cidrList.push({ cidr: v, objectName: name, device });
+          if (isExactIP(vNorm)) addIpObj(vNorm, name, device);
+          else if (isCIDR(vNorm)) idx.cidrList.push({ cidr: vNorm, objectName: name, device });
           // 同時收錄 name 本身（keyword 搜尋時用 nameToRules 做前綴匹配）
         });
 
@@ -3399,7 +3405,7 @@
         if (m) {
           const [, name, val] = m;
           if (!acc.addresses[name]) {
-            const type = (isCIDR(val) || isExactIP(val)) ? 'ip-netmask' : 'fqdn';
+            const type = (isCIDR(val) || isExactIP(val) || isIPWithMask(val)) ? 'ip-netmask' : 'fqdn';
             acc.addresses[name] = { type, value: val };
           }
           continue;
@@ -3731,15 +3737,22 @@
 
       // IP 搜尋索引輔助：從 IP/CIDR 搜尋詞找命中物件，再沿 memberToParents 向上找規則
       // 回傳 { candidateRules: Set<rule>, matchedKeys: Set<"device|objName"> }
-      const resolveIndexCandidates = (term, idx) => {
+      const resolveIndexCandidates = (term, idx, ignoreCIDR) => {
+        const t = isIPWithMask(term) ? normalizeIP(term) : term;
         const hits = []; // [{objectName, device}]
         const matchedKeys = new Set();
-        if (isExactIP(term)) {
-          (idx.ipToObjects.get(term) || []).forEach(h => hits.push(h));
-          idx.cidrList.forEach(e => { if (ipInCIDR(term, e.cidr)) hits.push(e); });
-        } else if (isCIDR(term)) {
-          idx.cidrList.forEach(e => { if (cidrOverlaps(term, e.cidr)) hits.push(e); });
-          idx.ipToObjects.forEach((arr, ip) => { if (ipInCIDR(ip, term)) arr.forEach(h => hits.push(h)); });
+        if (ignoreCIDR) {
+          // ignoreCIDR=true: match only when base IPs are equal (no containment).
+          // Mirrors matchObject's ignoreCIDR branch: v.split('/')[0] === s.split('/')[0].
+          const baseT = String(t).split('/')[0];
+          (idx.ipToObjects.get(baseT) || []).forEach(h => hits.push(h));
+          idx.cidrList.forEach(e => { if (String(e.cidr).split('/')[0] === baseT) hits.push(e); });
+        } else if (isExactIP(t)) {
+          (idx.ipToObjects.get(t) || []).forEach(h => hits.push(h));
+          idx.cidrList.forEach(e => { if (ipInCIDR(t, e.cidr)) hits.push(e); });
+        } else if (isCIDR(t)) {
+          idx.cidrList.forEach(e => { if (cidrOverlaps(t, e.cidr)) hits.push(e); });
+          idx.ipToObjects.forEach((arr, ip) => { if (ipInCIDR(ip, t)) arr.forEach(h => hits.push(h)); });
         }
         const candidateRules = new Set();
         const seen = new Set();
@@ -3764,13 +3777,14 @@
       const termMatchedKeysMap = {};
 
       positiveTerms.forEach(term => {
-        const isIPTerm = isCIDR(term) || isExactIP(term);
-        const s = term.toLowerCase(), isExactMatch = searchMode === 'exact';
+        const isIPTerm = isCIDR(term) || isExactIP(term) || isIPWithMask(term);
+        const normalizedTerm = isIPWithMask(term) ? normalizeIP(term) : term;
+        const s = normalizedTerm.toLowerCase(), isExactMatch = searchMode === 'exact';
         const ips = new Set();
 
         if (isIPTerm && state.searchIndex) {
           // IP 快速路徑：用索引找候選規則，不全掃
-          const { candidateRules, matchedKeys } = resolveIndexCandidates(term, state.searchIndex);
+          const { candidateRules, matchedKeys } = resolveIndexCandidates(normalizedTerm, state.searchIndex, ignoreCIDR);
           termMatchedKeysMap[term] = matchedKeys;
           matchedKeys.forEach(k => _matchedObjectKeys.add(k));
           candidateRules.forEach(rule => {
@@ -3780,7 +3794,7 @@
             if (!searchDstOnly) { objsToResolve.push(...(rule.source || [])); if (rule.sourceTranslation) objsToResolve.push(...rule.sourceTranslation); }
             if (!searchSrcOnly) { objsToResolve.push(...(rule.destination || [])); if (rule.destinationTranslation) objsToResolve.push(...rule.destinationTranslation); }
             objsToResolve.forEach(obj => resolveObject(obj, parsed.addresses, parsed.groups).forEach(r => {
-              if (r.value && (isCIDR(r.value) || isExactIP(r.value))) ips.add(r.value);
+              if (r.value) { const rv = isIPWithMask(r.value) ? normalizeIP(r.value) : r.value; if (isCIDR(rv) || isExactIP(rv)) ips.add(rv); }
             }));
           });
         } else {
@@ -3800,7 +3814,7 @@
                 if (ruleNameMatch || appMatch || svcMatch) { if (!searchDstOnly) objsToResolve.push(...(rule.source || [])); if (!searchSrcOnly) objsToResolve.push(...(rule.destination || [])); }
                 else { objsToResolve.push(...srcMatchObjs, ...dstMatchObjs); }
                 objsToResolve.forEach(obj => resolveObject(obj, parsed.addresses, parsed.groups).forEach(r => {
-                  if (r.value && (isCIDR(r.value) || isExactIP(r.value))) ips.add(r.value);
+                  if (r.value) { const rv = isIPWithMask(r.value) ? normalizeIP(r.value) : r.value; if (isCIDR(rv) || isExactIP(rv)) ips.add(rv); }
                 }));
               }
             });
@@ -3821,7 +3835,7 @@
                 const objsToResolve = [...srcMatchObjs, ...dstMatchObjs];
                 if (ruleNameMatch || svcMatch) { if (!searchDstOnly) objsToResolve.push(...(rule.source || []), ...(rule.sourceTranslation || [])); if (!searchSrcOnly) objsToResolve.push(...(rule.destination || []), ...(rule.destinationTranslation || [])); }
                 objsToResolve.forEach(obj => resolveObject(obj, parsed.addresses, parsed.groups).forEach(r => {
-                  if (r.value && (isCIDR(r.value) || isExactIP(r.value))) ips.add(r.value);
+                  if (r.value) { const rv = isIPWithMask(r.value) ? normalizeIP(r.value) : r.value; if (isCIDR(rv) || isExactIP(rv)) ips.add(rv); }
                 }));
               }
             });
@@ -3862,38 +3876,33 @@
               if ((r.application || []).some(chk)) return true;
               if ((r.from || []).some(chk)) return true;
               if ((r.to || []).some(chk)) return true;
-              const am = isEx ? 'exact' : 'keyword';
+              const am = isEx ? 'exact' : (isCIDR(term) || isExactIP(term) || isIPWithMask(term)) ? 'cidr' : 'keyword';
               // IP 快速路徑：直接查 termMatchedKeysMap，跳過 resolveObject
               const mkeys = termMatchedKeysMap[term];
+              let direct = false;
               if (mkeys) {
                 const ms = !searchDstOnly ? (r.source || []).some(obj => mkeys.has(`${hn}|${obj}`)) : false;
                 const md = !searchSrcOnly ? (r.destination || []).some(obj => mkeys.has(`${hn}|${obj}`)) : false;
-                return ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+                direct = ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+              } else {
+                // Source / destination (full address-object resolution — keyword fallback)
+                const ms = !searchDstOnly ? objectListMatchesSearch(r.source, term, parsed.addresses, parsed.groups, am, ignoreCIDR) : false;
+                const md = !searchSrcOnly ? objectListMatchesSearch(r.destination, term, parsed.addresses, parsed.groups, am, ignoreCIDR) : false;
+                direct = ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
               }
-              // Source / destination (full address-object resolution — keyword fallback)
-              const ms = !searchDstOnly ? objectListMatchesSearch(r.source, term, parsed.addresses, parsed.groups, am, ignoreCIDR) : false;
-              const md = !searchSrcOnly ? objectListMatchesSearch(r.destination, term, parsed.addresses, parsed.groups, am, ignoreCIDR) : false;
-              return ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
-            });
-            // FQDN chaining: search matched FQDN → its IP → rule source/dest
-            if (!match && allFqdnIps.size > 0) {
-              for (const fip of allFqdnIps) {
-                const ms = !searchDstOnly ? objectListMatchesFqdnIp(r.source, fip, parsed.addresses, parsed.groups, ignoreCIDR) : false;
-                const md = !searchSrcOnly ? objectListMatchesFqdnIp(r.destination, fip, parsed.addresses, parsed.groups, ignoreCIDR) : false;
-                if (ms || md) {
-                  // Apply NOT-only filter: reject rules that violate any NOT node in the AST
-                  const notOk = evaluateNOTNodes(searchAST, (term) => {
-                    const s = String(term).toLowerCase();
-                    return String(r.name).toLowerCase().includes(s)
-                      || (r.application || []).some(v => String(v).toLowerCase().includes(s))
-                      || (r.from || []).some(v => String(v).toLowerCase().includes(s))
-                      || (r.to || []).some(v => String(v).toLowerCase().includes(s))
-                      || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, 'keyword');
-                  });
-                  if (notOk) { match = true; chainedFromFqdn = true; break; }
+              if (direct) return true;
+              // Per-term FQDN chain: only this term's FQDN-resolved IPs may satisfy it.
+              // Prevents AND bypass where one term's FQDN IPs accidentally satisfy another term.
+              const fqdnIps = termFqdnIpsMap[term];
+              if (fqdnIps && fqdnIps.length > 0) {
+                for (const fip of fqdnIps) {
+                  const fms = !searchDstOnly ? objectListMatchesFqdnIp(r.source, fip, parsed.addresses, parsed.groups, ignoreCIDR) : false;
+                  const fmd = !searchSrcOnly ? objectListMatchesFqdnIp(r.destination, fip, parsed.addresses, parsed.groups, ignoreCIDR) : false;
+                  if (fms || fmd) { chainedFromFqdn = true; return true; }
                 }
               }
-            }
+              return false;
+            });
           }
           if (match) result.secRules.push({ ...r, _hostname: hn, _parsed: parsed, _chainedFromFqdn: chainedFromFqdn });
         });
@@ -3914,26 +3923,32 @@
               if (chk(r.name)) return true;
               if ((r.from || []).some(chk)) return true;
               if ((r.to || []).some(chk)) return true;
-              const am = isEx ? 'exact' : 'keyword';
+              const am = isEx ? 'exact' : (isCIDR(term) || isExactIP(term) || isIPWithMask(term)) ? 'cidr' : 'keyword';
               // IP 快速路徑：直接查 termMatchedKeysMap，跳過 resolveObject
               const mkeys = termMatchedKeysMap[term];
+              let direct = false;
               if (mkeys) {
                 const ms = !searchDstOnly ? ((r.source || []).some(obj => mkeys.has(`${hn}|${obj}`)) || (r.sourceTranslation || []).some(obj => mkeys.has(`${hn}|${obj}`))) : false;
                 const md = !searchSrcOnly ? ((r.destination || []).some(obj => mkeys.has(`${hn}|${obj}`)) || (r.destinationTranslation || []).some(obj => mkeys.has(`${hn}|${obj}`))) : false;
-                return ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+                direct = ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+              } else {
+                const ms = !searchDstOnly ? (objectListMatchesSearch(r.source, term, parsed.addresses, parsed.groups, am, ignoreCIDR) || objectListMatchesSearch(r.sourceTranslation || [], term, parsed.addresses, parsed.groups, am, ignoreCIDR)) : false;
+                const md = !searchSrcOnly ? (objectListMatchesSearch(r.destination, term, parsed.addresses, parsed.groups, am, ignoreCIDR) || objectListMatchesSearch(r.destinationTranslation || [], term, parsed.addresses, parsed.groups, am, ignoreCIDR)) : false;
+                direct = ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
               }
-              const ms = !searchDstOnly ? (objectListMatchesSearch(r.source, term, parsed.addresses, parsed.groups, am, ignoreCIDR) || objectListMatchesSearch(r.sourceTranslation || [], term, parsed.addresses, parsed.groups, am, ignoreCIDR)) : false;
-              const md = !searchSrcOnly ? (objectListMatchesSearch(r.destination, term, parsed.addresses, parsed.groups, am, ignoreCIDR) || objectListMatchesSearch(r.destinationTranslation || [], term, parsed.addresses, parsed.groups, am, ignoreCIDR)) : false;
-              return ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+              if (direct) return true;
+              // Per-term FQDN chain: only this term's FQDN-resolved IPs may satisfy it.
+              // Prevents AND bypass where one term's FQDN IPs accidentally satisfy another term.
+              const fqdnIps = termFqdnIpsMap[term];
+              if (fqdnIps && fqdnIps.length > 0) {
+                for (const fip of fqdnIps) {
+                  const fms = !searchDstOnly ? (objectListMatchesFqdnIp(r.source, fip, parsed.addresses, parsed.groups, ignoreCIDR) || objectListMatchesFqdnIp(r.sourceTranslation || [], fip, parsed.addresses, parsed.groups, ignoreCIDR)) : false;
+                  const fmd = !searchSrcOnly ? (objectListMatchesFqdnIp(r.destination, fip, parsed.addresses, parsed.groups, ignoreCIDR) || objectListMatchesFqdnIp(r.destinationTranslation || [], fip, parsed.addresses, parsed.groups, ignoreCIDR)) : false;
+                  if (fms || fmd) { chainedFromFqdn = true; return true; }
+                }
+              }
+              return false;
             });
-            // FQDN chaining for NAT
-            if (!match && allFqdnIps.size > 0) {
-              for (const fip of allFqdnIps) {
-                const ms = !searchDstOnly ? (objectListMatchesFqdnIp(r.source, fip, parsed.addresses, parsed.groups, ignoreCIDR) || objectListMatchesFqdnIp(r.sourceTranslation || [], fip, parsed.addresses, parsed.groups, ignoreCIDR)) : false;
-                const md = !searchSrcOnly ? (objectListMatchesFqdnIp(r.destination, fip, parsed.addresses, parsed.groups, ignoreCIDR) || objectListMatchesFqdnIp(r.destinationTranslation || [], fip, parsed.addresses, parsed.groups, ignoreCIDR)) : false;
-                if (ms || md) { match = true; chainedFromFqdn = true; break; }
-              }
-            }
           }
           if (match) result.natRules.push({ ...r, _hostname: hn, _parsed: parsed, _chainedFromFqdn: chainedFromFqdn });
         });
@@ -3943,10 +3958,11 @@
           let match = true;
           let chainedMatch = false;
           if (appliedSearch) {
-            const s = appliedSearch.toLowerCase();
+            const aSearch = isIPWithMask(appliedSearch) ? normalizeIP(appliedSearch) : appliedSearch;
+            const s = aSearch.toLowerCase();
             match = String(r.destination).toLowerCase().includes(s) || String(r.nexthop).toLowerCase().includes(s) || String(r.interface).toLowerCase().includes(s) || String(r.name).toLowerCase().includes(s);
-            if (!match && isCIDR(appliedSearch) && isCIDR(r.destination)) match = cidrOverlaps(appliedSearch, r.destination);
-            if (!match && isExactIP(appliedSearch) && isCIDR(r.destination)) match = ipInCIDR(appliedSearch, r.destination);
+            if (!ignoreCIDR && !match && isCIDR(aSearch) && isCIDR(r.destination)) match = cidrOverlaps(aSearch, r.destination);
+            if (!ignoreCIDR && !match && isExactIP(aSearch) && isCIDR(r.destination)) match = ipInCIDR(aSearch, r.destination);
             // AST-based matching for boolean search
             if (!match && searchAST) {
               match = evaluateAST(searchAST, (term, forceExact) => {
@@ -3956,14 +3972,14 @@
               });
             }
             // Chain from FQDN IPs
-            if (!match && allFqdnIps.size > 0 && isCIDR(r.destination)) {
+            if (!ignoreCIDR && !match && allFqdnIps.size > 0 && isCIDR(r.destination)) {
               for (const fip of allFqdnIps) { if (ipInCIDR(fip, r.destination)) { match = true; chainedMatch = true; break; } }
             }
             if (!match && allFqdnIps.size > 0 && isExactIP(r.nexthop)) {
               for (const fip of allFqdnIps) { if (fip === r.nexthop) { match = true; chainedMatch = true; break; } }
             }
             // Chain from Rule IPs
-            if (!match && allRuleIps.size > 0 && isCIDR(r.destination)) {
+            if (!ignoreCIDR && !match && allRuleIps.size > 0 && isCIDR(r.destination)) {
               for (const rip of allRuleIps) {
                 if (isExactIP(rip) && ipInCIDR(rip, r.destination)) { match = true; chainedMatch = true; break; }
                 if (isCIDR(rip) && cidrOverlaps(rip, r.destination)) { match = true; chainedMatch = true; break; }
@@ -4047,7 +4063,7 @@
             if (!match && allRuleIps.size > 0) {
               for (const rip of allRuleIps) {
                 if (isExactIP(rip) && vs.ip === rip) { match = true; chainedFromRule = true; break; }
-                if (isCIDR(rip) && ipInCIDR(vs.ip, rip)) { match = true; chainedFromRule = true; break; }
+                if (!ignoreCIDR && isCIDR(rip) && ipInCIDR(vs.ip, rip)) { match = true; chainedFromRule = true; break; }
               }
             }
             // Chain from FQDN IPs → F5 VS IP
@@ -4074,7 +4090,7 @@
               for (const m of (pool.members || [])) {
                 for (const cip of allChainIps) {
                   if (m.ip === cip) { match = true; chainedMatch = true; break; }
-                  if (isCIDR(cip) && ipInCIDR(m.ip, cip)) { match = true; chainedMatch = true; break; }
+                  if (!ignoreCIDR && isCIDR(cip) && ipInCIDR(m.ip, cip)) { match = true; chainedMatch = true; break; }
                 }
                 if (match) break;
               }
@@ -4088,12 +4104,14 @@
       // Phase 2: if no IP/CIDR terms were found, fall back to allRuleIpsForFqdn so that
       // rule-name / keyword searches still chain matched rules → FQDN records.
       const fqdnRuleIpRanges = [];
-      for (const term of positiveTerms) {
+      for (const rawTerm of positiveTerms) {
+        const term = isIPWithMask(rawTerm) ? normalizeIP(rawTerm) : rawTerm;
         if (isExactIP(term)) { fqdnRuleIpRanges.push({ num: ipToNum(term) >>> 0, mask: 0xFFFFFFFF }); }
         else if (isCIDR(term)) { const [base, bits] = term.split('/'); const mask = bits === '32' ? 0xFFFFFFFF : (~(0xFFFFFFFF >>> +bits)) >>> 0; fqdnRuleIpRanges.push({ num: (ipToNum(base) & mask) >>> 0, mask }); }
       }
       if (fqdnRuleIpRanges.length === 0) {
-        for (const rip of allRuleIpsForFqdn) {
+        for (const rawRip of allRuleIpsForFqdn) {
+          const rip = isIPWithMask(rawRip) ? normalizeIP(rawRip) : rawRip;
           if (isExactIP(rip)) { fqdnRuleIpRanges.push({ num: ipToNum(rip) >>> 0, mask: 0xFFFFFFFF }); }
           else if (isCIDR(rip)) { const [base, bits] = rip.split('/'); const mask = bits === '32' ? 0xFFFFFFFF : (~(0xFFFFFFFF >>> +bits)) >>> 0; fqdnRuleIpRanges.push({ num: (ipToNum(base) & mask) >>> 0, mask }); }
         }
@@ -4167,7 +4185,7 @@
       result.natRules.forEach(r => {
         (r.destinationTranslation || []).forEach(dt => {
           resolveObject(dt, r._parsed.addresses, r._parsed.groups).forEach(resolved => {
-            if (resolved.value && (isExactIP(resolved.value) || isCIDR(resolved.value))) chainedDnatIPs.add(resolved.value);
+            if (resolved.value) { const rv = isIPWithMask(resolved.value) ? normalizeIP(resolved.value) : resolved.value; if (isExactIP(rv) || isCIDR(rv)) chainedDnatIPs.add(rv); }
           });
         });
       });
@@ -4182,7 +4200,7 @@
             if (existingF5Keys.has(key)) return;
             for (const dip of chainedDnatIPs) {
               if (isExactIP(dip) && vs.ip === dip) { existingF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
-              if (isCIDR(dip) && ipInCIDR(vs.ip, dip)) { existingF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
+              if (!ignoreCIDR && isCIDR(dip) && ipInCIDR(vs.ip, dip)) { existingF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
             }
           });
         });
@@ -4430,15 +4448,16 @@
         if (!parsed) return false;
         const terms = extractTerms(state.searchAST);
         if (terms.some(t => item.toLowerCase().includes(t.toLowerCase()))) return true;
-        const hasIPTerm = terms.some(t => isCIDR(t) || isExactIP(t) || isIPish(t));
+        const hasIPTerm = terms.some(t => isCIDR(t) || isExactIP(t) || isIPWithMask(t) || isIPish(t));
         if (!hasIPTerm) {
           // Non-IP search (e.g. FQDN hostname): check if any FQDN-resolved IP falls within this pill's CIDR/IP
           if (_lastAllFqdnIps.size === 0 || type === 'service') return false;
           const resolved = resolveObject(item, parsed.addresses, parsed.groups);
           return resolved.some(r => {
-            const v = r.value;
-            if (!v) return false;
-            if (isCIDR(v)) { for (const fip of _lastAllFqdnIps) { if (ipInCIDR(fip, v)) return true; } return false; }
+            const vRaw = r.value;
+            if (!vRaw) return false;
+            const v = isIPWithMask(vRaw) ? normalizeIP(vRaw) : vRaw;
+            if (!state.ignoreCIDR && isCIDR(v)) { for (const fip of _lastAllFqdnIps) { if (ipInCIDR(fip, v)) return true; } return false; }
             if (isExactIP(v)) return _lastAllFqdnIps.has(v);
             return false;
           });
@@ -4575,9 +4594,10 @@
         }
       }
       // Non-IP search: check if any FQDN-resolved IP falls in this member's CIDR/IP
-      if (_lastAllFqdnIps.size > 0 && !terms.some(t => isCIDR(t) || isExactIP(t) || isIPish(t))) {
-        const v = r.value;
-        if (v && isCIDR(v)) { for (const fip of _lastAllFqdnIps) { if (ipInCIDR(fip, v)) return true; } }
+      if (_lastAllFqdnIps.size > 0 && !terms.some(t => isCIDR(t) || isExactIP(t) || isIPWithMask(t) || isIPish(t))) {
+        const vRaw = r.value;
+        const v = vRaw && isIPWithMask(vRaw) ? normalizeIP(vRaw) : vRaw;
+        if (!state.ignoreCIDR && v && isCIDR(v)) { for (const fip of _lastAllFqdnIps) { if (ipInCIDR(fip, v)) return true; } }
         if (v && isExactIP(v)) return _lastAllFqdnIps.has(v);
       }
       return false;
@@ -5192,11 +5212,12 @@
 
       const matchFqdnToIp = (ipVal, fqdnRec) => {
         if (!ipVal || !fqdnRec.ip || fqdnRec.ip === 'null') return false;
+        const iv = isIPWithMask(ipVal) ? normalizeIP(ipVal) : ipVal;
         if (!ignoreCIDRFlag) {
-          if (isCIDR(ipVal)) return ipInCIDR(fqdnRec.ip, ipVal);
-          if (isCIDR(fqdnRec.ip)) return ipInCIDR(ipVal, fqdnRec.ip);
+          if (isCIDR(iv)) return ipInCIDR(fqdnRec.ip, iv);
+          if (isCIDR(fqdnRec.ip)) return ipInCIDR(iv, fqdnRec.ip);
         }
-        return String(ipVal).split('/')[0] === String(fqdnRec.ip).split('/')[0];
+        return String(iv).split('/')[0] === String(fqdnRec.ip).split('/')[0];
       };
 
       const getRuleIps = (sec, nat) => {
@@ -6034,7 +6055,7 @@
 
     function addToSearchHistory(query) {
       if (!query) return;
-      const type = isCIDR(query) ? 'cidr' : isExactIP(query) ? 'ip' : isIPish(query) ? 'ip' : 'keyword';
+      const type = isCIDR(query) ? 'cidr' : isExactIP(query) ? 'ip' : isIPWithMask(query) ? 'cidr' : isIPish(query) ? 'ip' : 'keyword';
       const now = new Date();
       const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const entry = { query, type, time };
