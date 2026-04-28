@@ -4117,6 +4117,78 @@
         }
       }
 
+      // Active-device IP filter for FQDN tab: when one or more devices are toggled off
+      // (state.disabledHosts non-empty), limit FQDN records to those reachable through
+      // the active device(s) — NOT just present in their address-object pool.
+      //   Firewalls (FortiGate / PA / SRX): IPs/CIDRs from enabled ALLOW secRules
+      //     (resolved source + destination, groups expanded).
+      //   F5 (LTM): virtual-server destination IPs.
+      // Honors state.ignoreCIDR: when true, skip CIDR containment and require exact-IP
+      // equality.
+      const activeDeviceIpFilter = (state.disabledHosts && state.disabledHosts.size > 0) ? (() => {
+        const exactIps = new Set();
+        const cidrRanges = [];
+        const addValue = (val) => {
+          if (!val) return;
+          const v = isIPWithMask(val) ? normalizeIP(val) : val;
+          if (isExactIP(v)) exactIps.add(v);
+          else if (isCIDR(v)) {
+            const [base, bits] = v.split('/');
+            const b = +bits;
+            if (isNaN(b)) return;
+            // /32 is a single host — exactIps handles it; skip cidrRanges to avoid
+            // the JS >>> mod-32 trap (0xFFFFFFFF >>> 32 === 0xFFFFFFFF, mask→0, matches all IPs).
+            if (b === 32) { exactIps.add(base); return; }
+            const mask = b === 0 ? 0 : (~(0xFFFFFFFF >>> b)) >>> 0;
+            cidrRanges.push({ num: (ipToNum(base) & mask) >>> 0, mask });
+          }
+        };
+        configs.forEach(parsed => {
+          if (parsed.type === 'F5') {
+            (parsed.virtuals || []).forEach(vs => addValue(vs.ip));
+          } else {
+            // Firewall (FortiGate / PA / SRX): collect destination values from enabled
+            // ALLOW rules.
+            //   Direct address object → use its value.
+            //   Group → walk members one level (no nested-group recursion). Each member is
+            //     either an address NAME (resolve via parsed.addresses) or a raw IP/CIDR.
+            const destNames = new Set();
+            (parsed.secRules || []).forEach(rule => {
+              if (rule.disabled) return;
+              if (rule.action && rule.action !== 'allow') return;
+              const dst = Array.isArray(rule.destination) ? rule.destination.flat(Infinity) : [];
+              dst.forEach(name => {
+                if (name == null) return;
+                const n = String(name);
+                if (n.toLowerCase() === 'any') return;
+                destNames.add(n);
+              });
+            });
+            destNames.forEach(name => {
+              // 1. Direct address object on this device
+              if (parsed.addresses && parsed.addresses[name]) {
+                addValue(parsed.addresses[name].value);
+                return;
+              }
+              // 2. Group — one level of indirection only (group → member name → address value)
+              const members = parsed.groups && parsed.groups[name];
+              if (!members) return; // unknown token (zone, FQDN object, etc.) — skip
+              members.forEach(m => {
+                if (m == null) return;
+                const ms = String(m);
+                if (parsed.addresses && parsed.addresses[ms]) {
+                  addValue(parsed.addresses[ms].value);
+                } else if (isCIDR(ms) || isExactIP(ms)) {
+                  addValue(ms);
+                }
+                // else: nested group or unknown — skip (no recursion)
+              });
+            });
+          }
+        });
+        return { exactIps, cidrRanges };
+      })() : null;
+
       // FQDN — with symmetric chaining: Rule IPs → match FQDN IP
       fqdnRecords.forEach(r => {
         let match = false;
@@ -4148,6 +4220,20 @@
           for (const range of fqdnRuleIpRanges) {
             if (((rn & range.mask) >>> 0) === range.num) { match = true; chainedFromRule = true; break; }
           }
+        }
+        // Device-scoped filter: when not "All", require r.ip to fall in any active device's address space.
+        if (match && activeDeviceIpFilter) {
+          let inActive = false;
+          if (r.ip && String(r.ip).toLowerCase() !== 'null' && isExactIP(r.ip)) {
+            if (activeDeviceIpFilter.exactIps.has(r.ip)) inActive = true;
+            else if (!ignoreCIDR) {
+              const rn = ipToNum(r.ip) >>> 0;
+              for (const range of activeDeviceIpFilter.cidrRanges) {
+                if (((rn & range.mask) >>> 0) === range.num) { inActive = true; break; }
+              }
+            }
+          }
+          if (!inActive) match = false;
         }
         if (match) result.fqdnList.push({ ...r, _chainedFromRule: chainedFromRule });
       });
