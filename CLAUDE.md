@@ -152,6 +152,12 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
 
 `config/settings.json` is gitignored. Use `config/settings.example.json` as the template.
 
+### Features
+
+- **FQDN tab device filter** — when one or more specific devices are selected in the device bar, the FQDN tab only shows records whose IPs fall within that device's rule destinations (FW: enabled ALLOW rule destinations → address objects + 1-level group expansion) or virtual server IPs (F5 LTM). Selecting "All" restores the full 18941-record view.
+- **Ignore CIDR toggle** — when enabled, CIDR containment is skipped across all search and filter operations; only exact-IP matches are used. Affects both the search pipeline and the FQDN device filter gate.
+- **`_32` notation support** — IP addresses written as `x.x.x.x_32` (Palo Alto style) are normalised to `x.x.x.x/32` at index build time and throughout the search/filter pipeline.
+
 ### resolveObject() is flatten-only — never reuse for hierarchical output
 
 `resolveObject()` expands all address groups to a **flat leaf list** (no depth metadata).
@@ -169,6 +175,12 @@ name line **before** recursing into its members. See `tasks/lessons.md` for the 
 - IBM Plex Sans (weight 300/400/600 only) + IBM Plex Mono for code/data
 - Depth via background-color layering (`#fff` → `#f4f4f4` → `#e0e0e0`), no box-shadows
 - Bottom-border inputs only (not boxed); 8px spacing grid throughout
+
+### FQDN Device Filter — Technical Notes
+
+- **`activeDeviceIpFilter`** — built per render inside `getFilteredData()` when `state.disabledHosts.size > 0`. Iterates only the active (non-disabled) `configs`. For FW devices (FortiGate / PA / SRX): collects destination names from enabled ALLOW `secRules`, resolves them through `parsed.addresses` (direct) or `parsed.groups` (one level of indirection, member → `parsed.addresses[member].value`). For F5 devices: collects `parsed.virtuals[].ip`. Result: `{ exactIps: Set<string>, cidrRanges: [{num, mask}] }`.
+- **`ignoreCIDR` guard** — applied at ~10 locations in the search/filter pipeline; when true the `cidrRanges` loop is skipped and only `exactIps.has(r.ip)` is tested.
+- **`/32` special-case in `addValue()`** — `/32` CIDRs are added to `exactIps` only and return early; they are never pushed to `cidrRanges`. Reason: JavaScript's `>>>` operator is mod-32, so `0xFFFFFFFF >>> 32 === 0xFFFFFFFF`, making `~(0xFFFFFFFF >>> 32) >>> 0 === 0`. A `mask=0` entry in `cidrRanges` satisfies `((rn & 0) >>> 0) === 0` for every IP in the universe, bypassing the filter entirely.
 
 ### Duplicate Code Warning
 
@@ -222,7 +234,7 @@ name line **before** recursing into its members. See `tasks/lessons.md` for the 
 - No Laziness: Find root causes. No temporary fixes. Senior developer standards.
 - Minimal Impact: Only touch what's necessary. No side effects with new bugs.
 
-## Project Status (2026-04-22)
+## Project Status (2026-04-28)
 
 ### Done
 - [x] `git clone` — repo at `/home/local/SSO/yt0115/NetSearch_claude`
@@ -231,8 +243,10 @@ name line **before** recursing into its members. See `tasks/lessons.md` for the 
 - [x] `config/settings.json` — updated to `backupRoot + devices[]` shape; 12 devices loading cleanly
 - [x] `lib/discovery.js` — dynamic backup file discovery (newest folder, highest HHMM timestamp)
 - [x] `config/settings.example.json` — updated to new shape
+- [x] `_32` notation normalisation — PA-style `x.x.x.x_32` addresses normalised throughout search index and filter pipeline
+- [x] `ignoreCIDR` toggle — exact-IP-only mode wired across all 10 filter/search sites
+- [x] FQDN tab device filter — per-device address-space gate; FW uses ALLOW rule destinations, F5 uses VS IPs; `/32` mod-32 mask bug fixed
 
 ### TODO
 - [ ] Set real `fqdnFile` path in `config/settings.json` once CSV location is known
-- [ ] Test UI at http://localhost:3001
 - [ ] Deploy (production: `npm start`)
