@@ -358,27 +358,6 @@
       display: block;
     }
 
-    .search-hint {
-      position: absolute;
-      top: calc(100% + 4px);
-      left: 0;
-      right: 0;
-      font-size: 11px;
-      color: var(--cds-text-secondary);
-      white-space: nowrap;
-      font-family: var(--cds-font-mono);
-      letter-spacing: 0.16px;
-      z-index: 1000;
-      background: #e0e0e0;
-      padding: 3px 14px;
-      pointer-events: none;
-    }
-
-    .search-hint .hint-mode {
-      color: var(--cds-interactive);
-      font-weight: 600;
-    }
-
     .search-spinner {
       position: absolute;
       right: 68px !important;
@@ -2390,13 +2369,11 @@
             <path d="M21 21l-4.35-4.35" />
           </svg>
           <input class="search-input" id="searchInput"
-            placeholder="Enter IP, CIDR, Port, or Keyword, then press Enter..." autocomplete="off"
-            oninput="updateSearchHint()" />
+            placeholder="Enter IP, CIDR, Port, or Keyword, then press Enter..." autocomplete="off" />
           <div class="search-spinner" id="searchSpinner"></div>
           <button class="search-hl-btn on" id="searchHlBtn" onclick="toggleHighlight()"
             title="Toggle highlight">✦</button>
           <button class="search-clear" id="searchClear" onclick="clearSearch()" title="Clear search">&times;</button>
-          <div class="search-hint" id="searchHint"></div>
           <div class="search-history hidden" id="searchHistory"></div>
         </div>
         <div class="search-help-wrap">
@@ -2696,10 +2673,6 @@
         titleExpandAll: 'Expand all objects', titleCollapseAll: 'Collapse all objects',
         titleQuickSearch: 'Quick Search', titleExpand: 'Click to expand', titleCopy: 'Copy',
         hlOn: 'Highlight ON — click to disable', hlOff: 'Highlight OFF — click to enable',
-        modeHintCidrExact: 'Exact (Ignore CIDR)', modeHintCidrKw: 'Keyword (Ignore CIDR)',
-        modeHintCidr: 'CIDR Overlap', modeHintExactIp: 'Exact IP', modeHintIpPrefix: 'IP Prefix',
-        modeHintExact: 'Exact Match', modeHintKw: 'Keyword / Port',
-        hintPress: 'Press Enter to filter: {0} — {1}',
         stagedFiles: 'Staged: {0} file(s)', stagedFqdn: 'Staged FQDN: {0} file(s)',
         btnImportAll: 'Import All', btnClearQueue: 'Clear',
         recentSearches: 'Recent Searches', clearHistory: 'Clear History',
@@ -2780,10 +2753,6 @@
         titleExpandAll: '展開所有物件', titleCollapseAll: '收合所有物件',
         titleQuickSearch: '快速搜尋', titleExpand: '點擊展開', titleCopy: '複製',
         hlOn: '醒目標示已開啟 — 點擊停用', hlOff: '醒目標示已停用 — 點擊開啟',
-        modeHintCidrExact: '精確（忽略 CIDR）', modeHintCidrKw: '關鍵字（忽略 CIDR）',
-        modeHintCidr: 'CIDR 範圍', modeHintExactIp: '精確 IP', modeHintIpPrefix: 'IP 前綴',
-        modeHintExact: '精確比對', modeHintKw: '關鍵字 / Port',
-        hintPress: '按 Enter 篩選：{0} — {1}',
         stagedFiles: '待匯入：{0} 個檔案', stagedFqdn: '待匯入 FQDN：{0} 個檔案',
         btnImportAll: '全部匯入', btnClearQueue: '清除',
         recentSearches: '最近搜尋', clearHistory: '清除記錄',
@@ -2836,29 +2805,7 @@
       document.getElementById('searchInput').value = '';
       state.search = ''; state.appliedSearch = ''; state.searchAST = null;
       copyData = [];
-      document.getElementById('searchHint').innerHTML = '';
       renderContent();
-    }
-
-    function updateSearchHint() {
-      const val = document.getElementById('searchInput').value.trim();
-      const hint = document.getElementById('searchHint');
-      if (!val) { hint.innerHTML = ''; return; }
-      let modeKey = '';
-      if (state.ignoreCIDR) {
-        modeKey = state.searchMode === 'exact' ? 'modeHintCidrExact' : 'modeHintCidrKw';
-      } else if (isCIDR(val) || isIPWithMask(val)) {
-        modeKey = 'modeHintCidr';
-      } else if (isExactIP(val)) {
-        modeKey = 'modeHintExactIp';
-      } else if (isIPish(val)) {
-        modeKey = 'modeHintIpPrefix';
-      } else if (state.searchMode === 'exact') {
-        modeKey = 'modeHintExact';
-      } else {
-        modeKey = 'modeHintKw';
-      }
-      hint.innerHTML = T('hintPress', `<span class="hint-mode">${esc(val)}</span>`, T(modeKey));
     }
 
     function quickSearch(value) {
@@ -2868,7 +2815,6 @@
       document.getElementById('searchModeBtn').textContent = T('searchModeExact');
       copyData = [];
       addToSearchHistory(value);
-      updateSearchHint();
       renderContent();
     }
 
@@ -5740,7 +5686,7 @@
 
     // Search
     // Search — handled by history-aware listener below
-    document.getElementById('ignoreCidr').addEventListener('change', e => { state.ignoreCIDR = e.target.checked; if (state.appliedSearch) renderContent(); updateSearchHint(); });
+    document.getElementById('ignoreCidr').addEventListener('change', e => { state.ignoreCIDR = e.target.checked; if (state.appliedSearch) renderContent(); });
     // Source device now uses toggle buttons
     document.getElementById('fromZoneFilter').addEventListener('change', e => { state.filters.fromZone = e.target.value; renderContent(); });
     document.getElementById('toZoneFilter').addEventListener('change', e => { state.filters.toZone = e.target.value; renderContent(); });
@@ -6276,7 +6222,6 @@
         setTimeout(() => {
           renderContent();
           spinner.classList.remove('active');
-          updateSearchHint();
         }, 50);
       }
     });
