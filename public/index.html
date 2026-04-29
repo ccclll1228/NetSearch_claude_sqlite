@@ -3660,13 +3660,16 @@
       const terms = searchAST ? extractTerms(searchAST) : [];
       const positiveTerms = searchAST ? extractPositiveTerms(searchAST) : (appliedSearch ? [appliedSearch] : []);
       const termFqdnIpsMap = {};
+      const _fqdnMapExact = searchMode === 'exact';
       positiveTerms.forEach(term => {
         const s = term.toLowerCase(), ips = new Set();
         fqdnRecords.forEach(r => {
           let match = false;
-          if (r.fqdn && r.fqdn.toLowerCase().includes(s)) match = true;
-          else if (r.domain && r.domain.toLowerCase().includes(s)) match = true;
-          else if (r.ip && r.ip.toLowerCase().includes(s)) match = true;
+          // In exact mode use strict equality so sibling FQDNs that merely contain
+          // the search term as a substring don't contribute IPs to the chain.
+          if (r.fqdn) { const v = r.fqdn.toLowerCase(); match = _fqdnMapExact ? v === s : v.includes(s); }
+          if (!match && r.domain) { const v = r.domain.toLowerCase(); match = _fqdnMapExact ? v === s : v.includes(s); }
+          if (!match && r.ip) { const v = r.ip.toLowerCase(); match = _fqdnMapExact ? v === s : v.includes(s); }
           if (match && r.ip && r.ip.toLowerCase() !== 'null' && isExactIP(r.ip)) ips.add(r.ip);
         });
         termFqdnIpsMap[term] = Array.from(ips);
