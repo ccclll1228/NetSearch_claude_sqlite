@@ -1217,11 +1217,17 @@
       font-family: var(--cds-font-mono);
       padding: 2px 4px;
       border-radius: var(--cds-radius);
+      overflow: hidden;
+      word-break: break-word;
     }
     .sched-name {
+      display: block;
       font-weight: 600;
       line-height: 1.5;
-      white-space: nowrap;
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      max-width: 100%;
     }
     .sched-dt {
       line-height: 1.5;
