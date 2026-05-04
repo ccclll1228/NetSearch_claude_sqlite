@@ -158,6 +158,7 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
 - **Ignore CIDR toggle** — when enabled, CIDR containment is skipped across all search and filter operations; only exact-IP matches are used. Affects both the search pipeline and the FQDN device filter gate.
 - **`_32` notation support** — IP addresses written as `x.x.x.x_32` (Palo Alto style) are normalised to `x.x.x.x/32` at index build time and throughout the search/filter pipeline.
 - **Schedule column in Sec Rules** — FortiGate (`config firewall schedule onetime`) and Palo Alto (`set schedule ... schedule-type non-recurring`) schedule objects are parsed into `parsed.schedules[name] = { name, start, end }` (ISO datetime strings). Each `secRule.schedule` is resolved to the object when a match exists, kept as a raw string otherwise, or `null`. `renderSecRules` detects whether any visible rule carries a non-`"always"` schedule; if so it switches to an 8-column grid (`9% 130px 10% 18% 18% 10% 9% auto`) and inserts a SCHEDULE column after RULE/ACTION. The cell shows: schedule name (bold, wrapping), start datetime, end datetime — with a yellow `#fffde7` background when the window end is still in the future. If no rule has a schedule the column is suppressed entirely and the original 7-column grid is preserved. NAT Rules tab is unaffected.
+- **VIP/VIPGRP resolution in Sec Rules** — FortiGate `config firewall vip` blocks are parsed into `parsed.vipMap[name] = { extip, mappedip, extintf }`; `config firewall vipgrp` blocks into `parsed.vipgrpMap[name] = { members: [] }`. During secRules serialization, each destination address is passed through `resolveVip()`: vipgrp names expand to their member VIP entries, vip names resolve directly, plain addresses return `null`. When any destination resolves, `secRule.dstVips = [{ name, extip, mappedip }, ...]` is attached. In `renderSecRules`, the DESTINATION cell appends one `extip → mappedip` sub-line per entry (0.75rem, gray, monospace) below the address pills so the real mapped IP is visible without expanding.
 
 ### resolveObject() is flatten-only — never reuse for hierarchical output
 
@@ -249,6 +250,7 @@ name line **before** recursing into its members. See `tasks/lessons.md` for the 
 - [x] FQDN tab device filter — per-device address-space gate; FW uses ALLOW rule destinations, F5 uses VS IPs; `/32` mod-32 mask bug fixed
 - [x] Schedule parsing — FortiGate onetime + PaloAlto non-recurring schedule objects parsed into `parsed.schedules`; rules resolve schedule name → object; `name` field carried through for UI display
 - [x] Schedule column in Sec Rules — 8-col grid with 130px SCHEDULE column; name (wrapping) + start/end datetimes; yellow highlight when window active; auto-suppressed when no rule has a schedule
+- [x] VIP/VIPGRP resolution — FortiGate vipMap + vipgrpMap parsed; `secRule.dstVips` resolved per destination; extip → mappedip shown inline in destination cell
 
 ### TODO
 - [ ] Set real `fqdnFile` path in `config/settings.json` once CSV location is known
