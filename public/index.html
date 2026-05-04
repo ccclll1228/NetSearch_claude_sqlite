@@ -1210,6 +1210,15 @@
       color: var(--accent);
     }
 
+    /* ── VIP mapping sub-lines in destination cell ── */
+    .vip-mapping {
+      font-size: 0.75rem;
+      color: #666;
+      font-family: var(--cds-font-mono);
+      padding: 1px 0;
+      white-space: nowrap;
+    }
+
     /* ── Schedule column ── */
     .sched-cell {
       display: block;
@@ -3184,7 +3193,7 @@
     // FortiGate Parser
     const parseFortiGateConfig = (text) => {
       const lines = String(text).split('\n');
-      const acc = { type: 'FortiGate', hostname: 'Unknown-FortiGate', tags: {}, addresses: {}, groups: {}, services: {}, serviceGroups: {}, urlCategories: {}, secRules: {}, natRules: {}, routes: {}, schedules: {}, unparsed: [] };
+      const acc = { type: 'FortiGate', hostname: 'Unknown-FortiGate', tags: {}, addresses: {}, groups: {}, services: {}, serviceGroups: {}, urlCategories: {}, secRules: {}, natRules: {}, routes: {}, schedules: {}, vipMap: {}, vipgrpMap: {}, unparsed: [] };
       const parseFGTValue = (str) => (str.match(/"[^"]+"|'[^']+'|\S+/g) || []).map(s => s.replace(/['"]/g, ''));
       let cs = null, ce = null, co = null;
       for (let i = 0; i < lines.length; i++) {
@@ -3236,12 +3245,13 @@
               if (co.status) { const sv = Array.isArray(co.status) ? co.status[0] : co.status; rule.disabled = (sv === 'disable'); }
               acc.natRules[ce] = rule;
             } else if (cs === 'firewall vip') {
-              // FortiGate VIP objects: parse extip/mappedip into addresses
-              if (co.extip && co.mappedip) {
-                const extip = Array.isArray(co.extip) ? co.extip[0] : co.extip;
-                const mappedip = Array.isArray(co.mappedip) ? co.mappedip[0] : co.mappedip;
-                acc.addresses[ce] = { type: 'ip-netmask', value: extip, mappedip: mappedip };
-              }
+              const extip = co.extip ? (Array.isArray(co.extip) ? co.extip[0] : co.extip) : '';
+              const mappedip = co.mappedip ? (Array.isArray(co.mappedip) ? co.mappedip[0] : co.mappedip) : '';
+              const extintf = co.extintf ? String(Array.isArray(co.extintf) ? co.extintf[0] : co.extintf) : '';
+              if (extip) acc.vipMap[ce] = { extip, mappedip, extintf };
+              if (extip && mappedip) acc.addresses[ce] = { type: 'ip-netmask', value: extip, mappedip };
+            } else if (cs === 'firewall vipgrp') {
+              acc.vipgrpMap[ce] = { members: co.member ? [].concat(co.member) : [] };
             } else if (cs === 'router static') {
               acc.routes[ce] = { name: String(ce), destination: co.dst ? String(Array.isArray(co.dst) ? co.dst[0] : co.dst) : '', nexthop: co.gateway ? String(Array.isArray(co.gateway) ? co.gateway[0] : co.gateway) : '', interface: co.device ? String(Array.isArray(co.device) ? co.device[0] : co.device) : '' };
             } else if (cs === 'firewall schedule onetime') {
@@ -3259,7 +3269,17 @@
       const toArr = s => s instanceof Set ? Array.from(s) : (Array.isArray(s) ? s : []);
       const groups = {}; Object.entries(acc.groups).forEach(([k, v]) => groups[k] = Array.from(v));
       const serviceGroups = {}; Object.entries(acc.serviceGroups).forEach(([k, v]) => serviceGroups[k] = Array.from(v));
-      const secRules = Object.values(acc.secRules).map(r => ({ name: String(r.name), disabled: r.disabled, action: r.action, from: toArr(r.from), to: toArr(r.to), source: toArr(r.source), destination: toArr(r.destination), application: toArr(r.application), service: toArr(r.service), category: toArr(r.category), tag: toArr(r.tag), schedule: r.schedule || null }));
+      const resolveVip = (name, vipMap, vipgrpMap) => {
+        if (vipgrpMap[name]) return vipgrpMap[name].members.flatMap(m => vipMap[m] ? [{ name: m, extip: vipMap[m].extip, mappedip: vipMap[m].mappedip }] : []);
+        if (vipMap[name]) return [{ name, extip: vipMap[name].extip, mappedip: vipMap[name].mappedip }];
+        return null;
+      };
+      const secRules = Object.values(acc.secRules).map(r => {
+        const base = { name: String(r.name), disabled: r.disabled, action: r.action, from: toArr(r.from), to: toArr(r.to), source: toArr(r.source), destination: toArr(r.destination), application: toArr(r.application), service: toArr(r.service), category: toArr(r.category), tag: toArr(r.tag), schedule: r.schedule || null };
+        const dstVips = toArr(r.destination).flatMap(a => { const v = resolveVip(a, acc.vipMap, acc.vipgrpMap); return v || []; });
+        if (dstVips.length) base.dstVips = dstVips;
+        return base;
+      });
       secRules.forEach(r => { if (r.schedule && typeof r.schedule === 'string' && acc.schedules[r.schedule]) r.schedule = acc.schedules[r.schedule]; });
       const natRules = Object.values(acc.natRules).map(r => ({ name: String(r.name), disabled: !!r.disabled, from: toArr(r.from), to: toArr(r.to), source: toArr(r.source), destination: toArr(r.destination), service: toArr(r.service), tag: toArr(r.tag), sourceTranslation: Array.from(r.sourceTranslation || []), destinationTranslation: Array.from(r.destinationTranslation || []) }));
       const routesArr = Object.values(acc.routes).map(r => ({ name: String(r.name || ''), destination: r.destination ? String(r.destination) : '', nexthop: r.nexthop ? String(r.nexthop) : '', interface: r.interface ? String(r.interface) : '' }));
@@ -4814,7 +4834,7 @@
         ${schedCell}
         <div class="rule-field"><div style="display:flex;align-items:baseline;gap:5px;margin-bottom:3px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">FROM</span>${renderPills(r.from, r._parsed, 'object', ruleKey)}</div><div style="display:flex;align-items:baseline;gap:5px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">TO</span>${renderPills(r.to, r._parsed, 'object', ruleKey)}</div></div>
         <div class="rule-field">${renderPills(r.source, r._parsed, 'object', ruleKey)}</div>
-        <div class="rule-field">${renderPills(r.destination, r._parsed, 'object', ruleKey)}</div>
+        <div class="rule-field">${renderPills(r.destination, r._parsed, 'object', ruleKey)}${r.dstVips && r.dstVips.length ? `<div>${r.dstVips.map(v => `<div class="vip-mapping">${esc(v.extip)} → ${esc(v.mappedip)}</div>`).join('')}</div>` : ''}</div>
         <div class="rule-field">${renderPills(r.service, r._parsed, 'service', ruleKey)}</div>
         <div class="rule-field">${r.application && r.application.length > 0 ? renderPills(r.application, r._parsed, 'object', ruleKey) : ''}</div>
         <div class="rule-field">${r.category && r.category.length > 0 ? `<div class="pills">${r.category.map(c => renderUrlCategoryPill(c, r._parsed)).join('')}</div>` : ''}</div>
