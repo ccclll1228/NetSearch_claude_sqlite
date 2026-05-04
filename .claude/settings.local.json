@@ -28,7 +28,11 @@
       "Bash(node server.js)",
       "Bash(echo \"PID: $!\")",
       "Bash(curl -s http://localhost:3001/api/status)",
-      "Bash(curl -s -X POST http://localhost:3001/api/reload)"
+      "Bash(curl -s -X POST http://localhost:3001/api/reload)",
+      "Bash(git tag *)",
+      "Bash(git push *)",
+      "Bash(awk -F: '{if \\($1 >= 3705 && $1 <= 4215\\) print}')",
+      "Bash(awk -F: '$1 < 600 {print}')"
     ]
   },
   "enabledMcpjsonServers": [
