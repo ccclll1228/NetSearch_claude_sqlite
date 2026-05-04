@@ -1210,6 +1210,43 @@
       color: var(--accent);
     }
 
+    /* ── Schedule column ── */
+    .sched-cell {
+      display: block;
+      font-size: 11px;
+      font-family: var(--cds-font-mono);
+      padding: 2px 4px;
+      border-radius: var(--cds-radius);
+    }
+    .sched-dt {
+      line-height: 1.5;
+      white-space: nowrap;
+    }
+    .sched-card-row {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      flex-wrap: wrap;
+      font-size: 11px;
+      font-family: var(--cds-font-mono);
+      color: var(--cds-text-secondary);
+    }
+    .sched-card-label {
+      font-weight: 600;
+      color: var(--cds-text-primary);
+      flex-shrink: 0;
+    }
+    .sched-active-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      background: #fffde7;
+      color: #5a4000;
+      border: 1px solid #f9a825;
+      border-radius: var(--cds-radius);
+    }
+
     /* ── Device Group ── */
     .device-group {
       margin-bottom: 14px;
@@ -2668,7 +2705,7 @@
         statsFqdnCapped: 'Total: {0} record(s) (showing first 2000)',
         colRuleAction: 'Rule / Action', colFromTo: 'From / To',
         colSource: 'Source', colDestination: 'Destination', colService: 'Service',
-        colApplication: 'Application', colUrlCategory: 'URL Category',
+        colApplication: 'Application', colUrlCategory: 'URL Category', colSchedule: 'Schedule',
         colNum: '#', colName: 'Name', colDest: 'Destination', colNexthop: 'Nexthop', colIface: 'Interface',
         headAddresses: 'Addresses', headAddrGroups: 'Address Groups',
         colObjName: 'Name', colObjType: 'Type', colObjValue: 'Value',
@@ -2748,7 +2785,7 @@
         statsFqdnCapped: '共 {0} 筆記錄（僅顯示前 2000 筆）',
         colRuleAction: '規則 / 動作', colFromTo: '來源區 / 目的區',
         colSource: '來源', colDestination: '目的', colService: '服務',
-        colApplication: '應用程式', colUrlCategory: 'URL 類別',
+        colApplication: '應用程式', colUrlCategory: 'URL 類別', colSchedule: '排程',
         colNum: '#', colName: '名稱', colDest: '目的地', colNexthop: '下一跳', colIface: '介面',
         headAddresses: '地址', headAddrGroups: '地址群組',
         colObjName: '名稱', colObjType: '類型', colObjValue: '值',
@@ -3203,7 +3240,7 @@
             } else if (cs === 'router static') {
               acc.routes[ce] = { name: String(ce), destination: co.dst ? String(Array.isArray(co.dst) ? co.dst[0] : co.dst) : '', nexthop: co.gateway ? String(Array.isArray(co.gateway) ? co.gateway[0] : co.gateway) : '', interface: co.device ? String(Array.isArray(co.device) ? co.device[0] : co.device) : '' };
             } else if (cs === 'firewall schedule onetime') {
-              if (co.start && co.end) { const sa = Array.isArray(co.start) ? co.start : [co.start]; const ea = Array.isArray(co.end) ? co.end : [co.end]; if (sa.length >= 2 && ea.length >= 2) acc.schedules[ce] = { start: `${String(sa[1]).replace(/\//g, '-')}T${sa[0]}`, end: `${String(ea[1]).replace(/\//g, '-')}T${ea[0]}` }; }
+              if (co.start && co.end) { const sa = Array.isArray(co.start) ? co.start : [co.start]; const ea = Array.isArray(co.end) ? co.end : [co.end]; if (sa.length >= 2 && ea.length >= 2) acc.schedules[ce] = { name: ce, start: `${String(sa[1]).replace(/\//g, '-')}T${sa[0]}`, end: `${String(ea[1]).replace(/\//g, '-')}T${ea[0]}` }; }
             }
           }
           if (cs === 'system global' && co && co.hostname) acc.hostname = String(Array.isArray(co.hostname) ? co.hostname[0] : co.hostname);
@@ -3283,7 +3320,7 @@
         }
         // Schedule objects
         const schedM = line.match(/set schedule\s+("[^"]+"|'[^']+'|\S+)\s+schedule-type\s+non-recurring\s+(\d{4}\/\d{2}\/\d{2})@(\d{2}:\d{2})-(\d{4}\/\d{2}\/\d{2})@(\d{2}:\d{2})/);
-        if (schedM) { const sn = String(schedM[1]).replace(/['"]/g, ''); acc.schedules[sn] = { start: `${schedM[2].replace(/\//g, '-')}T${schedM[3]}`, end: `${schedM[4].replace(/\//g, '-')}T${schedM[5]}` }; continue; }
+        if (schedM) { const sn = String(schedM[1]).replace(/['"]/g, ''); acc.schedules[sn] = { name: sn, start: `${schedM[2].replace(/\//g, '-')}T${schedM[3]}`, end: `${schedM[4].replace(/\//g, '-')}T${schedM[5]}` }; continue; }
         // Routes
         const rtM = line.match(/virtual-router\s+\S+\s+routing-table\s+ip\s+static-route\s+("[^"]+"|'[^']+'|\S+)\s+(.*)/);
         if (rtM) {
@@ -4709,19 +4746,58 @@
       const groups = groupByDevice(rules);
       const stats = `<div class="stats-bar">${T('statsSecRules', rules.length, groups.length)}</div>`;
       _lastFilteredSecRules = rules;
+
+      const _isAlways = sch => !sch || (typeof sch === 'string' && sch.toLowerCase() === 'always');
+      const _fmtDt = iso => iso.replace('T', ' ');
+      const _schedActive = endStr => { const d = new Date(endStr.replace('T', ' ') + ':00'); return !isNaN(d) && d > new Date(); };
+      const hasSchedule = rules.some(r => !_isAlways(r.schedule));
+      const colTpl = hasSchedule
+        ? '11% 8% 10% 18% 18% 10% 9% 16%'
+        : '12% 12% 21% 21% 10% 8% 16%';
+
       return stats + groups.map(group => {
         const gid = `grp_${group.hostname}`;
         const isCollapsed = collapsedGroups.has(gid);
-        const header = `<div class="rule-body-header"><span>${T('colRuleAction')}</span><span>${T('colFromTo')}</span><span>${T('colSource')}</span><span>${T('colDestination')}</span><span>${T('colService')}</span><span>${T('colApplication')}</span><span>${T('colUrlCategory')}</span></div>`;
+        const schHead = hasSchedule ? `<span>${T('colSchedule')}</span>` : '';
+        const header = `<div class="rule-body-header" style="grid-template-columns:${colTpl}"><span>${T('colRuleAction')}</span>${schHead}<span>${T('colFromTo')}</span><span>${T('colSource')}</span><span>${T('colDestination')}</span><span>${T('colService')}</span><span>${T('colApplication')}</span><span>${T('colUrlCategory')}</span></div>`;
         const cards = group.items.map(r => {
           const globalIdx = _lastFilteredSecRules.indexOf(r);
           const ruleKey = `sec_${globalIdx}`;
           const hn = r._parsed?.hostname || '';
           const expandableItems = [...(r.source || []), ...(r.destination || []), ...(r.from || []), ...(r.to || []), ...(r.service || []), ...(r.application || [])];
           _ruleExpandMap[ruleKey] = { hostname: hn, items: expandableItems, ctx: ruleKey };
+
+          // Schedule table cell (second column, only when hasSchedule)
+          let schedCell = '';
+          if (hasSchedule) {
+            const sch = r.schedule;
+            if (_isAlways(sch)) {
+              schedCell = '<div class="rule-field"></div>';
+            } else if (typeof sch === 'string') {
+              schedCell = `<div class="rule-field"><span class="sched-cell">${esc(sch)}</span></div>`;
+            } else {
+              const active = _schedActive(sch.end);
+              const style = active ? 'background:#fffde7;color:#5a4000' : '';
+              const titleAttr = sch.name ? ` title="${esc(sch.name)}"` : '';
+              schedCell = `<div class="rule-field"><div class="sched-cell"${titleAttr} style="${style}"><div class="sched-dt">${esc(_fmtDt(sch.start))}</div><div class="sched-dt">${esc(_fmtDt(sch.end))}</div></div></div>`;
+            }
+          }
+
+          // Schedule card row (inside first rule-field, below action row)
+          let schedCardRow = '';
+          if (!_isAlways(r.schedule)) {
+            const sch = r.schedule;
+            if (typeof sch === 'string') {
+              schedCardRow = `<div class="sched-card-row"><span class="sched-card-label">Schedule:</span> <span>${esc(sch)}</span></div>`;
+            } else {
+              const active = _schedActive(sch.end);
+              schedCardRow = `<div class="sched-card-row"><span class="sched-card-label">Schedule:</span> <span>${esc(sch.name || '')}</span> <span>${esc(_fmtDt(sch.start))} → ${esc(_fmtDt(sch.end))}</span>${active ? ' <span class="sched-active-badge">● ACTIVE</span>' : ''}</div>`;
+            }
+          }
+
           return `
     <div class="rule-card ${r.disabled ? 'rule-disabled' : ''} ${r._chainedFromFqdn || r._chainedFromNat ? 'chained' : ''}">
-      <div class="rule-body">
+      <div class="rule-body" style="grid-template-columns:${colTpl}">
         <div class="rule-field" style="display:flex;flex-direction:column;gap:5px">
           <span class="rule-name">${esc(r.name)}</span>
           ${r.tag && r.tag.length > 0 ? `<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:1px">${r.tag.map(t => `<span class="rule-tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}
@@ -4738,7 +4814,9 @@
             ${r._chainedFromNat ? '<span class="chain-pill nat">NAT→Rule</span>' : ''}
             ${r.disabled ? '<span class="rule-status disabled">Disabled</span>' : ''}
           </div>
+          ${schedCardRow}
         </div>
+        ${schedCell}
         <div class="rule-field"><div style="display:flex;align-items:baseline;gap:5px;margin-bottom:3px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">FROM</span>${renderPills(r.from, r._parsed, 'object', ruleKey)}</div><div style="display:flex;align-items:baseline;gap:5px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">TO</span>${renderPills(r.to, r._parsed, 'object', ruleKey)}</div></div>
         <div class="rule-field">${renderPills(r.source, r._parsed, 'object', ruleKey)}</div>
         <div class="rule-field">${renderPills(r.destination, r._parsed, 'object', ruleKey)}</div>
