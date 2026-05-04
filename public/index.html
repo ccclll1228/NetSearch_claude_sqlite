@@ -3142,7 +3142,7 @@
     // FortiGate Parser
     const parseFortiGateConfig = (text) => {
       const lines = String(text).split('\n');
-      const acc = { type: 'FortiGate', hostname: 'Unknown-FortiGate', tags: {}, addresses: {}, groups: {}, services: {}, serviceGroups: {}, urlCategories: {}, secRules: {}, natRules: {}, routes: {}, unparsed: [] };
+      const acc = { type: 'FortiGate', hostname: 'Unknown-FortiGate', tags: {}, addresses: {}, groups: {}, services: {}, serviceGroups: {}, urlCategories: {}, secRules: {}, natRules: {}, routes: {}, schedules: {}, unparsed: [] };
       const parseFGTValue = (str) => (str.match(/"[^"]+"|'[^']+'|\S+/g) || []).map(s => s.replace(/['"]/g, ''));
       let cs = null, ce = null, co = null;
       for (let i = 0; i < lines.length; i++) {
@@ -3164,6 +3164,7 @@
               if (co.action) { const av = Array.isArray(co.action) ? co.action[0] : co.action; rule.action = (av === 'accept') ? 'allow' : 'deny'; }
               if (co.status) { const sv = Array.isArray(co.status) ? co.status[0] : co.status; rule.disabled = (sv === 'disable'); }
               if (co.comments) rule.name = String(co.comments);
+              if (co.schedule) rule.schedule = co.schedule;
               acc.secRules[ce] = rule;
             } else if (cs === 'firewall address') {
               if (co.subnet) { const parts = parseFGTValue(co.subnet.join ? co.subnet.join(' ') : co.subnet); if (parts.length >= 2) { const ip = parts[0], mask = parts[1]; const bits = mask.split('.').reduce((a, o) => a + parseInt(o, 10).toString(2).split('').filter(b => b === '1').length, 0); acc.addresses[ce] = { type: 'ip-netmask', value: `${ip}/${bits}` }; } }
@@ -3201,6 +3202,8 @@
               }
             } else if (cs === 'router static') {
               acc.routes[ce] = { name: String(ce), destination: co.dst ? String(Array.isArray(co.dst) ? co.dst[0] : co.dst) : '', nexthop: co.gateway ? String(Array.isArray(co.gateway) ? co.gateway[0] : co.gateway) : '', interface: co.device ? String(Array.isArray(co.device) ? co.device[0] : co.device) : '' };
+            } else if (cs === 'firewall schedule onetime') {
+              if (co.start && co.end) { const sa = Array.isArray(co.start) ? co.start : [co.start]; const ea = Array.isArray(co.end) ? co.end : [co.end]; if (sa.length >= 2 && ea.length >= 2) acc.schedules[ce] = { start: `${String(sa[1]).replace(/\//g, '-')}T${sa[0]}`, end: `${String(ea[1]).replace(/\//g, '-')}T${ea[0]}` }; }
             }
           }
           if (cs === 'system global' && co && co.hostname) acc.hostname = String(Array.isArray(co.hostname) ? co.hostname[0] : co.hostname);
@@ -3214,7 +3217,8 @@
       const toArr = s => s instanceof Set ? Array.from(s) : (Array.isArray(s) ? s : []);
       const groups = {}; Object.entries(acc.groups).forEach(([k, v]) => groups[k] = Array.from(v));
       const serviceGroups = {}; Object.entries(acc.serviceGroups).forEach(([k, v]) => serviceGroups[k] = Array.from(v));
-      const secRules = Object.values(acc.secRules).map(r => ({ name: String(r.name), disabled: r.disabled, action: r.action, from: toArr(r.from), to: toArr(r.to), source: toArr(r.source), destination: toArr(r.destination), application: toArr(r.application), service: toArr(r.service), category: toArr(r.category), tag: toArr(r.tag) }));
+      const secRules = Object.values(acc.secRules).map(r => ({ name: String(r.name), disabled: r.disabled, action: r.action, from: toArr(r.from), to: toArr(r.to), source: toArr(r.source), destination: toArr(r.destination), application: toArr(r.application), service: toArr(r.service), category: toArr(r.category), tag: toArr(r.tag), schedule: r.schedule || null }));
+      secRules.forEach(r => { if (r.schedule && typeof r.schedule === 'string' && acc.schedules[r.schedule]) r.schedule = acc.schedules[r.schedule]; });
       const natRules = Object.values(acc.natRules).map(r => ({ name: String(r.name), disabled: !!r.disabled, from: toArr(r.from), to: toArr(r.to), source: toArr(r.source), destination: toArr(r.destination), service: toArr(r.service), tag: toArr(r.tag), sourceTranslation: Array.from(r.sourceTranslation || []), destinationTranslation: Array.from(r.destinationTranslation || []) }));
       const routesArr = Object.values(acc.routes).map(r => ({ name: String(r.name || ''), destination: r.destination ? String(r.destination) : '', nexthop: r.nexthop ? String(r.nexthop) : '', interface: r.interface ? String(r.interface) : '' }));
       return { ...acc, groups, serviceGroups, secRules, natRules, routes: routesArr };
@@ -3223,7 +3227,7 @@
     // Palo Alto Parser
     const parsePAConfig = (text) => {
       const lines = String(text).split('\n');
-      const acc = { type: 'PA', hostname: 'Unknown-PA', tags: {}, addresses: {}, groups: {}, services: {}, serviceGroups: {}, urlCategories: {}, secRules: {}, natRules: {}, routes: {}, unparsed: [] };
+      const acc = { type: 'PA', hostname: 'Unknown-PA', tags: {}, addresses: {}, groups: {}, services: {}, serviceGroups: {}, urlCategories: {}, secRules: {}, natRules: {}, routes: {}, schedules: {}, unparsed: [] };
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line || line.startsWith('#')) continue;
@@ -3259,6 +3263,7 @@
           const tgm = rest.match(/^tag\s+(.*)/); if (tgm) parseValue(tgm[1]).forEach(v => acc.secRules[rn].tag.add(v));
           const acm = rest.match(/^action\s+(\S+)/); if (acm) acc.secRules[rn].action = String(acm[1]);
           if (rest.match(/^disabled\s+yes/)) acc.secRules[rn].disabled = true;
+          const schm = rest.match(/^schedule\s+("[^"]+"|'[^']+'|\S+)/); if (schm) acc.secRules[rn].schedule = String(schm[1]).replace(/['"]/g, '');
           continue;
         }
         // NAT rules
@@ -3276,6 +3281,9 @@
           if (rest.match(/^disabled\s+yes/)) acc.natRules[rn].disabled = true;
           continue;
         }
+        // Schedule objects
+        const schedM = line.match(/set schedule\s+("[^"]+"|'[^']+'|\S+)\s+schedule-type\s+non-recurring\s+(\d{4}\/\d{2}\/\d{2})@(\d{2}:\d{2})-(\d{4}\/\d{2}\/\d{2})@(\d{2}:\d{2})/);
+        if (schedM) { const sn = String(schedM[1]).replace(/['"]/g, ''); acc.schedules[sn] = { start: `${schedM[2].replace(/\//g, '-')}T${schedM[3]}`, end: `${schedM[4].replace(/\//g, '-')}T${schedM[5]}` }; continue; }
         // Routes
         const rtM = line.match(/virtual-router\s+\S+\s+routing-table\s+ip\s+static-route\s+("[^"]+"|'[^']+'|\S+)\s+(.*)/);
         if (rtM) {
@@ -3290,7 +3298,8 @@
       const groups = {}; Object.entries(acc.groups).forEach(([k, v]) => groups[k] = Array.from(v));
       const serviceGroups = {}; Object.entries(acc.serviceGroups).forEach(([k, v]) => serviceGroups[k] = Array.from(v));
       const urlCategories = {}; Object.entries(acc.urlCategories).forEach(([k, v]) => urlCategories[k] = Array.from(v));
-      const secRules = Object.values(acc.secRules).map(r => ({ name: String(r.name), disabled: !!r.disabled, action: r.action || 'allow', from: toArr(r.from), to: toArr(r.to), source: toArr(r.source), destination: toArr(r.destination), application: toArr(r.application), service: toArr(r.service), category: toArr(r.category), tag: Array.from(r.tag || []) }));
+      const secRules = Object.values(acc.secRules).map(r => ({ name: String(r.name), disabled: !!r.disabled, action: r.action || 'allow', from: toArr(r.from), to: toArr(r.to), source: toArr(r.source), destination: toArr(r.destination), application: toArr(r.application), service: toArr(r.service), category: toArr(r.category), tag: Array.from(r.tag || []), schedule: r.schedule || null }));
+      secRules.forEach(r => { if (r.schedule && typeof r.schedule === 'string' && acc.schedules[r.schedule]) r.schedule = acc.schedules[r.schedule]; });
       const natRules = Object.values(acc.natRules).map(r => ({ name: String(r.name), disabled: !!r.disabled, from: toArr(r.from), to: toArr(r.to), source: toArr(r.source), destination: toArr(r.destination), service: toArr(r.service), tag: Array.from(r.tag || []), sourceTranslation: Array.from(r['source-translation'] || []), destinationTranslation: Array.from(r['destination-translation'] || []) }));
       const routesArr = Object.values(acc.routes).map(r => ({ name: String(r.name || ''), destination: r.destination ? String(r.destination) : '', nexthop: r.nexthop ? String(r.nexthop) : '', interface: r.interface ? String(r.interface) : '' }));
       return { ...acc, groups, serviceGroups, urlCategories, secRules, natRules, routes: routesArr };
