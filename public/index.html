@@ -4787,18 +4787,22 @@
         <div class="rule-field" style="display:flex;flex-direction:column;gap:5px">
           <span class="rule-name">${esc(r.name)}</span>
           ${r.tag && r.tag.length > 0 ? `<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:1px">${r.tag.map(t => `<span class="rule-tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}
-          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
-            <span class="rule-action ${r.action}">${esc(r.action)}</span>
-            <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredSecRules[${globalIdx}])" title="Copy this rule as TSV">${SVG_COPY}</button>
-            <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();expandAllRulePills('${ruleKey}')" title="${T('titleExpandAll')}">
-              <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>
-            </button>
-            <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();collapseAllRulePills('${ruleKey}')" title="${T('titleCollapseAll')}">
-              <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>
-            </button>
-            ${r._chainedFromFqdn ? '<span class="chain-pill fqdn">FQDN→IP</span>' : ''}
-            ${r._chainedFromNat ? '<span class="chain-pill nat">NAT→Rule</span>' : ''}
-            ${r.disabled ? '<span class="rule-status disabled">Disabled</span>' : ''}
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+            <div>
+              <span class="rule-action ${r.action}">${esc(r.action)}</span>
+              ${r._chainedFromFqdn ? '<span class="chain-pill fqdn">FQDN→IP</span>' : ''}
+              ${r._chainedFromNat ? '<span class="chain-pill nat">NAT→Rule</span>' : ''}
+              ${r.disabled ? '<span class="rule-status disabled">Disabled</span>' : ''}
+            </div>
+            <div style="display:flex;flex-wrap:nowrap;gap:4px;white-space:nowrap">
+              <button class="rule-copy-btn" onclick="event.stopPropagation();copyRuleTSV(_lastFilteredSecRules[${globalIdx}])" title="Copy this rule as TSV">${SVG_COPY}</button>
+              <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();expandAllRulePills('${ruleKey}')" title="${T('titleExpandAll')}">
+                <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>
+              </button>
+              <button class="rule-copy-btn rule-expand-btn" onclick="event.stopPropagation();collapseAllRulePills('${ruleKey}')" title="${T('titleCollapseAll')}">
+                <svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>
+              </button>
+            </div>
           </div>
         </div>
         ${schedCell}
