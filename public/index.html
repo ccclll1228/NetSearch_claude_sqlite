@@ -1218,6 +1218,11 @@
       padding: 2px 4px;
       border-radius: var(--cds-radius);
     }
+    .sched-name {
+      font-weight: 600;
+      line-height: 1.5;
+      white-space: nowrap;
+    }
     .sched-dt {
       line-height: 1.5;
       white-space: nowrap;
@@ -4768,24 +4773,11 @@
             if (_isAlways(sch)) {
               schedCell = '<div class="rule-field"></div>';
             } else if (typeof sch === 'string') {
-              schedCell = `<div class="rule-field"><span class="sched-cell">${esc(sch)}</span></div>`;
+              schedCell = `<div class="rule-field"><div class="sched-cell"><div class="sched-name">${esc(sch)}</div></div></div>`;
             } else {
               const active = _schedActive(sch.end);
               const style = active ? 'background:#fffde7;color:#5a4000' : '';
-              const titleAttr = sch.name ? ` title="${esc(sch.name)}"` : '';
-              schedCell = `<div class="rule-field"><div class="sched-cell"${titleAttr} style="${style}"><div class="sched-dt">${esc(_fmtDt(sch.start))}</div><div class="sched-dt">${esc(_fmtDt(sch.end))}</div></div></div>`;
-            }
-          }
-
-          // Schedule card row (inside first rule-field, below action row)
-          let schedCardRow = '';
-          if (!_isAlways(r.schedule)) {
-            const sch = r.schedule;
-            if (typeof sch === 'string') {
-              schedCardRow = `<div class="sched-card-row">● Schedule: ${esc(sch)}</div>`;
-            } else {
-              const active = _schedActive(sch.end);
-              schedCardRow = `<div class="sched-card-row">● Schedule: ${esc(sch.name || '')}  ${esc(_fmtDt(sch.start))} → ${esc(_fmtDt(sch.end))}${active ? ' <span class="sched-active-badge">● ACTIVE</span>' : ''}</div>`;
+              schedCell = `<div class="rule-field"><div class="sched-cell" style="${style}"><div class="sched-name">${esc(sch.name || '')}</div><div class="sched-dt">${esc(_fmtDt(sch.start))}</div><div class="sched-dt">${esc(_fmtDt(sch.end))}</div></div></div>`;
             }
           }
 
@@ -4808,7 +4800,6 @@
             ${r._chainedFromNat ? '<span class="chain-pill nat">NAT→Rule</span>' : ''}
             ${r.disabled ? '<span class="rule-status disabled">Disabled</span>' : ''}
           </div>
-          ${schedCardRow}
         </div>
         ${schedCell}
         <div class="rule-field"><div style="display:flex;align-items:baseline;gap:5px;margin-bottom:3px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">FROM</span>${renderPills(r.from, r._parsed, 'object', ruleKey)}</div><div style="display:flex;align-items:baseline;gap:5px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">TO</span>${renderPills(r.to, r._parsed, 'object', ruleKey)}</div></div>
