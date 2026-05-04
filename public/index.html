@@ -1223,18 +1223,12 @@
       white-space: nowrap;
     }
     .sched-card-row {
-      display: flex;
-      align-items: baseline;
-      gap: 4px;
-      flex-wrap: wrap;
-      font-size: 11px;
+      font-size: 0.75rem;
       font-family: var(--cds-font-mono);
-      color: var(--cds-text-secondary);
-    }
-    .sched-card-label {
-      font-weight: 600;
-      color: var(--cds-text-primary);
-      flex-shrink: 0;
+      color: #666;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .sched-active-badge {
       display: inline-block;
@@ -4752,7 +4746,7 @@
       const _schedActive = endStr => { const d = new Date(endStr.replace('T', ' ') + ':00'); return !isNaN(d) && d > new Date(); };
       const hasSchedule = rules.some(r => !_isAlways(r.schedule));
       const colTpl = hasSchedule
-        ? '11% 8% 10% 18% 18% 10% 9% 16%'
+        ? '9% 130px 10% 18% 18% 10% 9% auto'
         : '12% 12% 21% 21% 10% 8% 16%';
 
       return stats + groups.map(group => {
@@ -4788,10 +4782,10 @@
           if (!_isAlways(r.schedule)) {
             const sch = r.schedule;
             if (typeof sch === 'string') {
-              schedCardRow = `<div class="sched-card-row"><span class="sched-card-label">Schedule:</span> <span>${esc(sch)}</span></div>`;
+              schedCardRow = `<div class="sched-card-row">● Schedule: ${esc(sch)}</div>`;
             } else {
               const active = _schedActive(sch.end);
-              schedCardRow = `<div class="sched-card-row"><span class="sched-card-label">Schedule:</span> <span>${esc(sch.name || '')}</span> <span>${esc(_fmtDt(sch.start))} → ${esc(_fmtDt(sch.end))}</span>${active ? ' <span class="sched-active-badge">● ACTIVE</span>' : ''}</div>`;
+              schedCardRow = `<div class="sched-card-row">● Schedule: ${esc(sch.name || '')}  ${esc(_fmtDt(sch.start))} → ${esc(_fmtDt(sch.end))}${active ? ' <span class="sched-active-badge">● ACTIVE</span>' : ''}</div>`;
             }
           }
 
