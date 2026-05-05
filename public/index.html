@@ -1615,6 +1615,30 @@
       background: var(--cds-layer-02);
     }
 
+    /* ── URL Category member rows ── */
+    .uc-member-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 2px 8px;
+      font-size: 11px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 1px 0;
+    }
+
+    .uc-member-row .uc-member-copy {
+      opacity: 0;
+      transition: opacity .12s;
+      flex-shrink: 0;
+    }
+
+    .uc-member-row:hover .uc-member-copy {
+      opacity: 1;
+    }
+
     /* ── F5 Cards ── */
     .f5-card {
       background: var(--cds-layer-01);
@@ -4733,14 +4757,15 @@
 
       if (!isCustom) return `<span class="pill" style="border-style:dashed">${esc(name)}</span>`;
 
+      const copyGroupBtn = `<button class="rule-copy-btn" onclick="event.stopPropagation();copyToClipboard('${esc(name)}').then(()=>showCopyFeedback())" title="Copy group name">${SVG_COPY}</button>`;
       if (isExp) {
-        const memberHtml = members.map(m => `<div style="padding:2px 8px;font-size:11px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;margin:1px 0">${esc(m)}</div>`).join('');
+        const memberHtml = members.map(m => `<div class="uc-member-row"><span>${esc(m)}</span><button class="rule-copy-btn uc-member-copy" onclick="event.stopPropagation();copyToClipboard('${esc(m)}').then(()=>showCopyFeedback())" title="Copy">${SVG_COPY}</button></div>`).join('');
         return `<div style="display:inline-block;vertical-align:top;margin:2px">
-      <span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button></span>
+      <span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button>${copyGroupBtn}</span>
       <div style="padding-left:12px;border-left:2px solid var(--border);margin-left:8px;margin-top:4px">${memberHtml}</div>
     </div>`;
       }
-      return `<span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button></span>`;
+      return `<span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button>${copyGroupBtn}</span>`;
     }
     function toggleUrlCat(ucid) { if (expandedUrlCats.has(ucid)) expandedUrlCats.delete(ucid); else expandedUrlCats.add(ucid); renderContent(true); }
 
