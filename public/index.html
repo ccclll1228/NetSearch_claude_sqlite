@@ -4757,7 +4757,7 @@
 
       if (!isCustom) return `<span class="pill" style="border-style:dashed">${esc(name)}</span>`;
 
-      const copyGroupBtn = `<button class="rule-copy-btn" onclick="event.stopPropagation();copyToClipboard('${esc(name)}').then(()=>showCopyFeedback())" title="Copy group name">${SVG_COPY}</button>`;
+      const copyGroupBtn = `<button class="rule-copy-btn" onclick="event.stopPropagation();copyToClipboard('${esc(members.join('\\n'))}').then(()=>showCopyFeedback())" title="Copy all members">${SVG_COPY}</button>`;
       if (isExp) {
         const memberHtml = members.map(m => `<div class="uc-member-row"><span>${esc(m)}</span><button class="rule-copy-btn uc-member-copy" onclick="event.stopPropagation();copyToClipboard('${esc(m)}').then(()=>showCopyFeedback())" title="Copy">${SVG_COPY}</button></div>`).join('');
         return `<div style="display:inline-block;vertical-align:top;margin:2px">
