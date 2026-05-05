@@ -3,8 +3,8 @@ sequenceDiagram
     participant BR as Browser (user)
     participant SV as server.js
     participant PA as lib/parser.js
-    participant BF as Backup Files (disk)
-    participant CA as cache/parsed.json
+    participant BF as BackupFiles
+    participant CA as Cache
 
     rect rgb(30, 60, 40)
         Note over BR,CA: Phase 1 — Startup (npm run dev)
@@ -22,8 +22,8 @@ sequenceDiagram
         BR->>SV: GET /api/data
         SV-->>BR: JSON (parsedConfigs[])
         BR->>BR: buildSearchIndex()
-        BR->>BR: getFilteredData() on every keystroke
-        BR->>BR: renderSecRules / renderNatRules / renderFQDN
+        BR->>BR: getFilteredData()
+        BR->>BR: render*()
     end
 
     Note over BR,SV: Manual reload
