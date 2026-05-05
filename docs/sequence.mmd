@@ -1,0 +1,37 @@
+%%{init: {'theme': 'dark', 'themeVariables': {'fontFamily': 'monospace'}}}%%
+sequenceDiagram
+    participant BR as Browser (user)
+    participant SV as server.js
+    participant PA as lib/parser.js
+    participant BF as Backup Files (disk)
+    participant CA as cache/parsed.json
+
+    rect rgb(30, 60, 40)
+        Note over BR,CA: Phase 1 — Startup (npm run dev)
+        SV->>CA: read snapshot immediately
+        CA-->>SV: parsedConfigs[] (fast boot)
+        SV->>PA: loadAllConfigs() async
+        PA->>BF: read txt per device (discovery → newest HHMM)
+        BF-->>PA: raw config text
+        PA-->>SV: secRules, natRules, addresses,<br/>vipMap, vipgrpMap, schedules
+        SV->>CA: write updated snapshot
+    end
+
+    rect rgb(30, 40, 70)
+        Note over BR,CA: Phase 2 — Search Request (~realtime)
+        BR->>SV: GET /api/data
+        SV-->>BR: JSON (parsedConfigs[])
+        BR->>BR: buildSearchIndex()
+        BR->>BR: getFilteredData() on every keystroke
+        BR->>BR: renderSecRules / renderNatRules / renderFQDN
+    end
+
+    Note over BR,SV: Manual reload
+    BR->>SV: POST /api/reload
+    SV->>PA: loadAllConfigs()
+    PA->>BF: read txt per device
+    BF-->>PA: raw config text
+    PA-->>SV: updated parsed data
+    SV->>CA: write updated snapshot
+
+    Note over SV: cron auto-triggers loadAllConfigs()<br/>at 05:00 and 17:00
