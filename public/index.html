@@ -1862,7 +1862,7 @@
       border-radius: 0 0 var(--radius) var(--radius);
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
       z-index: 50;
-      max-height: 260px;
+      max-height: 400px;
       overflow-y: auto;
     }
 
@@ -6296,7 +6296,7 @@
       const entry = { query, type, time };
       searchHistory = searchHistory.filter(h => _hq(h) !== query);
       searchHistory.unshift(entry);
-      if (searchHistory.length > 20) searchHistory = searchHistory.slice(0, 20);
+      if (searchHistory.length > 50) searchHistory = searchHistory.slice(0, 50);
       localStorage.setItem('ns_search_history', JSON.stringify(searchHistory));
     }
 
