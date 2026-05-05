@@ -4694,6 +4694,7 @@
 
 
     function togglePill(pid) {
+      if (window.getSelection()?.toString().length > 0) return;
       _materializeSentinel(state.activeTab);
       const wasExpanded = expandedPills.has(pid);
       if (wasExpanded) expandedPills.delete(pid); else expandedPills.add(pid);
