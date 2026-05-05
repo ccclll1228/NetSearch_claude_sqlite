@@ -1481,9 +1481,11 @@
     }
 
     .obj-card-type {
-      font-size: 10px;
+      display: inline-block;
+      white-space: nowrap;
+      font-size: 11px;
       color: var(--cds-text-secondary);
-      padding: 1px 6px;
+      padding: 2px 6px;
       border-radius: var(--cds-radius-tag);
       background: var(--cds-layer-02);
       border: 1px solid var(--cds-border-subtle);
@@ -1510,6 +1512,11 @@
       font-weight: 700;
       font-size: 13px;
       font-family: var(--font-mono);
+      flex: 1;
+      min-width: 0;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
     }
 
     .obj-group-count {
@@ -1557,6 +1564,55 @@
 
     .obj-group-member-row:hover .mem-copy {
       opacity: 1;
+    }
+
+    /* ── Objects tab two-panel layout ── */
+    .obj-panels-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .obj-panel {
+      min-width: 0;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .obj-panel + .obj-panel {
+      border-left: 1px solid var(--cds-border-subtle);
+      padding-left: 24px;
+    }
+
+    .obj-panel-header {
+      position: sticky;
+      top: 0;
+      background: var(--cds-layer-01);
+      z-index: 2;
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0 0 8px;
+      padding-bottom: 4px;
+    }
+
+    .route-table.obj-addr-table {
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .route-table.obj-addr-table td {
+      padding: 6px 8px;
+      min-height: 32px;
+    }
+
+    .route-table.obj-addr-table td:first-child {
+      white-space: normal;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+
+    .route-table.obj-addr-table tbody tr:nth-child(even) td {
+      background: var(--cds-layer-02);
     }
 
     /* ── F5 Cards ── */
@@ -4976,12 +5032,12 @@
 
         html += `<div class="device-group">`;
         html += renderDeviceGroupHeader({ hostname: hn, type, items: [...devAddrs, ...devGrps] }, gid);
-        html += `<div class="device-group-body ${isCollapsed ? 'collapsed' : ''}" style="display:${isCollapsed ? 'none' : 'flex'};gap:16px;flex-wrap:wrap">`;
+        html += `<div class="device-group-body ${isCollapsed ? 'collapsed' : 'obj-panels-grid'}">`;
 
         // Addresses table
         if (devAddrs.length > 0) {
-          html += `<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">${T('headAddresses')} <span class="tab-count">${devAddrs.length}</span></h4>
-        <table class="route-table"><thead><tr><th>${T('colObjName')}</th><th>${T('colObjType')}</th><th>${T('colObjValue')}</th><th style="width:32px"></th></tr></thead>
+          html += `<div class="obj-panel"><h4 class="obj-panel-header">${T('headAddresses')} <span class="tab-count">${devAddrs.length}</span></h4>
+        <table class="route-table obj-addr-table"><thead><tr><th style="width:50%">${T('colObjName')}</th><th style="width:90px">${T('colObjType')}</th><th>${T('colObjValue')}</th><th style="width:36px"></th></tr></thead>
         <tbody>${devAddrs.map(a => `<tr${a._chained ? ' style="border-left:3px solid var(--yellow)"' : ''}>
           <td style="font-weight:600;color:${a._chained ? 'var(--accent)' : 'var(--text)'}">${esc(a.name)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(a.name)}')" title="Search">${SVG_QS}</button></td>
           <td><span class="obj-card-type">${esc(a.type)}</span></td>
@@ -4992,7 +5048,7 @@
 
         // Groups cards
         if (devGrps.length > 0) {
-          html += `<div style="flex:1;min-width:300px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">${T('headAddrGroups')} <span class="tab-count">${devGrps.length}</span></h4>`;
+          html += `<div class="obj-panel"><h4 class="obj-panel-header">${T('headAddrGroups')} <span class="tab-count">${devGrps.length}</span></h4>`;
           html += devGrps.map(g => {
             const safeGName = g.name.replace(/'/g, "\\'");
             const outerPid = `obj_grp_${g.name}_${hn}`;
