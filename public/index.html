@@ -4748,6 +4748,7 @@
     }
 
     let expandedUrlCats = new Set();
+    const _urlCatMeta = new Map();
     function renderUrlCategoryPill(name, parsed) {
       if (name === 'any' || name === 'all') return `<span class="pill">* ${esc(name)}</span>`;
       const members = parsed?.urlCategories?.[name];
@@ -4757,17 +4758,27 @@
 
       if (!isCustom) return `<span class="pill" style="border-style:dashed">${esc(name)}</span>`;
 
+      _urlCatMeta.set(ucid, { name, parsed });
       const copyGroupBtn = `<button class="rule-copy-btn" onclick="event.stopPropagation();copyToClipboard('${esc([name, ...members].join('\\n'))}').then(()=>showCopyFeedback())" title="Copy all members">${SVG_COPY}</button>`;
       if (isExp) {
         const memberHtml = members.map(m => `<div class="uc-member-row"><span>${esc(m)}</span><button class="rule-copy-btn uc-member-copy" onclick="event.stopPropagation();copyToClipboard('${esc(m)}').then(()=>showCopyFeedback())" title="Copy">${SVG_COPY}</button></div>`).join('');
         return `<div style="display:inline-block;vertical-align:top;margin:2px">
-      <span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button>${copyGroupBtn}</span>
+      <span class="pill expandable" onclick="toggleUrlCat(this,'${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button>${copyGroupBtn}</span>
       <div style="padding-left:12px;border-left:2px solid var(--border);margin-left:8px;margin-top:4px">${memberHtml}</div>
     </div>`;
       }
-      return `<span class="pill expandable" onclick="toggleUrlCat('${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button>${copyGroupBtn}</span>`;
+      return `<span class="pill expandable" onclick="toggleUrlCat(this,'${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button>${copyGroupBtn}</span>`;
     }
-    function toggleUrlCat(ucid) { if (expandedUrlCats.has(ucid)) expandedUrlCats.delete(ucid); else expandedUrlCats.add(ucid); renderContent(true); }
+    function toggleUrlCat(el, ucid) {
+      if (expandedUrlCats.has(ucid)) expandedUrlCats.delete(ucid); else expandedUrlCats.add(ucid);
+      const meta = _urlCatMeta.get(ucid);
+      if (!meta) { renderContent(true); return; }
+      // el is the <span> pill; its parent is the inline-block wrapper when expanded
+      const root = el.parentElement?.style?.display === 'inline-block' ? el.parentElement : el;
+      const tmp = document.createElement('span');
+      tmp.innerHTML = renderUrlCategoryPill(meta.name, meta.parsed);
+      root.replaceWith(tmp.firstChild);
+    }
 
     function checkSingleResolvedMatch(r, type) {
       if (!state.searchAST) return false;
