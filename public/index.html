@@ -6293,7 +6293,7 @@
       const type = isCIDR(query) ? 'cidr' : isExactIP(query) ? 'ip' : isIPWithMask(query) ? 'cidr' : isIPish(query) ? 'ip' : 'keyword';
       const now = new Date();
       const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const entry = { query, type, time };
+      const entry = { query, type: state.searchMode === 'exact' ? 'exact' : type, time };
       searchHistory = searchHistory.filter(h => _hq(h) !== query);
       searchHistory.unshift(entry);
       if (searchHistory.length > 50) searchHistory = searchHistory.slice(0, 50);
@@ -6306,7 +6306,7 @@
       el.classList.remove('hidden');
       const filtered = searchHistory;
       if (filtered.length === 0) { el.classList.add('hidden'); return; }
-      const badgeColors = { keyword: 'keyword', ip: 'ip', cidr: 'cidr', fqdn: 'fqdn' };
+      const badgeColors = { keyword: 'keyword', ip: 'ip', cidr: 'cidr', fqdn: 'fqdn', exact: 'keyword' };
       el.innerHTML =
         `<div class="search-history-label">${T('recentSearches')}</div>` +
         filtered.slice(0, 12).map((h, i) => {
