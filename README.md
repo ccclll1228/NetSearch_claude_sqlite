@@ -142,6 +142,16 @@ flowchart TD
     FE -->|render| UI[Tabs: SecRules / NAT / Routes\nObjects / LTM / Pools / Copy]
 ```
 
+### Request flow
+
+![Sequence diagram](docs/sequence.png)
+
+| Phase | Description |
+|-------|-------------|
+| **Startup** | Server reads the disk cache immediately for a fast first response, then parses all device backup files in the background and writes an updated snapshot. |
+| **Search request** | The browser fetches the full parsed dataset once, builds an in-memory search index, and runs `getFilteredData()` on every keystroke — no server round-trip per search. |
+| **Reload** | A `POST /api/reload` (or the cron trigger at 05:00 / 17:00) re-parses all backup files and refreshes the disk cache without restarting the server. |
+
 ---
 
 ## API Endpoints
