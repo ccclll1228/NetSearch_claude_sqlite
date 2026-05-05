@@ -6304,8 +6304,7 @@
       const el = document.getElementById('searchHistory');
       if (!historyOpen || searchHistory.length === 0) { el.classList.add('hidden'); return; }
       el.classList.remove('hidden');
-      const input = document.getElementById('searchInput').value.toLowerCase();
-      const filtered = input ? searchHistory.filter(h => _hq(h).toLowerCase().includes(input)) : searchHistory;
+      const filtered = searchHistory;
       if (filtered.length === 0) { el.classList.add('hidden'); return; }
       const badgeColors = { keyword: 'keyword', ip: 'ip', cidr: 'cidr', fqdn: 'fqdn' };
       el.innerHTML =
@@ -6321,8 +6320,7 @@
     }
 
     function selectHistory(idx) {
-      const input = document.getElementById('searchInput').value.toLowerCase();
-      const filtered = input ? searchHistory.filter(h => _hq(h).toLowerCase().includes(input)) : searchHistory;
+      const filtered = searchHistory;
       const entry = filtered[idx];
       if (!entry) return;
       const query = _hq(entry);
@@ -6335,8 +6333,7 @@
     }
 
     function removeHistory(idx) {
-      const input = document.getElementById('searchInput').value.toLowerCase();
-      const filtered = input ? searchHistory.filter(h => _hq(h).toLowerCase().includes(input)) : searchHistory;
+      const filtered = searchHistory;
       const entry = filtered[idx];
       if (!entry) return;
       const query = _hq(entry);
