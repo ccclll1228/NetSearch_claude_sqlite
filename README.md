@@ -104,24 +104,27 @@ curl http://localhost:3000/api/status
 ## File Structure
 
 ```
-NetSearch_claude/
+NetSearch_sqlite/
 ├── server.js                  # Express server, in-memory state, API routes
+├── ultradns.py                # Standalone UltraDNS → SQLite sync script
 ├── package.json
 ├── .gitignore
 ├── CLAUDE.md                  # AI coding guidance
+├── ARCHITECTURE.md            # Sync pipeline flow diagram
 ├── lib/
 │   ├── parser.js              # Config parsers (FortiGate, PaloAlto, SRX, F5)
-│   └── scheduler.js           # node-cron auto-reload scheduler
+│   ├── scheduler.js           # node-cron auto-reload scheduler
+│   ├── discovery.js           # Resolves latest backup file per device
+│   └── fqdn_db.js             # SQLite helper: search() + getLastSynced()
 ├── public/
 │   └── index.html             # Single-file frontend (CSS + JS + HTML inline)
 ├── config/
 │   ├── settings.json          # Local config (gitignored)
 │   └── settings.example.json  # Template
-├── cache/
-│   └── parsed.json            # Auto-generated cache (gitignored)
-└── docs/
-    └── superpowers/
-        └── specs/             # Design specs
+├── db/
+│   └── fqdn.db                # SQLite database (FQDN records from UltraDNS)
+└── cache/
+    └── parsed.json            # Auto-generated cache (gitignored)
 ```
 
 ---
@@ -161,6 +164,87 @@ flowchart TD
 | `GET` | `/api/data` | All parsed configs + FQDN records |
 | `GET` | `/api/status` | Load status + device list |
 | `POST` | `/api/reload` | Trigger immediate config reload |
+| `GET` | `/api/fqdn?q=<keyword>` | Search FQDN records in SQLite (`limit` param optional, max 1000) |
+
+---
+
+## UltraDNS Sync (`ultradns.py`)
+
+Standalone Python script that pulls all DNS records from UltraDNS and writes them atomically to the local SQLite database (`db/fqdn.db`). No Flask or SQLAlchemy — uses only the Python standard library plus `requests`.
+
+### Requirements
+
+```bash
+pip install requests
+```
+
+### Usage
+
+```bash
+export ULTRADNS_USERNAME="your-username"
+export ULTRADNS_PASSWORD="your-password"
+python3 ultradns.py
+```
+
+> **Read-only against UltraDNS.** The script issues GET requests only — no DNS records are created, modified, or deleted on UltraDNS. All writes go to the local SQLite database.
+
+### Sync pipeline
+
+```
+ULTRADNS_USERNAME / ULTRADNS_PASSWORD (env vars)
+        │
+        ▼
+POST /authorization/token  →  Bearer token
+        │
+        ▼
+GET /v3/zones?limit=1000   →  cursor-based pagination  →  full zone list (~1,349 zones)
+        │
+        ▼
+GET /zones/{zone}/rrsets?limit=500  (asyncio + ThreadPoolExecutor, 20 workers)
+        │  offset-based pagination per zone
+        ▼
+Parse rrsets  →  profile (geo) records + standard records
+        │
+        ▼
+SQLite  db/fqdn.db  →  BEGIN → DELETE FROM fqdn → INSERT all → COMMIT
+```
+
+### Supported record types
+
+| Type | Code | Notes |
+|------|------|-------|
+| A | 1 | Multiple rdata joined with `,` |
+| CNAME | 5 | Multiple rdata joined with `,` |
+| MX | 15 | Multiple rdata joined with `,` |
+| TXT | 16 | Skipped if joined value > 255 chars |
+| SPF | 99 | Treated like TXT; skipped if > 255 chars |
+| APEXALIAS | 65282 | Treated like CNAME |
+| AAAA | 28 | Currently unhandled — logged and skipped |
+| SRV | 33 | Currently unhandled — logged and skipped |
+| NS | 2 | Silently skipped |
+| SOA | 6 | Silently skipped |
+
+Profile (geo/IP-pool) records are handled separately: each `rdataInfo` entry produces one row with its own `ttl`, `type`, and `geo_info`.
+
+### Database
+
+| Detail | Value |
+|--------|-------|
+| Path | `db/fqdn.db` (relative to script) |
+| Table | `fqdn` |
+| Columns | `id`, `fqdn`, `ip`, `owner`, `domain`, `type`, `ttl`, `geo_info`, `synced_at` |
+| Indexes | `idx_fqdn`, `idx_ip`, `idx_geo` |
+| `owner` | Always `"ultraDNS"` |
+| `synced_at` | UTC ISO8601, same value for all rows in one run |
+
+### Performance (approximate)
+
+| Metric | Value |
+|--------|-------|
+| Zones | ~1,349 |
+| Records written | ~7,880 |
+| Concurrency | 20 workers |
+| Total runtime | ~68 seconds |
 
 ---
 
