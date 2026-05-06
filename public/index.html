@@ -4306,6 +4306,26 @@
         return { exactIps, cidrRanges };
       })() : null;
 
+      // Per-device CIDR filter for FQDN tab: when exactly one device is active, collect
+      // all IP/CIDR values from its address objects to restrict which FQDN records are shown.
+      const fqdnDeviceCidrRanges = (() => {
+        if (!state.disabledHosts || state.disabledHosts.size === 0 || configs.length !== 1) return [];
+        const ranges = [];
+        const addAddr = (val) => {
+          if (!val) return;
+          const v = isIPWithMask(val) ? normalizeIP(val) : val;
+          if (isExactIP(v)) { ranges.push({ num: ipToNum(v) >>> 0, mask: 0xFFFFFFFF }); return; }
+          if (!isCIDR(v)) return;
+          const [base, bits] = v.split('/');
+          const b = +bits;
+          if (isNaN(b)) return;
+          const mask = b === 32 ? 0xFFFFFFFF : b === 0 ? 0 : (~(0xFFFFFFFF >>> b)) >>> 0;
+          ranges.push({ num: (ipToNum(base) & mask) >>> 0, mask });
+        };
+        Object.values(configs[0].addresses || {}).forEach(addr => addAddr(addr.value));
+        return ranges;
+      })();
+
       // FQDN — with symmetric chaining: Rule IPs → match FQDN IP
       fqdnRecords.forEach(r => {
         let match = false;
@@ -4410,6 +4430,7 @@
       }
 
       result.fqdnRuleIpRanges = fqdnRuleIpRanges;
+      result.fqdnDeviceCidrRanges = fqdnDeviceCidrRanges;
       return result;
     }
 
@@ -5260,22 +5281,32 @@
       return false;
     }
 
-    function fqdnDbFiltered() {
-      let r = fqdnDb.results;
-      const keyword = state.appliedSearch || '';
-
-      // When the global keyword is an object/group name (not IP/domain), the results
-      // already hold ALL records.  Filter them client-side by the rule IPs that
-      // getFilteredData() extracted from the matched security/NAT/LTM results.
-      if (keyword && !_isFqdnDirectKeyword(keyword)) {
+    // Apply keyword IP-range filter and single-device CIDR filter (AND-combined).
+    // Local text/type/owner/geo filters are NOT applied here; the badge uses this directly.
+    function _fqdnBaseFilter(rows) {
+      const kw = state.appliedSearch || '';
+      if (kw && !_isFqdnDirectKeyword(kw)) {
         const ranges = (_cachedFilterData && _cachedFilterData.fqdnRuleIpRanges) || [];
-        if (ranges.length === 0) return []; // keyword matched nothing with IPs → 0 FQDN records
-        r = r.filter(row => {
+        if (ranges.length === 0) return [];
+        rows = rows.filter(row => {
           if (!row.ip || !isExactIP(row.ip)) return false;
           const rn = ipToNum(row.ip) >>> 0;
           return ranges.some(range => ((rn & range.mask) >>> 0) === range.num);
         });
       }
+      const deviceRanges = (_cachedFilterData && _cachedFilterData.fqdnDeviceCidrRanges) || [];
+      if (deviceRanges.length > 0) {
+        rows = rows.filter(row => {
+          if (!row.ip || !isExactIP(row.ip)) return false;
+          const rn = ipToNum(row.ip) >>> 0;
+          return deviceRanges.some(range => ((rn & range.mask) >>> 0) === range.num);
+        });
+      }
+      return rows;
+    }
+
+    function fqdnDbFiltered() {
+      let r = _fqdnBaseFilter(fqdnDb.results);
 
       // Local text filter (search box inside FQDN tab)
       const q = fqdnDb.query.trim().toLowerCase();
@@ -5307,24 +5338,12 @@
       const fetchKey = (keyword && _isFqdnDirectKeyword(keyword)) ? keyword : '__all__';
       if (fqdnDb.loading) return;
       if (fqdnDb._loadedQuery === fetchKey) {
-        // Data is already loaded. For __all__ fetches the badge depends on the current
-        // search's IP ranges (not the raw result count), so recompute whenever search changes.
-        if (fetchKey === '__all__') {
-          const kw = keyword;
-          let count = fqdnDb.results.length;
-          if (kw && !_isFqdnDirectKeyword(kw)) {
-            const ranges = (_cachedFilterData && _cachedFilterData.fqdnRuleIpRanges) || [];
-            count = ranges.length === 0 ? 0 : fqdnDb.results.filter(row => {
-              if (!row.ip || !isExactIP(row.ip)) return false;
-              const rn = ipToNum(row.ip) >>> 0;
-              return ranges.some(range => ((rn & range.mask) >>> 0) === range.num);
-            }).length;
-          }
-          if (fqdnDb.badgeCount !== count) {
-            fqdnDb.badgeCount = count;
-            if (background && state.activeTab !== 'fqdn') refreshFqdnBadge(count);
-            else renderContent();
-          }
+        // Data is already loaded. Recompute badge in case search or device selection changed.
+        const count = _fqdnBaseFilter(fqdnDb.results).length;
+        if (fqdnDb.badgeCount !== count) {
+          fqdnDb.badgeCount = count;
+          if (background && state.activeTab !== 'fqdn') refreshFqdnBadge(count);
+          else renderContent();
         }
         return;
       }
@@ -5345,18 +5364,7 @@
         fqdnDb.loading = false;
         // Always compute and persist the filtered count so renderTabs() reads the right
         // value regardless of which branch runs next.
-        // Group/object-name keyword → server returned all records; filter by rule IP ranges.
-        // Direct IP/domain keyword  → server already filtered; raw length is correct.
-        const kw = state.appliedSearch || '';
-        let filteredCount = fqdnDb.results.length;
-        if (kw && !_isFqdnDirectKeyword(kw)) {
-          const ranges = (_cachedFilterData && _cachedFilterData.fqdnRuleIpRanges) || [];
-          filteredCount = ranges.length === 0 ? 0 : fqdnDb.results.filter(row => {
-            if (!row.ip || !isExactIP(row.ip)) return false;
-            const rn = ipToNum(row.ip) >>> 0;
-            return ranges.some(range => ((rn & range.mask) >>> 0) === range.num);
-          }).length;
-        }
+        const filteredCount = _fqdnBaseFilter(fqdnDb.results).length;
         fqdnDb.badgeCount = filteredCount;
         // Background: lightweight badge-only update (don't re-render the whole page).
         // Foreground / user on FQDN tab: full render so the table appears immediately.
