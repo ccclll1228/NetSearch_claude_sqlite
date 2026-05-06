@@ -4307,9 +4307,11 @@
       })() : null;
 
       // Per-device CIDR filter for FQDN tab: when exactly one device is active, collect
-      // all IP/CIDR values from its address objects to restrict which FQDN records are shown.
+      // CIDRs from DESTINATION addresses only (sec rules + NAT rules), or LTM VIP IPs.
+      // Source-only addresses are excluded. Groups are resolved recursively.
       const fqdnDeviceCidrRanges = (() => {
         if (!state.disabledHosts || state.disabledHosts.size === 0 || configs.length !== 1) return [];
+        const parsed = configs[0];
         const ranges = [];
         const addAddr = (val) => {
           if (!val) return;
@@ -4322,7 +4324,31 @@
           const mask = b === 32 ? 0xFFFFFFFF : b === 0 ? 0 : (~(0xFFFFFFFF >>> b)) >>> 0;
           ranges.push({ num: (ipToNum(base) & mask) >>> 0, mask });
         };
-        Object.values(configs[0].addresses || {}).forEach(addr => addAddr(addr.value));
+        const seen = new Set();
+        const resolveAddr = (name) => {
+          if (!name) return;
+          const n = String(name);
+          if (n.toLowerCase() === 'any' || seen.has(n)) return;
+          seen.add(n);
+          if (isCIDR(n) || isExactIP(n)) { addAddr(n); return; }
+          if (parsed.addresses && parsed.addresses[n]) { addAddr(parsed.addresses[n].value); return; }
+          const members = parsed.groups && parsed.groups[n];
+          if (members) members.forEach(m => resolveAddr(String(m)));
+        };
+        if (parsed.type === 'F5') {
+          (parsed.virtuals || []).forEach(vs => addAddr(vs.ip));
+        } else {
+          const dstNames = new Set();
+          (parsed.secRules || []).forEach(rule => {
+            const dst = Array.isArray(rule.destination) ? rule.destination.flat(Infinity) : [];
+            dst.forEach(n => { if (n != null) dstNames.add(String(n)); });
+          });
+          (parsed.natRules || []).forEach(rule => {
+            const dst = Array.isArray(rule.destination) ? rule.destination.flat(Infinity) : [];
+            dst.forEach(n => { if (n != null) dstNames.add(String(n)); });
+          });
+          dstNames.forEach(name => resolveAddr(name));
+        }
         return ranges;
       })();
 
