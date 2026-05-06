@@ -2751,7 +2751,7 @@
       }
     };
 
-    const fqdnDb = { query: '', results: [], lastSynced: null, typeFilter: '', loading: false, _timer: null };
+    const fqdnDb = { query: '', results: [], lastSynced: null, typeFilter: '', ownerFilter: '', geoFilter: '', loading: false, _timer: null };
 
     const TABS = [
       { id: 'fqdn', label: { en: 'FQDN', zh: 'FQDN' } },
@@ -4867,7 +4867,7 @@
       { key: 'fqdn', label: 'FQDN', selected: true },
       { key: 'type', label: 'Type', selected: false },
       { key: 'ip', label: 'IP', selected: true },
-      { key: 'geoInfo', label: 'Geo', selected: false },
+      { key: 'geo_info', label: 'Geo', selected: false },
     ];
 
     function renderSecRules(rules) {
@@ -5233,29 +5233,34 @@
 
     // ── SQLite-backed FQDN tab ────────────────────────────────────────────────
     function fqdnDbFiltered() {
-      if (!fqdnDb.typeFilter) return fqdnDb.results;
-      return fqdnDb.results.filter(r => r.type === fqdnDb.typeFilter);
+      let r = fqdnDb.results;
+      const q = fqdnDb.query.trim().toLowerCase();
+      if (q) r = r.filter(row =>
+        (row.fqdn   || '').toLowerCase().includes(q) ||
+        (row.ip     || '').toLowerCase().includes(q) ||
+        (row.domain || '').toLowerCase().includes(q) ||
+        (row.geo_info || '').toLowerCase().includes(q)
+      );
+      if (fqdnDb.typeFilter)  r = r.filter(row => row.type     === fqdnDb.typeFilter);
+      if (fqdnDb.ownerFilter) r = r.filter(row => row.owner    === fqdnDb.ownerFilter);
+      if (fqdnDb.geoFilter)   r = r.filter(row => row.geo_info === fqdnDb.geoFilter);
+      return r;
     }
 
     function fqdnDbInput(val) {
       fqdnDb.query = val;
       clearTimeout(fqdnDb._timer);
-      if (val.length >= 2) {
-        fqdnDb._timer = setTimeout(() => fqdnDbFetch(val), 300);
-      } else {
-        fqdnDb.results = [];
-        fqdnDb.loading = false;
-        renderContent();
-      }
+      fqdnDb._timer = setTimeout(() => renderContent(), 150);
     }
 
-    async function fqdnDbFetch(q) {
+    async function fqdnDbAutoLoad() {
+      if (fqdnDb.results.length > 0 || fqdnDb.loading) return;
       fqdnDb.loading = true;
       renderContent();
       try {
-        const res = await fetch(`/api/fqdn?q=${encodeURIComponent(q)}&limit=500`);
+        const res = await fetch('/api/fqdn?limit=10000');
         const data = await res.json();
-        fqdnDb.results = data.results || [];
+        fqdnDb.results   = data.results   || [];
         fqdnDb.lastSynced = data.lastSynced || null;
       } catch (_) {
         fqdnDb.results = [];
@@ -5265,51 +5270,87 @@
       }
     }
 
-    const FQDN_TYPE_OPTIONS = ['A', 'CNAME', 'MX', 'NAMESERVER', 'RD', 'TXT'];
-
     function renderFqdnDb() {
+      if (fqdnDb.loading) return `<div class="empty-state">Loading FQDN records…</div>`;
+
+      const all      = fqdnDb.results;
       const filtered = fqdnDbFiltered();
+
+      // Build dropdown options from all loaded records
+      const types = new Set(), owners = new Set(), geos = new Set();
+      all.forEach(r => {
+        if (r.type)     types.add(r.type);
+        if (r.owner)    owners.add(r.owner);
+        if (r.geo_info) geos.add(r.geo_info);
+      });
+
       const controlBar = `<div class="flex gap-2 items-center" style="flex-wrap:wrap;padding:8px 0 10px">
-        <input type="text" class="filter-select" style="width:300px;padding:0 12px;font-family:var(--cds-font-mono)"
-          placeholder="Search FQDN, IP, geo… (min 2 chars)" value="${esc(fqdnDb.query)}"
+        <input type="text" class="filter-select" style="width:280px;padding:0 12px;font-family:var(--cds-font-mono)"
+          placeholder="Filter FQDN, IP, domain, geo…" value="${esc(fqdnDb.query)}"
           oninput="fqdnDbInput(this.value)">
         <select class="filter-select" onchange="fqdnDb.typeFilter=this.value;renderContent()">
           <option value="">Type (All)</option>
-          ${FQDN_TYPE_OPTIONS.map(t => `<option value="${esc(t)}"${fqdnDb.typeFilter === t ? ' selected' : ''}>${esc(t)}</option>`).join('')}
+          ${Array.from(types).sort().map(t => `<option value="${esc(t)}"${fqdnDb.typeFilter===t?' selected':''}>${esc(t)}</option>`).join('')}
+        </select>
+        <select class="filter-select" onchange="fqdnDb.ownerFilter=this.value;renderContent()">
+          <option value="">Owner (All)</option>
+          ${Array.from(owners).sort().map(o => `<option value="${esc(o)}"${fqdnDb.ownerFilter===o?' selected':''}>${esc(o)}</option>`).join('')}
+        </select>
+        <select class="filter-select" onchange="fqdnDb.geoFilter=this.value;renderContent()">
+          <option value="">Geo (All)</option>
+          ${Array.from(geos).sort().map(g => `<option value="${esc(g)}"${fqdnDb.geoFilter===g?' selected':''}>${esc(g)}</option>`).join('')}
         </select>
       </div>`;
-
-      let body;
-      if (fqdnDb.loading) {
-        body = `<div class="empty-state">Loading…</div>`;
-      } else if (fqdnDb.query.length < 2) {
-        body = `<div class="empty-state"><p>Enter at least 2 characters to search FQDN records.</p></div>`;
-      } else if (filtered.length === 0) {
-        body = `<div class="empty-state">No matching FQDN records found.</div>`;
-      } else {
-        const statsBar = `<div class="stats-bar">${filtered.length} record${filtered.length !== 1 ? 's' : ''}</div>`;
-        const rows = filtered.map(r => `<tr>
-          <td>${esc(r.fqdn || '')}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.fqdn || '')}')" title="Search">${SVG_QS}</button></td>
-          <td>${esc(r.ip || '')}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(r.ip || '')}')" title="Search">${SVG_QS}</button></td>
-          <td>${esc(r.type || '')}</td>
-          <td>${esc(r.domain || '')}</td>
-          <td>${esc(r.geo_info || '')}</td>
-          <td>${r.ttl != null ? esc(String(r.ttl)) : ''}</td>
-        </tr>`).join('');
-        body = statsBar + `<table class="fqdn-table">
-          <colgroup><col style="width:30%"><col style="width:15%"><col style="width:8%"><col style="width:16%"><col style="width:14%"><col style="width:8%"></colgroup>
-          <thead><tr>
-            <th>FQDN</th><th>IP</th><th>Type</th><th>Domain</th><th>Geo</th><th>TTL</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-      }
 
       const syncLine = fqdnDb.lastSynced
         ? `<div style="font-size:11px;color:var(--cds-text-placeholder);padding:6px 0 2px">Last synced: ${esc(fqdnDb.lastSynced)}</div>`
         : '';
 
-      return controlBar + body + syncLine;
+      if (all.length === 0) {
+        return controlBar + `<div class="empty-state">No FQDN records loaded.</div>` + syncLine;
+      }
+      if (filtered.length === 0) {
+        return controlBar + `<div class="empty-state">No matching FQDN records.</div>` + syncLine;
+      }
+
+      const sorted  = [...filtered].sort((a, b) => smartSort(a, b, fqdnSortState.key, fqdnSortState.dir));
+      _lastFilteredFqdnRows = sorted;
+      const display = sorted.slice(0, 2000);
+      const arrow   = k => fqdnSortState.key === k ? `<span class="sort-arrow">${fqdnSortState.dir==='asc'?'▲':'▼'}</span>` : '';
+
+      const colPickerHtml = FQDN_COPY_FIELDS.map((f, i) =>
+        `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;color:var(--cds-text-primary)"><input type="checkbox" ${f.selected?'checked':''} onchange="FQDN_COPY_FIELDS[${i}].selected=this.checked" style="accent-color:var(--cds-interactive);cursor:pointer">${f.label}</label>`
+      ).join('');
+
+      const capLabel = filtered.length > 2000
+        ? `${filtered.length.toLocaleString()} records (showing first 2,000)`
+        : `${filtered.length.toLocaleString()} record${filtered.length!==1?'s':''}`;
+
+      const statsBar = `<div class="stats-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>${capLabel}</span>
+        <details style="position:relative;display:inline-block"><summary style="list-style:none;cursor:pointer;padding:2px 7px;border:1px solid var(--cds-border-subtle);font-size:11px;color:var(--cds-text-placeholder);background:var(--cds-layer-01)">Copy Columns ▾</summary>
+        <div style="position:absolute;top:calc(100% + 4px);left:0;z-index:300;background:var(--cds-layer-01);border:1px solid var(--cds-border-subtle);padding:8px 12px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.3)">${colPickerHtml}</div></details>
+        <button class="rule-copy-btn" onclick="copyFqdnTSV()" title="Copy filtered results as TSV">${SVG_COPY} Copy</button>
+      </div>`;
+
+      const rows = display.map(r => {
+        const d = stripDot(r.domain), fq = stripDot(r.fqdn), ip = stripDot(r.ip);
+        return `<tr><td>${esc(r.owner||'')}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type||'')}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.geo_info||'')}</td><td></td></tr>`;
+      }).join('');
+
+      return controlBar + statsBar + `<table class="fqdn-table">
+        <colgroup><col style="width:7%"><col style="width:13%"><col style="width:28%"><col style="width:11%"><col style="width:16%"><col style="width:8%"><col style="width:17%"></colgroup>
+        <thead><tr>
+          <th onclick="sortFqdn('owner')">Owner${arrow('owner')}</th>
+          <th onclick="sortFqdn('domain')">Domain${arrow('domain')}</th>
+          <th onclick="sortFqdn('fqdn')">FQDN${arrow('fqdn')}</th>
+          <th onclick="sortFqdn('type')">Type${arrow('type')}</th>
+          <th onclick="sortFqdn('ip')">IP${arrow('ip')}</th>
+          <th onclick="sortFqdn('geo_info')">Geo${arrow('geo_info')}</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>` + syncLine;
     }
 
     let fqdnSortState = { key: 'domain', dir: 'asc' };
@@ -5946,7 +5987,7 @@
     }
 
     // ===== EVENT HANDLERS =====
-    function switchTab(id) { state.activeTab = id; updateTagFilter(); renderContent(!_filterCacheDirty && !!_cachedFilterData); }
+    function switchTab(id) { state.activeTab = id; updateTagFilter(); if (id === 'fqdn') fqdnDbAutoLoad(); renderContent(!_filterCacheDirty && !!_cachedFilterData); }
     function toggleSearchMode() { state.searchMode = state.searchMode === 'keyword' ? 'exact' : 'keyword'; document.getElementById('searchModeBtn').textContent = T(state.searchMode === 'keyword' ? 'searchModeKeyword' : 'searchModeExact'); renderContent(); }
     function toggleHighlight() { state.highlightEnabled = !state.highlightEnabled; const btn = document.getElementById('searchHlBtn'); if (btn) { btn.classList.toggle('on', state.highlightEnabled); btn.title = T(state.highlightEnabled ? 'hlOn' : 'hlOff'); } renderContent(); }
     function toggleSearchHelp() { const el = document.getElementById('searchHelpPopup'); el.classList.toggle('hidden'); }

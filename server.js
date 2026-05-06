@@ -6,7 +6,7 @@ const path = require('path');
 const { parseConfig, parseFqdnFile } = require('./lib/parser');
 const { startScheduler } = require('./lib/scheduler');
 const { resolveDevicePaths } = require('./lib/discovery');
-const { search: fqdnSearch, getLastSynced } = require('./lib/fqdn_db');
+const { search: fqdnSearch, searchAll: fqdnSearchAll, getLastSynced } = require('./lib/fqdn_db');
 
 const settings = JSON.parse(fs.readFileSync('./config/settings.json', 'utf8'));
 
@@ -128,9 +128,8 @@ app.get('/api/status', (req, res) => {
 
 app.get('/api/fqdn', (req, res) => {
   const q = (req.query.q || '').trim();
-  if (!q) return res.status(400).json({ error: 'Missing query parameter: q' });
-  const limit = Math.min(parseInt(req.query.limit, 10) || 200, 1000);
-  const rows = fqdnSearch(q, limit);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 200, 10000);
+  const rows = q ? fqdnSearch(q, limit) : fqdnSearchAll(limit);
   res.json({ results: rows, lastSynced: getLastSynced(), total: rows.length });
 });
 
