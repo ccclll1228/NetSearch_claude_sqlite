@@ -5292,9 +5292,10 @@
     }
 
     function fqdnDbInput(val) {
-      fqdnDb.query = val;
-      clearTimeout(fqdnDb._timer);
-      fqdnDb._timer = setTimeout(() => renderContent(), 150);
+      fqdnDb.query = val; // track current value without re-rendering
+    }
+    function fqdnDbCommit() {
+      renderContent();
     }
 
     // background=true: pre-load silently; only update the badge when done.
@@ -5384,7 +5385,8 @@
       const controlBar = `<div class="flex gap-2 items-center" style="flex-wrap:wrap;padding:8px 0 10px">
         <input type="text" class="filter-select" style="width:280px;padding:0 12px;font-family:var(--cds-font-mono)"
           placeholder="Filter FQDN, IP, domain, geo…" value="${esc(fqdnDb.query)}"
-          oninput="fqdnDbInput(this.value)">
+          oninput="fqdnDbInput(this.value)"
+          onkeydown="if(event.key==='Enter'){fqdnDbInput(this.value);fqdnDbCommit();}">
         <select class="filter-select" onchange="fqdnDb.typeFilter=this.value;renderContent()">
           <option value="">Type (All)</option>
           ${Array.from(types).sort().map(t => `<option value="${esc(t)}"${fqdnDb.typeFilter===t?' selected':''}>${esc(t)}</option>`).join('')}
