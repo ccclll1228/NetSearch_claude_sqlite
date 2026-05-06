@@ -4409,6 +4409,7 @@
         });
       }
 
+      result.fqdnRuleIpRanges = fqdnRuleIpRanges;
       return result;
     }
 
@@ -5232,13 +5233,41 @@
     }
 
     // ── SQLite-backed FQDN tab ────────────────────────────────────────────────
+
+    // True when keyword is a bare IP, CIDR, or domain-like string (contains a dot, no spaces).
+    // False for address-group / object names like "vs28000_TapTap_MEM OR vs28004_TapTap_AFF".
+    function _isFqdnDirectKeyword(kw) {
+      if (!kw) return false;
+      const t = kw.trim();
+      if (/\s/.test(t)) return false;          // multi-token → not direct
+      if (isExactIP(t) || isCIDR(t)) return true;
+      if (t.includes('.')) return true;         // domain-like
+      return false;
+    }
+
     function fqdnDbFiltered() {
       let r = fqdnDb.results;
+      const keyword = state.appliedSearch || '';
+
+      // When the global keyword is an object/group name (not IP/domain), the results
+      // already hold ALL records.  Filter them client-side by the rule IPs that
+      // getFilteredData() extracted from the matched security/NAT/LTM results.
+      if (keyword && !_isFqdnDirectKeyword(keyword)) {
+        const ranges = (_cachedFilterData && _cachedFilterData.fqdnRuleIpRanges) || [];
+        if (ranges.length === 0) return []; // keyword matched nothing with IPs → 0 FQDN records
+        r = r.filter(row => {
+          if (!row.ip || !isExactIP(row.ip)) return false;
+          const rn = ipToNum(row.ip) >>> 0;
+          return ranges.some(range => ((rn & range.mask) >>> 0) === range.num);
+        });
+      }
+
+      // Local text filter (search box inside FQDN tab)
       const q = fqdnDb.query.trim().toLowerCase();
       if (q) r = r.filter(row =>
-        (row.fqdn   || '').toLowerCase().includes(q) ||
-        (row.ip     || '').toLowerCase().includes(q) ||
-        (row.domain || '').toLowerCase().includes(q) ||
+        (row.fqdn     || '').toLowerCase().includes(q) ||
+        (row.ip       || '').toLowerCase().includes(q) ||
+        (row.domain   || '').toLowerCase().includes(q) ||
         (row.geo_info || '').toLowerCase().includes(q)
       );
       if (fqdnDb.typeFilter)  r = r.filter(row => row.type     === fqdnDb.typeFilter);
@@ -5255,18 +5284,21 @@
 
     async function fqdnDbAutoLoad() {
       const keyword = state.appliedSearch || '';
-      if (fqdnDb.loading || fqdnDb._loadedQuery === keyword) return;
+      // Direct IP/domain keyword → server filters by keyword; otherwise always load all records
+      // (client-side IP-range filter from matched rules is applied in fqdnDbFiltered).
+      const fetchKey = (keyword && _isFqdnDirectKeyword(keyword)) ? keyword : '__all__';
+      if (fqdnDb.loading || fqdnDb._loadedQuery === fetchKey) return;
       fqdnDb.loading = true;
       renderContent();
       try {
-        const url = keyword
+        const url = (fetchKey !== '__all__')
           ? `/api/fqdn?q=${encodeURIComponent(keyword)}&limit=10000`
           : '/api/fqdn?limit=10000';
         const res = await fetch(url);
         const data = await res.json();
         fqdnDb.results      = data.results    || [];
         fqdnDb.lastSynced   = data.lastSynced || null;
-        fqdnDb._loadedQuery = keyword;
+        fqdnDb._loadedQuery = fetchKey;
       } catch (_) {
         fqdnDb.results = [];
       } finally {
