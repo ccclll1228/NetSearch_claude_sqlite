@@ -60,20 +60,16 @@ def get_all_zones(token: str) -> list[str]:
     """Return all zone names (without trailing dot), skipping any containing 'sanbox'."""
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     zones: list[str] = []
-    limit  = 500
-    offset = 0
-    total  = 0
+    url = f"{BASE_URL}/v3/zones?limit=1000"
 
     while True:
-        url  = f"{BASE_URL}/zones?limit={limit}&offset={offset}"
         resp = requests.get(url, headers=headers, timeout=30)
         if not (200 <= resp.status_code < 300):
             print(f"Zone list failed: HTTP {resp.status_code} — {resp.text[:300]}", file=sys.stderr)
             sys.exit(1)
 
-        data        = resp.json()
-        result_info = data.get("resultInfo", {})
-        zone_list   = data.get("zones", [])
+        data      = resp.json()
+        zone_list = data.get("zones", [])
 
         for z in zone_list:
             name = z.get("properties", {}).get("name", "") or z.get("name", "")
@@ -83,13 +79,12 @@ def get_all_zones(token: str) -> list[str]:
                 continue
             zones.append(name.rstrip("."))
 
-        returned = result_info.get("returnedCount", len(zone_list))
-        total    = result_info.get("totalCount", total or returned)
-        offset  += returned
-        if offset >= total or returned == 0:
+        next_cursor = data.get("cursorInfo", {}).get("next", "")
+        if not next_cursor:
             break
+        url = f"{BASE_URL}/v3/zones?limit=1000&cursor={next_cursor}"
 
-    print(f"Fetched {len(zones)} / {total} zones", flush=True)
+    print(f"Fetched {len(zones)} zones (v3 API)", flush=True)
     return zones
 
 
