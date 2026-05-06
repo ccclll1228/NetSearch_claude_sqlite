@@ -128,6 +128,9 @@ public/index.html  (all logic runs in the browser)
         │     resolveObject()  (WeakMap cache for group expansion)
         │     Builds allRuleIps (capped 50) for route/addr/f5 chaining
         │     Builds fqdnRuleIpRanges (uncapped) for FQDN IP-range filter
+        │     Builds fqdnDeviceCidrRanges when exactly 1 device active
+        │       (destination addrs from secRules+natRules, recursively
+        │        resolved through groups; F5: virtual server IPs)
         │
         └── renderContent()
               ├── Sec Rules    renderSecRules()
@@ -158,12 +161,17 @@ GET /api/fqdn?q=keyword       GET /api/fqdn  (all records, no filter)
 Server filters SQLite          ~7,880 rows loaded into fqdnDb.results
         │                           │
         │                           ▼
-        │                   fqdnDbFiltered()
-        │                   Filter fqdnDb.results client-side using
-        │                   fqdnRuleIpRanges from getFilteredData()
-        │                   (IPs extracted from matching Sec/NAT/LTM rules)
+        │                   _fqdnBaseFilter(rows)
+        │                   1. keyword IP-range filter (fqdnRuleIpRanges)
+        │                      IPs extracted from matching Sec/NAT/LTM rules
+        │                   2. single-device CIDR filter (fqdnDeviceCidrRanges)
+        │                      only when exactly 1 device active;
+        │                      destination addrs resolved recursively
         │                           │
         └─────────────────────────►─┘
+                                   │
+                                   ▼
+                        fqdnDbFiltered()  ← base filter + local text/dropdowns
                                    │
                                    ▼
                         Table rows + badge count
@@ -171,12 +179,30 @@ Server filters SQLite          ~7,880 rows loaded into fqdnDb.results
 Background pre-load:
   After every renderContent() (any tab), fqdnDbAutoLoad(true) is called
   via setTimeout so the FQDN badge is always up-to-date without a tab switch.
-  When data is already loaded (__all__), only the badge count is recomputed
-  from the current fqdnRuleIpRanges — no re-fetch.
+  Badge = _fqdnBaseFilter(fqdnDb.results).length (keyword + device filters,
+  no local text/dropdown filters). Re-renders only when count changes.
 
 Local text filter (inside FQDN tab):
   Updates fqdnDb.query on every keystroke but re-renders only on Enter.
   Dropdowns (Type / Owner / Geo) still apply immediately on change.
+```
+
+## FQDN Tab — Table Column Layout
+
+```
+table-layout: fixed  (enforces column widths regardless of content)
+
+Col   Selector / class     Width       Notes
+────  ──────────────────   ─────────   ────────────────────────────────
+Owner                      7%
+Domain                     13%
+FQDN                       28%
+Type                       11%
+IP                         24%         Increased from 16% (+50%)
+Geo   .fqdn-geo-cell       200px       white-space:nowrap; overflow:hidden;
+                           (fixed)     text-overflow:ellipsis on both
+                                       <th> and <td>
+      (actions)            13%
 ```
 
 ---

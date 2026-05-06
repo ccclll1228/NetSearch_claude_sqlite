@@ -190,6 +190,29 @@ FQDN records are stored in `db/fqdn.db` (SQLite) and served via `/api/fqdn`.
 - The FQDN badge count is pre-loaded in the background after every search — no tab click required.
 - The local text filter inside the FQDN tab (FQDN / IP / domain / geo) applies **only when Enter is pressed**. Dropdowns (Type, Owner, Geo) still filter immediately on change.
 
+### Single-device filter
+
+When exactly one device is selected in the device bar, the FQDN tab additionally restricts results to records whose IP falls within the **destination** address CIDRs of that device:
+
+- **Firewall (FG / PA / SRX)**: collects address names from `secRules[].destination` and `natRules[].destination`, resolves them recursively through address groups, and converts to `{num, mask}` CIDR pairs.
+- **F5 LTM**: uses virtual server IPs directly.
+
+Source-only addresses are excluded. When "All" or multiple devices are selected this filter is not applied.
+
+### Table layout
+
+The FQDN results table uses `table-layout: fixed` with the following column widths:
+
+| Column | Width | Notes |
+|--------|-------|-------|
+| Owner | 7% | |
+| Domain | 13% | |
+| FQDN | 28% | |
+| Type | 11% | |
+| IP | 24% | Increased from 16% (+50%) |
+| Geo | 200px (fixed) | `white-space:nowrap; overflow:hidden; text-overflow:ellipsis` via `.fqdn-geo-cell` |
+| (actions) | 13% | |
+
 ### Syncing FQDN records (`ultradns.py`)
 
 ```bash
