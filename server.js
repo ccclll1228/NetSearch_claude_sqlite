@@ -140,7 +140,7 @@ app.post('/api/reload', async (req, res) => {
 });
 
 // ── Startup ───────────────────────────────────────────────────────────────────
-const PORT = settings.port || 3000;
+const PORT = settings.port || 3002;
 const server = app.listen(PORT, async () => {
   console.log(`[server] NetSearch running at http://localhost:${PORT}`);
   readCache();
