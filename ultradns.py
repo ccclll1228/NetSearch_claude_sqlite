@@ -185,6 +185,31 @@ def _parse_rrset(rrset: dict, zone_clean: str) -> list[dict]:
             "geo_info": "",
         }]
 
+    if "(99)" in rrtype:         # SPF
+        spf_string = ",".join(rdata)
+        if len(spf_string) > 255:
+            return []
+        return [{
+            "fqdn":     fqdn,
+            "ip":       spf_string,
+            "owner":    "ultraDNS",
+            "domain":   zone_clean,
+            "type":     "SPF",
+            "ttl":      ttl,
+            "geo_info": "",
+        }]
+
+    if "(65282)" in rrtype:      # APEXALIAS
+        return [{
+            "fqdn":     fqdn,
+            "ip":       ",".join(rdata),
+            "owner":    "ultraDNS",
+            "domain":   zone_clean,
+            "type":     "APEXALIAS",
+            "ttl":      ttl,
+            "geo_info": "",
+        }]
+
     # (2) NS and (6) SOA are silently skipped; anything else is logged
     if "(2)" not in rrtype and "(6)" not in rrtype:
         print(f"  [unhandled] {fqdn} {rrtype}", flush=True)
