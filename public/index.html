@@ -2751,7 +2751,7 @@
       }
     };
 
-    const fqdnDb = { query: '', results: [], lastSynced: null, typeFilter: '', ownerFilter: '', geoFilter: '', loading: false, _timer: null, _loadedQuery: null };
+    const fqdnDb = { query: '', results: [], lastSynced: null, typeFilter: '', ownerFilter: '', geoFilter: '', loading: false, _timer: null, _loadedQuery: null, badgeCount: 0 };
 
     const TABS = [
       { id: 'fqdn', label: { en: 'FQDN', zh: 'FQDN' } },
@@ -4419,7 +4419,7 @@
       const counts = {
         sec: d.secRules.length, nat: d.natRules.length, route: d.routes.length,
         objects: d.addresses.length + d.groups.length, f5_vs: d.f5Virtuals.length,
-        f5_pools: d.f5Pools.length, fqdn: fqdnDbFiltered().length, copy: '', raw: '', debug: ''
+        f5_pools: d.f5Pools.length, fqdn: fqdnDb.badgeCount, copy: '', raw: '', debug: ''
       };
       d._tabCounts = counts;
       const tb = document.getElementById('tabBar');
@@ -5304,7 +5304,29 @@
       // Direct IP/domain keyword → server filters by keyword; otherwise always load all records
       // (client-side IP-range filter from matched rules is applied in fqdnDbFiltered).
       const fetchKey = (keyword && _isFqdnDirectKeyword(keyword)) ? keyword : '__all__';
-      if (fqdnDb.loading || fqdnDb._loadedQuery === fetchKey) return;
+      if (fqdnDb.loading) return;
+      if (fqdnDb._loadedQuery === fetchKey) {
+        // Data is already loaded. For __all__ fetches the badge depends on the current
+        // search's IP ranges (not the raw result count), so recompute whenever search changes.
+        if (fetchKey === '__all__') {
+          const kw = keyword;
+          let count = fqdnDb.results.length;
+          if (kw && !_isFqdnDirectKeyword(kw)) {
+            const ranges = (_cachedFilterData && _cachedFilterData.fqdnRuleIpRanges) || [];
+            count = ranges.length === 0 ? 0 : fqdnDb.results.filter(row => {
+              if (!row.ip || !isExactIP(row.ip)) return false;
+              const rn = ipToNum(row.ip) >>> 0;
+              return ranges.some(range => ((rn & range.mask) >>> 0) === range.num);
+            }).length;
+          }
+          if (fqdnDb.badgeCount !== count) {
+            fqdnDb.badgeCount = count;
+            if (background && state.activeTab !== 'fqdn') refreshFqdnBadge(count);
+            else renderContent();
+          }
+        }
+        return;
+      }
       fqdnDb.loading = true;
       if (!background) renderContent(); // show loading spinner only when FQDN tab is visible
       try {
@@ -5320,22 +5342,24 @@
         fqdnDb.results = [];
       } finally {
         fqdnDb.loading = false;
-        // If user navigated to the FQDN tab while a background fetch was in flight,
-        // do a full render now so the table appears immediately.
+        // Always compute and persist the filtered count so renderTabs() reads the right
+        // value regardless of which branch runs next.
+        // Group/object-name keyword → server returned all records; filter by rule IP ranges.
+        // Direct IP/domain keyword  → server already filtered; raw length is correct.
+        const kw = state.appliedSearch || '';
+        let filteredCount = fqdnDb.results.length;
+        if (kw && !_isFqdnDirectKeyword(kw)) {
+          const ranges = (_cachedFilterData && _cachedFilterData.fqdnRuleIpRanges) || [];
+          filteredCount = ranges.length === 0 ? 0 : fqdnDb.results.filter(row => {
+            if (!row.ip || !isExactIP(row.ip)) return false;
+            const rn = ipToNum(row.ip) >>> 0;
+            return ranges.some(range => ((rn & range.mask) >>> 0) === range.num);
+          }).length;
+        }
+        fqdnDb.badgeCount = filteredCount;
+        // Background: lightweight badge-only update (don't re-render the whole page).
+        // Foreground / user on FQDN tab: full render so the table appears immediately.
         if (background && state.activeTab !== 'fqdn') {
-          // Compute the filtered count here, where _cachedFilterData is guaranteed current.
-          // For group/object-name keywords: apply IP-range filter against the loaded records.
-          // For direct IP/domain keywords: server already filtered — use raw result length.
-          const kw = state.appliedSearch || '';
-          let filteredCount = fqdnDb.results.length;
-          if (kw && !_isFqdnDirectKeyword(kw)) {
-            const ranges = (_cachedFilterData && _cachedFilterData.fqdnRuleIpRanges) || [];
-            filteredCount = ranges.length === 0 ? 0 : fqdnDb.results.filter(row => {
-              if (!row.ip || !isExactIP(row.ip)) return false;
-              const rn = ipToNum(row.ip) >>> 0;
-              return ranges.some(range => ((rn & range.mask) >>> 0) === range.num);
-            }).length;
-          }
           refreshFqdnBadge(filteredCount);
         } else {
           renderContent();
