@@ -4445,6 +4445,19 @@
 
     function invalidateFilterCache() { _filterCacheDirty = true; _groupTreeHtmlCache.clear(); }
 
+    // Cheap tab-bar-only refresh — updates the FQDN badge without touching the content area.
+    function refreshFqdnBadge() {
+      const tb = document.getElementById('tabBar');
+      if (!tb || !_cachedFilterData) return;
+      if (_cachedFilterData._tabCounts) _cachedFilterData._tabCounts.fqdn = fqdnDbFiltered().length;
+      const counts = _cachedFilterData._tabCounts || {};
+      tb.innerHTML = TABS.map(t => {
+        const c = counts[t.id];
+        const cn = c !== '' && c !== undefined ? `<span class="tab-count">${c}</span>` : '';
+        return `<button class="tab-btn ${state.activeTab === t.id ? 'active' : ''}" onclick="switchTab('${t.id}')">${t.label[state.lang]}${cn}</button>`;
+      }).join('');
+    }
+
     function renderContent(expandOnly = false) {
       let d;
       if (expandOnly && !_filterCacheDirty && _cachedFilterData) {
@@ -4480,6 +4493,8 @@
         default: el.innerHTML = '<div class="empty-state">Select a tab</div>';
       }
       updateFilterOptions();
+      // Pre-load FQDN in background after every render so the badge is always correct.
+      if (state.activeTab !== 'fqdn') setTimeout(() => fqdnDbAutoLoad(true), 0);
     }
 
     let expandedPills = new Set();
@@ -5282,14 +5297,16 @@
       fqdnDb._timer = setTimeout(() => renderContent(), 150);
     }
 
-    async function fqdnDbAutoLoad() {
+    // background=true: pre-load silently; only update the badge when done.
+    // background=false (default): foreground load for the FQDN tab — show spinner + full render.
+    async function fqdnDbAutoLoad(background = false) {
       const keyword = state.appliedSearch || '';
       // Direct IP/domain keyword → server filters by keyword; otherwise always load all records
       // (client-side IP-range filter from matched rules is applied in fqdnDbFiltered).
       const fetchKey = (keyword && _isFqdnDirectKeyword(keyword)) ? keyword : '__all__';
       if (fqdnDb.loading || fqdnDb._loadedQuery === fetchKey) return;
       fqdnDb.loading = true;
-      renderContent();
+      if (!background) renderContent(); // show loading spinner only when FQDN tab is visible
       try {
         const url = (fetchKey !== '__all__')
           ? `/api/fqdn?q=${encodeURIComponent(keyword)}&limit=10000`
@@ -5303,7 +5320,13 @@
         fqdnDb.results = [];
       } finally {
         fqdnDb.loading = false;
-        renderContent();
+        // If user navigated to the FQDN tab while a background fetch was in flight,
+        // do a full render now so the table appears immediately.
+        if (background && state.activeTab !== 'fqdn') {
+          refreshFqdnBadge();
+        } else {
+          renderContent();
+        }
       }
     }
 
