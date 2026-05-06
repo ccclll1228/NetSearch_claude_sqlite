@@ -9,18 +9,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm install
 
 # Start server (production)
-npm start          # node server.js on port 3000
+npm start          # node server.js
 
 # Start server (dev, auto-restart on file change)
 npm run dev        # node --watch server.js
 ```
 
-There are no tests or lint scripts. The app is accessed at `http://localhost:3000` after starting.
+There are no tests or lint scripts. The port is read from `config/settings.json` (currently `3002`). The app is accessed at `http://localhost:3002` after starting.
 
 To trigger a manual config reload via API:
 ```bash
-curl -X POST http://localhost:3000/api/reload
-curl http://localhost:3000/api/status
+curl -X POST http://localhost:3002/api/reload
+curl http://localhost:3002/api/status
 ```
 
 ## Architecture
@@ -36,7 +36,7 @@ lib/parser.js      — All config parsers (FortiGate, PaloAlto, SRX, F5)
 lib/scheduler.js   — node-cron triggers for auto-reload
 cache/parsed.json  — JSON snapshot written after each reload; read on restart
         ↓  GET /api/data
-public/index.html  — ~3600-line single-file frontend (all CSS + JS inline)
+public/index.html  — ~6200-line single-file frontend (all CSS + JS inline)
 ```
 
 **Core principle:** Parse once on the server, serve to all users. All search/filter logic runs in the browser.
@@ -116,15 +116,26 @@ All CSS variables use `--cds-*` (Carbon Design System) tokens. Key mapping from 
 |--------|----------------|-------|
 | `--bg` | `--cds-background` | `#f4f4f4` |
 | `--bg-card` | `--cds-layer-01` | `#ffffff` |
+| `--bg-hover` | `--cds-layer-hover` | `#e8e8e8` |
 | `--bg-elevated` | `--cds-layer-02` | `#e0e0e0` |
 | `--border` | `--cds-border-subtle` | `#c6c6c6` |
+| `--border-focus` | `--cds-focus` | `#0f62fe` |
 | `--text` | `--cds-text-primary` | `#161616` |
 | `--text-secondary` | `--cds-text-secondary` | `#525252` |
+| `--text-muted` | `--cds-text-placeholder` | `#6f6f6f` |
 | `--accent` | `--cds-interactive` | `#0f62fe` |
 | `--accent-light` | `--cds-highlight` | `#edf5ff` |
+| `--accent-hover` | `--cds-interactive-hover` | `#0353e9` |
+| `--accent-glow` | — | `transparent` |
 | `--green` | `--cds-support-success` | `#24a148` |
 | `--red` | `--cds-support-error` | `#da1e28` |
+| `--yellow` | `--cds-support-warning` | `#f1c21b` |
+| `--orange` | `--cds-support-caution` | `#ff832b` |
+| `--blue` | `--cds-link-primary` | `#0f62fe` |
+| `--pill-bg` | `--cds-background` | `#f4f4f4` |
+| `--pill-match` | `--cds-highlight` | `#edf5ff` |
 | `--radius` | `--cds-radius` | `0px` |
+| `--radius-sm` | `--cds-radius` | `0px` |
 | `--font-ui` | `--cds-font-sans` | IBM Plex Sans |
 | `--font-mono` | `--cds-font-mono` | IBM Plex Mono |
 
@@ -134,7 +145,7 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
 
 ```json
 {
-  "port": 3001,
+  "port": 3002,
   "backupRoot": "/home/oxidized/backups",
   "devices": [
     { "name": "FRI-LTM01", "type": "f5" },
@@ -151,6 +162,8 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
 - `configFiles` — **removed**; replaced by `backupRoot + devices[]`
 
 `config/settings.json` is gitignored. Use `config/settings.example.json` as the template.
+
+> **Note:** `README.md` is outdated — it still documents the old `configFiles` schema. Do not follow it for configuration; use this file instead.
 
 ### Features
 
@@ -237,22 +250,3 @@ name line **before** recursing into its members. See `tasks/lessons.md` for the 
 - No Laziness: Find root causes. No temporary fixes. Senior developer standards.
 - Minimal Impact: Only touch what's necessary. No side effects with new bugs.
 
-## Project Status (2026-04-28)
-
-### Done
-- [x] `git clone` — repo at `/home/local/SSO/yt0115/NetSearch_claude`
-- [x] `npm install` — all dependencies installed
-- [x] Server running via `npm run dev` on **port 3001** (port 3000 occupied by Grafana)
-- [x] `config/settings.json` — updated to `backupRoot + devices[]` shape; 12 devices loading cleanly
-- [x] `lib/discovery.js` — dynamic backup file discovery (newest folder, highest HHMM timestamp)
-- [x] `config/settings.example.json` — updated to new shape
-- [x] `_32` notation normalisation — PA-style `x.x.x.x_32` addresses normalised throughout search index and filter pipeline
-- [x] `ignoreCIDR` toggle — exact-IP-only mode wired across all 10 filter/search sites
-- [x] FQDN tab device filter — per-device address-space gate; FW uses ALLOW rule destinations, F5 uses VS IPs; `/32` mod-32 mask bug fixed
-- [x] Schedule parsing — FortiGate onetime + PaloAlto non-recurring schedule objects parsed into `parsed.schedules`; rules resolve schedule name → object; `name` field carried through for UI display
-- [x] Schedule column in Sec Rules — 8-col grid with 130px SCHEDULE column; name (wrapping) + start/end datetimes; yellow highlight when window active; auto-suppressed when no rule has a schedule
-- [x] VIP/VIPGRP resolution — FortiGate vipMap + vipgrpMap parsed; `secRule.dstVips` resolved per destination; extip → mappedip shown inline in destination cell
-
-### TODO
-- [ ] Set real `fqdnFile` path in `config/settings.json` once CSV location is known
-- [ ] Deploy (production: `npm start`)
