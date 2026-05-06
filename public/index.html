@@ -2751,7 +2751,7 @@
       }
     };
 
-    const fqdnDb = { query: '', results: [], lastSynced: null, typeFilter: '', ownerFilter: '', geoFilter: '', loading: false, _timer: null };
+    const fqdnDb = { query: '', results: [], lastSynced: null, typeFilter: '', ownerFilter: '', geoFilter: '', loading: false, _timer: null, _loadedQuery: null };
 
     const TABS = [
       { id: 'fqdn', label: { en: 'FQDN', zh: 'FQDN' } },
@@ -4472,7 +4472,7 @@
         case 'objects': el.innerHTML = renderObjects(d.addresses, d.groups); break;
         case 'f5_vs': el.innerHTML = renderF5Virtuals(d.f5Virtuals); break;
         case 'f5_pools': el.innerHTML = renderF5Pools(d.f5Pools); break;
-        case 'fqdn': el.innerHTML = renderFqdnDb(); break;
+        case 'fqdn': fqdnDbAutoLoad(); el.innerHTML = renderFqdnDb(); break;
         case 'copy': el.innerHTML = renderCopyTab(d); break;
         case 'raw': el.innerHTML = renderRawConfig(); break;
         case 'debug': el.innerHTML = renderDebugTab(); break;
@@ -5254,14 +5254,19 @@
     }
 
     async function fqdnDbAutoLoad() {
-      if (fqdnDb.results.length > 0 || fqdnDb.loading) return;
+      const keyword = state.appliedSearch || '';
+      if (fqdnDb.loading || fqdnDb._loadedQuery === keyword) return;
       fqdnDb.loading = true;
       renderContent();
       try {
-        const res = await fetch('/api/fqdn?limit=10000');
+        const url = keyword
+          ? `/api/fqdn?q=${encodeURIComponent(keyword)}&limit=10000`
+          : '/api/fqdn?limit=10000';
+        const res = await fetch(url);
         const data = await res.json();
-        fqdnDb.results   = data.results   || [];
-        fqdnDb.lastSynced = data.lastSynced || null;
+        fqdnDb.results      = data.results    || [];
+        fqdnDb.lastSynced   = data.lastSynced || null;
+        fqdnDb._loadedQuery = keyword;
       } catch (_) {
         fqdnDb.results = [];
       } finally {
