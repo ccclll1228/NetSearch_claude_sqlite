@@ -4446,10 +4446,10 @@
     function invalidateFilterCache() { _filterCacheDirty = true; _groupTreeHtmlCache.clear(); }
 
     // Cheap tab-bar-only refresh — updates the FQDN badge without touching the content area.
-    function refreshFqdnBadge() {
+    function refreshFqdnBadge(count) {
       const tb = document.getElementById('tabBar');
       if (!tb || !_cachedFilterData) return;
-      if (_cachedFilterData._tabCounts) _cachedFilterData._tabCounts.fqdn = fqdnDbFiltered().length;
+      if (_cachedFilterData._tabCounts) _cachedFilterData._tabCounts.fqdn = count;
       const counts = _cachedFilterData._tabCounts || {};
       tb.innerHTML = TABS.map(t => {
         const c = counts[t.id];
@@ -5323,7 +5323,20 @@
         // If user navigated to the FQDN tab while a background fetch was in flight,
         // do a full render now so the table appears immediately.
         if (background && state.activeTab !== 'fqdn') {
-          refreshFqdnBadge();
+          // Compute the filtered count here, where _cachedFilterData is guaranteed current.
+          // For group/object-name keywords: apply IP-range filter against the loaded records.
+          // For direct IP/domain keywords: server already filtered — use raw result length.
+          const kw = state.appliedSearch || '';
+          let filteredCount = fqdnDb.results.length;
+          if (kw && !_isFqdnDirectKeyword(kw)) {
+            const ranges = (_cachedFilterData && _cachedFilterData.fqdnRuleIpRanges) || [];
+            filteredCount = ranges.length === 0 ? 0 : fqdnDb.results.filter(row => {
+              if (!row.ip || !isExactIP(row.ip)) return false;
+              const rn = ipToNum(row.ip) >>> 0;
+              return ranges.some(range => ((rn & range.mask) >>> 0) === range.num);
+            }).length;
+          }
+          refreshFqdnBadge(filteredCount);
         } else {
           renderContent();
         }
