@@ -1460,6 +1460,9 @@
       white-space: normal;
     }
     .fqdn-geo-cell {
+      width: 80px;
+      min-width: 80px;
+      max-width: 80px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -5495,14 +5498,14 @@
       }).join('');
 
       return controlBar + statsBar + `<table class="fqdn-table">
-        <colgroup><col style="width:7%"><col style="width:13%"><col style="width:28%"><col style="width:11%"><col style="width:24%"><col style="width:4%"><col style="width:13%"></colgroup>
+        <colgroup><col style="width:7%"><col style="width:13%"><col style="width:28%"><col style="width:11%"><col style="width:24%"><col style="width:80px"><col style="width:13%"></colgroup>
         <thead><tr>
           <th onclick="sortFqdn('owner')">Owner${arrow('owner')}</th>
           <th onclick="sortFqdn('domain')">Domain${arrow('domain')}</th>
           <th onclick="sortFqdn('fqdn')">FQDN${arrow('fqdn')}</th>
           <th onclick="sortFqdn('type')">Type${arrow('type')}</th>
           <th onclick="sortFqdn('ip')">IP${arrow('ip')}</th>
-          <th onclick="sortFqdn('geo_info')">Geo${arrow('geo_info')}</th>
+          <th class="fqdn-geo-cell" onclick="sortFqdn('geo_info')">Geo${arrow('geo_info')}</th>
           <th></th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -5549,13 +5552,13 @@
   </div>`;
       const colPickerHtml = FQDN_COPY_FIELDS.map((f, i) => `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;color:var(--text)"><input type="checkbox" ${f.selected ? 'checked' : ''} onchange="FQDN_COPY_FIELDS[${i}].selected=this.checked" style="accent-color:var(--accent);cursor:pointer">${f.label}</label>`).join('');
       return filterHtml + `<div class="stats-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${filtered.length > 2000 ? T('statsFqdnCapped', filtered.length) : T('statsFqdn', filtered.length)}<details style="position:relative;display:inline-block"><summary style="list-style:none;cursor:pointer;padding:2px 7px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;color:var(--text-muted);background:var(--bg-card)">Copy Columns ▾</summary><div style="position:absolute;top:calc(100% + 4px);left:0;z-index:300;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4)">${colPickerHtml}</div></details><button class="rule-copy-btn" onclick="copyFqdnTSV()" title="Copy filtered results as TSV">${SVG_COPY} Copy</button></div>
-    <table class="fqdn-table"><colgroup><col style="width:7%"><col style="width:13%"><col style="width:28%"><col style="width:11%"><col style="width:24%"><col style="width:4%"><col style="width:13%"></colgroup><thead><tr>
+    <table class="fqdn-table"><colgroup><col style="width:7%"><col style="width:13%"><col style="width:28%"><col style="width:11%"><col style="width:24%"><col style="width:80px"><col style="width:13%"></colgroup><thead><tr>
       <th onclick="sortFqdn('owner')">Owner${arrow('owner')}</th>
       <th onclick="sortFqdn('domain')">Domain${arrow('domain')}</th>
       <th onclick="sortFqdn('fqdn')">FQDN${arrow('fqdn')}</th>
       <th onclick="sortFqdn('type')">Type${arrow('type')}</th>
       <th onclick="sortFqdn('ip')">IP${arrow('ip')}</th>
-      <th onclick="sortFqdn('geoInfo')">Geo${arrow('geoInfo')}</th>
+      <th class="fqdn-geo-cell" onclick="sortFqdn('geoInfo')">Geo${arrow('geoInfo')}</th>
       <th></th>
     </tr></thead><tbody>${display.map(r => { const d = stripDot(r.domain), fq = stripDot(r.fqdn), ip = stripDot(r.ip); return `<tr${r._chainedFromRule ? ' style="border-left:3px solid var(--yellow)"' : ''}><td>${esc(r.owner)}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type)}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td class="fqdn-geo-cell">${esc(r.geoInfo)}</td><td></td></tr>`; }).join('')}</tbody></table>`;
     }
