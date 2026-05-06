@@ -1459,6 +1459,13 @@
       overflow-wrap: break-word;
       white-space: normal;
     }
+    .fqdn-geo-cell {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: normal;
+      overflow-wrap: normal;
+    }
 
     .route-table tr:hover td,
     .fqdn-table tr:hover td,
@@ -5484,7 +5491,7 @@
 
       const rows = display.map(r => {
         const d = stripDot(r.domain), fq = stripDot(r.fqdn), ip = stripDot(r.ip);
-        return `<tr><td>${esc(r.owner||'')}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type||'')}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.geo_info||'')}</td><td></td></tr>`;
+        return `<tr><td>${esc(r.owner||'')}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type||'')}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td class="fqdn-geo-cell">${esc(r.geo_info||'')}</td><td></td></tr>`;
       }).join('');
 
       return controlBar + statsBar + `<table class="fqdn-table">
@@ -5550,7 +5557,7 @@
       <th onclick="sortFqdn('ip')">IP${arrow('ip')}</th>
       <th onclick="sortFqdn('geoInfo')">Geo${arrow('geoInfo')}</th>
       <th></th>
-    </tr></thead><tbody>${display.map(r => { const d = stripDot(r.domain), fq = stripDot(r.fqdn), ip = stripDot(r.ip); return `<tr${r._chainedFromRule ? ' style="border-left:3px solid var(--yellow)"' : ''}><td>${esc(r.owner)}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type)}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.geoInfo)}</td><td></td></tr>`; }).join('')}</tbody></table>`;
+    </tr></thead><tbody>${display.map(r => { const d = stripDot(r.domain), fq = stripDot(r.fqdn), ip = stripDot(r.ip); return `<tr${r._chainedFromRule ? ' style="border-left:3px solid var(--yellow)"' : ''}><td>${esc(r.owner)}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type)}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td class="fqdn-geo-cell">${esc(r.geoInfo)}</td><td></td></tr>`; }).join('')}</tbody></table>`;
     }
 
     function copyFqdnTSV() {
