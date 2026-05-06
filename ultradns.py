@@ -62,6 +62,7 @@ def get_all_zones(token: str) -> list[str]:
     zones: list[str] = []
     limit  = 500
     offset = 0
+    total  = 0
 
     while True:
         url  = f"{BASE_URL}/zones?limit={limit}&offset={offset}"
@@ -83,11 +84,12 @@ def get_all_zones(token: str) -> list[str]:
             zones.append(name.rstrip("."))
 
         returned = result_info.get("returnedCount", len(zone_list))
-        total    = result_info.get("totalCount", returned)
+        total    = result_info.get("totalCount", total or returned)
         offset  += returned
         if offset >= total or returned == 0:
             break
 
+    print(f"Fetched {len(zones)} / {total} zones", flush=True)
     return zones
 
 
