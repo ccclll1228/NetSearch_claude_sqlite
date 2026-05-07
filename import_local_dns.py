@@ -8,6 +8,13 @@ CSV_DIR = '/home/local/SSO/yt0115/NetSearch_sqlite/local_dns_csv'
 HIDDEN_DOMAINS = {
     'trz.prd',
     'trz.uat',
+    'sso.trz',
+}
+
+HIDDEN_TYPES = {
+    'PTR',
+    'SOA',
+    'WINS',
 }
 
 def is_hidden(fqdn: str) -> bool:
@@ -32,9 +39,12 @@ def sync_file(conn, csv_path, now):
             for row in reader:
                 zone    = row.get('ZoneName',    '').strip()
                 host    = row.get('HostName',     '').strip()
-                rtype   = row.get('RecordType',   '').strip()
+                rtype   = row.get('RecordType',   '').strip().upper()
                 rdata   = row.get('RecordData',   '').strip()
                 dns_srv = row.get('PSComputerName', '').strip()
+
+                if rtype in HIDDEN_TYPES:
+                    continue
 
                 # Build FQDN
                 if host == '@' or host == '':
