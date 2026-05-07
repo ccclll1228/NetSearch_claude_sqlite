@@ -202,10 +202,11 @@ Both tables are queried in parallel and their results merged into a single table
 | Search type | How it works |
 |-------------|-------------|
 | Direct IP / FQDN (e.g. `10.1.2.3`, `mail.example.com`) | Server filters both SQLite tables by keyword; results merged client-side |
-| Object / group name (e.g. `vs28000_TapTap_MEM OR vs28004_TapTap_AFF`) | All UltraDNS records loaded; client filters by IPs extracted from matching Sec/NAT/LTM results. Local DNS searched by keyword text. |
+| OR-separated FQDNs / IPs (e.g. `taptap.asia OR taptap.zone OR taptap.mobi`) | Each term fetched independently; results unioned. Works in both the global search bar and the local FQDN filter box. |
+| Object / group name (e.g. `vs28000_TapTap_MEM`) | All UltraDNS records loaded; client filters by IPs extracted from matching Sec/NAT/LTM results. Local DNS searched by keyword text. |
 
 - The FQDN badge count is pre-loaded in the background after every search — no tab click required.
-- The local text filter inside the FQDN tab (FQDN / IP / domain / geo) applies **only when Enter is pressed**. Dropdowns (Type, Owner, Geo) still filter immediately on change.
+- The local text filter inside the FQDN tab (FQDN / IP / domain / geo) applies **only when Enter is pressed** and also supports `OR` splitting. Dropdowns (Type, Owner, Geo) still filter immediately on change.
 
 ### Single-device filter
 
@@ -359,6 +360,18 @@ Example response:
 ---
 
 ## Changelog
+
+### 2026-05-07 (2)
+
+**Fix: FQDN tab — OR search now works in the global search bar**
+
+Searching `taptap.asia OR taptap.zone OR taptap.mobi` previously returned no results because the query was treated as an object/group name, which fell into the IP-range filter path and returned `[]` when no rules matched.
+
+- `_fqdnBaseFilter` now detects OR-separated direct keywords and does text matching on `fqdn`/`ip` instead of falling into the IP-range branch
+- `fqdnDbAutoLoad` now fetches `/api/local_dns` once per OR term in parallel and unions the results (the API accepts only a single search term)
+- The local FQDN filter box (inside the tab) also supports OR splitting since the previous fix
+
+---
 
 ### 2026-05-07
 
