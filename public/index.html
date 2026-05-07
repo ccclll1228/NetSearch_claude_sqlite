@@ -2776,7 +2776,7 @@
       }
     };
 
-    const fqdnDb = { query: '', results: [], lastSynced: null, typeFilter: '', ownerFilter: '', geoFilter: '', loading: false, _timer: null, _loadedQuery: null, badgeCount: 0 };
+    const fqdnDb = { query: '', results: [], lastSynced: null, localDnsLastSynced: null, typeFilter: '', ownerFilter: '', geoFilter: '', loading: false, _timer: null, _loadedQuery: null, badgeCount: 0 };
 
     const TABS = [
       { id: 'fqdn', label: { en: 'FQDN', zh: 'FQDN' } },
@@ -5380,6 +5380,13 @@
       renderContent();
     }
 
+    function _normalizeLocalDnsRow(r) {
+      const host = r.host_name || '';
+      const zone = r.zone_name || '';
+      const fqdn = (host && zone) ? `${host}.${zone}` : (host || zone);
+      return { owner: 'LocalDNS', domain: zone, fqdn, type: r.record_type || '', ip: r.record_data || '', geo_info: '', ttl: null, synced_at: r.synced_at || null };
+    }
+
     // background=true: pre-load silently; only update the badge when done.
     // background=false (default): foreground load for the FQDN tab — show spinner + full render.
     async function fqdnDbAutoLoad(background = false) {
@@ -5401,13 +5408,20 @@
       fqdnDb.loading = true;
       if (!background) renderContent(); // show loading spinner only when FQDN tab is visible
       try {
-        const url = (fetchKey !== '__all__')
+        const fqdnUrl = (fetchKey !== '__all__')
           ? `/api/fqdn?q=${encodeURIComponent(keyword)}&limit=10000`
           : '/api/fqdn?limit=10000';
-        const res = await fetch(url);
-        const data = await res.json();
-        fqdnDb.results      = data.results    || [];
+        // Fetch local DNS in parallel only when there is a keyword; empty query returns [] by design.
+        const localDnsPromise = keyword
+          ? fetch(`/api/local_dns?q=${encodeURIComponent(keyword)}&limit=200`)
+              .then(r => r.ok ? r.json() : null).catch(() => null)
+          : Promise.resolve(null);
+        const [fqdnRes, localDnsData] = await Promise.all([fetch(fqdnUrl), localDnsPromise]);
+        const data = await fqdnRes.json();
         fqdnDb.lastSynced   = data.lastSynced || null;
+        const localDnsRows  = localDnsData ? (localDnsData.results || []).map(_normalizeLocalDnsRow) : [];
+        if (localDnsData && localDnsData.lastSynced) fqdnDb.localDnsLastSynced = localDnsData.lastSynced;
+        fqdnDb.results      = [...(data.results || []), ...localDnsRows];
         fqdnDb._loadedQuery = fetchKey;
       } catch (_) {
         fqdnDb.results = [];
@@ -5461,8 +5475,11 @@
         </select>
       </div>`;
 
-      const syncLine = fqdnDb.lastSynced
-        ? `<div style="font-size:11px;color:var(--cds-text-placeholder);padding:6px 0 2px">Last synced: ${esc(fqdnDb.lastSynced)}</div>`
+      const syncParts = [];
+      if (fqdnDb.lastSynced) syncParts.push(`UltraDNS: ${esc(fqdnDb.lastSynced)}`);
+      if (fqdnDb.localDnsLastSynced) syncParts.push(`Local DNS: ${esc(fqdnDb.localDnsLastSynced)}`);
+      const syncLine = syncParts.length
+        ? `<div style="font-size:11px;color:var(--cds-text-placeholder);padding:6px 0 2px">Last synced: ${syncParts.join(' · ')}</div>`
         : '';
 
       if (all.length === 0) {
