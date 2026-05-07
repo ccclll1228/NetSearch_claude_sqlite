@@ -2,3 +2,6 @@ node_modules/
 cache/
 config/settings.json
 db/fqdn.db
+.env
+dns_records.db
+local_dns_csv/

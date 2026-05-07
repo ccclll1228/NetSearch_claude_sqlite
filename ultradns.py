@@ -15,9 +15,9 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-
+from dotenv import load_dotenv
 import requests
-
+load_dotenv()   
 AUTH_URL    = "https://api.ultradns.com/authorization/token"
 BASE_URL    = "https://api.ultradns.com"
 DB_PATH     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "db", "fqdn.db")
