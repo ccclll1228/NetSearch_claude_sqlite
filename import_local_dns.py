@@ -5,6 +5,18 @@ from datetime import datetime, timezone
 DB_PATH = '/home/local/SSO/yt0115/NetSearch_sqlite/db/fqdn.db'
 CSV_DIR = '/home/local/SSO/yt0115/NetSearch_sqlite/local_dns_csv'
 
+HIDDEN_DOMAINS = {
+    'trz.prd',
+    'trz.uat',
+}
+
+def is_hidden(fqdn: str) -> bool:
+    fqdn = fqdn.lower()
+    for suffix in HIDDEN_DOMAINS:
+        if fqdn == suffix or fqdn.endswith('.' + suffix):
+            return True
+    return False
+
 
 def ensure_table(conn):
     """Verify the fqdn table is accessible before processing any files."""
@@ -29,6 +41,9 @@ def sync_file(conn, csv_path, now):
                     fqdn = zone
                 else:
                     fqdn = f"{host}.{zone}"
+
+                if is_hidden(fqdn):
+                    continue
 
                 # ip field: A record fills IP, otherwise original RecordData
                 ip = rdata if rtype == 'A' else rdata
