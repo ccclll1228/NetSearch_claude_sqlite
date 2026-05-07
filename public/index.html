@@ -5360,14 +5360,19 @@
     function fqdnDbFiltered() {
       let r = _fqdnBaseFilter(fqdnDb.results);
 
-      // Local text filter (search box inside FQDN tab)
+      // Local text filter (search box inside FQDN tab) — supports OR splitting
       const q = fqdnDb.query.trim().toLowerCase();
-      if (q) r = r.filter(row =>
-        (row.fqdn     || '').toLowerCase().includes(q) ||
-        (row.ip       || '').toLowerCase().includes(q) ||
-        (row.domain   || '').toLowerCase().includes(q) ||
-        (row.geo_info || '').toLowerCase().includes(q)
-      );
+      if (q) {
+        const terms = q.split(/\s+or\s+/).map(t => t.trim()).filter(Boolean);
+        r = r.filter(row =>
+          terms.some(t =>
+            (row.fqdn     || '').toLowerCase().includes(t) ||
+            (row.ip       || '').toLowerCase().includes(t) ||
+            (row.domain   || '').toLowerCase().includes(t) ||
+            (row.geo_info || '').toLowerCase().includes(t)
+          )
+        );
+      }
       if (fqdnDb.typeFilter)  r = r.filter(row => row.type     === fqdnDb.typeFilter);
       if (fqdnDb.ownerFilter) r = r.filter(row => row.owner    === fqdnDb.ownerFilter);
       if (fqdnDb.geoFilter)   r = r.filter(row => row.geo_info === fqdnDb.geoFilter);
