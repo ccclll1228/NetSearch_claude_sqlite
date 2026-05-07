@@ -34,9 +34,15 @@ server.js          — Express server, in-memory state, API routes
 lib/discovery.js   — Resolves latest backup file per device at load time
 lib/parser.js      — All config parsers (FortiGate, PaloAlto, SRX, F5)
 lib/scheduler.js   — node-cron triggers for auto-reload
+lib/fqdn_db.js     — SQLite helper: search/searchLocalDns + getLastSynced
 cache/parsed.json  — JSON snapshot written after each reload; read on restart
-        ↓  GET /api/data
+        ↓  GET /api/data          GET /api/fqdn     GET /api/local_dns
 public/index.html  — ~6200-line single-file frontend (all CSS + JS inline)
+
+db/fqdn.db         — SQLite; fqdn table (UltraDNS + LocalDNS rows)
+        ↑  ultradns.py            (owner='ultraDNS', crontab-ready)
+        ↑  import_local_dns.py   (owner='localDNS',  reads local_dns_csv/)
+        ↑  sync_all.sh            (runs both in sequence, set -e)
 ```
 
 **Core principle:** Parse once on the server, serve to all users. All search/filter logic runs in the browser.
@@ -45,7 +51,8 @@ public/index.html  — ~6200-line single-file frontend (all CSS + JS inline)
 
 - Holds in-memory state: `parsedConfigs[]`, `fqdnRecords[]`, `lastLoaded`
 - On startup: reads `cache/parsed.json` immediately, then async-parses from disk
-- API routes: `GET /api/data`, `GET /api/status`, `POST /api/reload`
+- API routes: `GET /api/data`, `GET /api/status`, `POST /api/reload`, `GET /api/fqdn`, `GET /api/local_dns`
+- `/api/fqdn` and `/api/local_dns` delegate to `lib/fqdn_db.js`; both cap results at `Math.min(limit, 99999)`
 - Calls `resolveDevicePaths()` at the start of `loadAllConfigs()` to get `[{path, type}]` from discovery; cron schedule comes from `config/settings.json`
 
 ### Discovery (`lib/discovery.js`)
@@ -167,12 +174,14 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
 
 ### Features
 
-- **FQDN tab device filter** — when one or more specific devices are selected in the device bar, the FQDN tab only shows records whose IPs fall within that device's rule destinations (FW: enabled ALLOW rule destinations → address objects + 1-level group expansion) or virtual server IPs (F5 LTM). Selecting "All" restores the full 18941-record view.
+- **Local DNS CSV sync** (`import_local_dns.py`) — imports on-premise DNS records from `local_dns_csv/*.csv` into the `fqdn` table (`owner='localDNS'`). Scans for the newest CSV only (alphabetical sort). Hidden domains (`trz.prd`, `trz.uat`, `sso.trz`, `in-addr.arpa`) and hidden types (`PTR`, `SOA`, `WINS`) are dropped at import time. `sync_all.sh` runs `ultradns.py` then `import_local_dns.py` in sequence. `GET /api/local_dns` searches these rows via `lib/fqdn_db.js`; the FQDN tab fetches both endpoints in parallel and union-merges results.
+- **FQDN tab device filter** — when one or more specific devices are selected in the device bar, the FQDN tab only shows records whose IPs fall within the **union** of all selected devices' destination CIDRs (FW: enabled ALLOW rule destinations → address objects + 1-level group expansion; F5: virtual server IPs). `fqdnDeviceCidrRanges` is built with `configs.forEach` over all active devices. Selecting "All" skips the filter entirely.
 - **Ignore CIDR toggle** — when enabled, CIDR containment is skipped across all search and filter operations; only exact-IP matches are used. Affects both the search pipeline and the FQDN device filter gate.
 - **`_32` notation support** — IP addresses written as `x.x.x.x_32` (Palo Alto style) are normalised to `x.x.x.x/32` at index build time and throughout the search/filter pipeline.
 - **Schedule column in Sec Rules** — FortiGate (`config firewall schedule onetime`) and Palo Alto (`set schedule ... schedule-type non-recurring`) schedule objects are parsed into `parsed.schedules[name] = { name, start, end }` (ISO datetime strings). Each `secRule.schedule` is resolved to the object when a match exists, kept as a raw string otherwise, or `null`. `renderSecRules` detects whether any visible rule carries a non-`"always"` schedule; if so it switches to an 8-column grid (`9% 130px 10% 18% 18% 10% 9% auto`) and inserts a SCHEDULE column after RULE/ACTION. The cell shows: schedule name (bold, wrapping), start datetime, end datetime — with a yellow `#fffde7` background when the window end is still in the future. If no rule has a schedule the column is suppressed entirely and the original 7-column grid is preserved. NAT Rules tab is unaffected.
 - **VIP/VIPGRP resolution in Sec Rules** — FortiGate `config firewall vip` blocks are parsed into `parsed.vipMap[name] = { extip, mappedip, extintf }`; `config firewall vipgrp` blocks into `parsed.vipgrpMap[name] = { members: [] }`. During secRules serialization, each destination address is passed through `resolveVip()`: vipgrp names expand to their member VIP entries, vip names resolve directly, plain addresses return `null`. When any destination resolves, `secRule.dstVips = [{ name, extip, mappedip }, ...]` is attached. In `renderSecRules`, the DESTINATION cell appends one `extip → mappedip` sub-line per entry (0.75rem, gray, monospace) below the address pills so the real mapped IP is visible without expanding.
 - **Objects tab layout** — two-panel CSS grid (Addresses | Address Groups) with a `1px` center divider; `table-layout:fixed` on the addresses table prevents content from overflowing the grid cell; NAME column wraps long names (`word-break:break-all`); TYPE badge is `white-space:nowrap`; alternating row tint (`var(--cds-layer-02)`) for scanability; section headers are `position:sticky` so they remain visible while scrolling.
+- **EXACT search mode in FQDN tab** — when `state.searchMode === 'exact'`, `_fqdnBaseFilter` uses `===` instead of `includes` for direct keyword and OR-of-directs matching; `fqdnDbFiltered` local text filter also uses `===` on `fqdn`/`ip` only (domain and geo fields are excluded from EXACT matching). KEYWORD mode is unchanged.
 
 ### resolveObject() is flatten-only — never reuse for hierarchical output
 
@@ -195,6 +204,7 @@ name line **before** recursing into its members. See `tasks/lessons.md` for the 
 ### FQDN Device Filter — Technical Notes
 
 - **`activeDeviceIpFilter`** — built per render inside `getFilteredData()` when `state.disabledHosts.size > 0`. Iterates only the active (non-disabled) `configs`. For FW devices (FortiGate / PA / SRX): collects destination names from enabled ALLOW `secRules`, resolves them through `parsed.addresses` (direct) or `parsed.groups` (one level of indirection, member → `parsed.addresses[member].value`). For F5 devices: collects `parsed.virtuals[].ip`. Result: `{ exactIps: Set<string>, cidrRanges: [{num, mask}] }`.
+- **`fqdnDeviceCidrRanges`** — IIFE inside `getFilteredData()` that builds the FQDN device filter. Uses `configs.forEach` to iterate all active devices and accumulate a union of their destination CIDRs into a shared `ranges` array. Each device gets its own `seen` Set and `resolveAddr` closure; `addAddr`/`ranges` are shared across all devices. Returns `[]` when all devices are active (size=0), skipping the filter entirely.
 - **`ignoreCIDR` guard** — applied at ~10 locations in the search/filter pipeline; when true the `cidrRanges` loop is skipped and only `exactIps.has(r.ip)` is tested.
 - **`/32` special-case in `addValue()`** — `/32` CIDRs are added to `exactIps` only and return early; they are never pushed to `cidrRanges`. Reason: JavaScript's `>>>` operator is mod-32, so `0xFFFFFFFF >>> 32 === 0xFFFFFFFF`, making `~(0xFFFFFFFF >>> 32) >>> 0 === 0`. A `mask=0` entry in `cidrRanges` satisfies `((rn & 0) >>> 0) === 0` for every IP in the universe, bypassing the filter entirely.
 
