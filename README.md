@@ -383,6 +383,22 @@ Example response:
 
 ## Changelog
 
+### 2026-05-07 (4)
+
+**Fix: FQDN tab — EXACT search mode now applies strict equality**
+
+In EXACT mode, the FQDN tab was still doing substring matching (`includes`) instead of strict equality (`===`), so searching `10.0.0.1` would also return results for `10.0.0.10`, `10.0.0.100`, etc.
+
+Three locations patched in `public/index.html`:
+
+- **`_fqdnBaseFilter` — direct keyword path**: added an `isExact` branch that filters rows to strict equality on `fqdn` or `ip` when `state.searchMode === 'exact'`
+- **`_fqdnBaseFilter` — OR-of-directs path**: the per-term text match now uses `===` instead of `includes` in EXACT mode
+- **`fqdnDbFiltered` — local text filter box**: per-term match switches to strict equality on `fqdn` and `ip` only in EXACT mode (domain and geo fields are excluded from EXACT matching)
+
+KEYWORD mode is unchanged.
+
+---
+
 ### 2026-05-07 (3)
 
 **`import_local_dns.py` — multiple improvements**
