@@ -4,6 +4,28 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.1.0] - 2026-05-07
+
+### Added
+- **Local DNS CSV sync** (`import_local_dns.py`) — imports on-premise DNS records from `local_dns_csv/*.csv` into `db/fqdn.db` alongside UltraDNS records
+  - Scans for newest CSV file only (alphabetical sort → last entry), preventing duplicate imports from multiple timestamped exports
+  - Atomic per-file transactions: each file committed immediately on success; rollback on failure without stopping remaining files
+  - Import-time filtering: hidden domains (`trz.prd`, `trz.uat`, `sso.trz`, `in-addr.arpa`) and hidden types (`PTR`, `SOA`, `WINS`) dropped before insert
+  - `sync_all.sh` runs UltraDNS sync then Local DNS sync in sequence (`set -e`)
+- **`GET /api/local_dns`** — new endpoint; searches LocalDNS rows by keyword with configurable limit
+- **FQDN tab merges LocalDNS results** — `fqdnDbAutoLoad` fetches `/api/fqdn` and `/api/local_dns` in parallel; results are union-merged into the single FQDN table
+
+### Fixed
+- **FQDN tab — EXACT mode now applies strict equality** — in EXACT search mode the FQDN tab was doing substring matching (`includes`) instead of strict equality (`===`). Three locations patched in `_fqdnBaseFilter` and `fqdnDbFiltered`:
+  - Direct keyword path: rows filtered to `=== kw` on `fqdn` or `ip`
+  - OR-of-directs path: per-term match uses `===` in EXACT mode
+  - Local text filter box: per-term match uses `===` on `fqdn`/`ip` only; domain and geo fields excluded from EXACT matching
+- **FQDN tab — OR search works in global search bar** — queries like `taptap.asia OR taptap.zone` were treated as object/group names and fell into the IP-range filter path, returning no results. `_fqdnBaseFilter` now detects OR-of-direct-keywords and does text matching; `fqdnDbAutoLoad` fetches `/api/local_dns` once per OR term in parallel and unions results
+- **FQDN tab — multi-device selection shows union** — selecting 2+ devices caused the device CIDR filter to return `[]` due to a `configs.length !== 1` guard; now iterates all active devices and accumulates a union of their destination CIDRs
+- **FQDN result limit** — API endpoints `/api/fqdn` and `/api/local_dns` were truncating results at 10,000; limit raised to 99,999 in both frontend fetch calls and server-side `Math.min` cap
+
+---
+
 ## [2.0.0] - 2026-04-19
 
 ### Changed — IBM Carbon Design System 全面改版
