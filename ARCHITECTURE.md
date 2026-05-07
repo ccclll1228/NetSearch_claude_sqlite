@@ -194,7 +194,9 @@ GET /api/local_dns    GET /api/local_dns  (per term, unioned)
                              _fqdnBaseFilter(rows)
                              1. keyword routing:
                                 • direct keyword  → pass through (server-filtered)
+                                                    EXACT mode: strict === on fqdn/ip
                                 • OR-of-directs   → text OR match on fqdn/ip
+                                                    EXACT mode: === per term
                                 • object/group    → IP-range filter (fqdnRuleIpRanges)
                                                     returns [] if no rules matched
                              2. device CIDR filter (fqdnDeviceCidrRanges)
@@ -204,6 +206,7 @@ GET /api/local_dns    GET /api/local_dns  (per term, unioned)
                                        ▼
                              fqdnDbFiltered()  ← base filter + local text/dropdowns
                              local text box supports OR splitting on Enter
+                             EXACT mode: === on fqdn/ip only (domain/geo excluded)
                                        │
                                        ▼
                              Table rows + badge count
