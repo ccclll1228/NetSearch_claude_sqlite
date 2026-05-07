@@ -12,7 +12,7 @@ Parse and search across FortiGate, Palo Alto, Juniper SRX, and F5 LTM configurat
 - Filter by From Zone / To Zone / Tag / Source / Destination
 - Tabs: Sec Rules, NAT Rules, Routes, Objects, LTM VS, Pools, FQDN, Copy, Raw Config, Debug
 - Symmetric chaining — find related rules by shared IPs
-- FQDN lookup backed by SQLite (`db/fqdn.db`): UltraDNS cloud records via `ultradns.py` and on-premise DNS via `local_dns_sync.py` — both merged in the same results table
+- FQDN lookup backed by SQLite (`db/fqdn.db`): UltraDNS cloud records via `ultradns.py` and on-premise DNS via `import_local_dns.py` — both merged in the same results table
 - Disabled rule dimming, tag badges, resizable NAT columns
 - Auto-reload via cron schedule (default: 05:00 and 17:00)
 - Parsed data cached to disk; served instantly on restart
@@ -24,7 +24,7 @@ Parse and search across FortiGate, Palo Alto, Juniper SRX, and F5 LTM configurat
 
 - Node.js 18+
 - npm
-- Python 3.8+ with `requests` and `python-dotenv` (for `ultradns.py` and `local_dns_sync.py`)
+- Python 3.8+ with `requests` and `python-dotenv` (for `ultradns.py` and `import_local_dns.py`)
 
 ---
 
@@ -112,8 +112,8 @@ curl http://localhost:3002/api/status
 NetSearch_claude_sqlite/
 ├── server.js                  # Express server, in-memory state, API routes
 ├── ultradns.py                # UltraDNS → SQLite sync (fqdn table)
-├── local_dns_sync.py          # Local DNS CSV → SQLite sync (local_dns table)
-├── sync_all.sh                # Runs ultradns.py then local_dns_sync.py (set -e)
+├── import_local_dns.py          # Local DNS CSV → SQLite sync (local_dns table)
+├── sync_all.sh                # Runs ultradns.py then import_local_dns.py (set -e)
 ├── package.json
 ├── CLAUDE.md                  # AI coding guidance
 ├── ARCHITECTURE.md            # Full data-flow diagrams
@@ -156,7 +156,7 @@ config/settings.json  (backupRoot + devices[])
                                                ▼             ▼
 ultradns.py ────────────────►  db/fqdn.db  (fqdn table)
 local_dns_csv/*.csv
-   └── local_dns_sync.py ───►  db/fqdn.db  (local_dns table)
+   └── import_local_dns.py ───►  db/fqdn.db  (local_dns table)
 
 GET /api/data
          │
@@ -193,7 +193,7 @@ FQDN records are stored in `db/fqdn.db` (SQLite) in two tables:
 | Table | Source | Owner value | Records |
 |-------|--------|-------------|---------|
 | `fqdn` | UltraDNS cloud DNS (`ultradns.py`) | `ultraDNS` | ~7,880 |
-| `local_dns` | On-premise DNS CSV exports (`local_dns_sync.py`) | `LocalDNS` | ~6,140 |
+| `local_dns` | On-premise DNS CSV exports (`import_local_dns.py`) | `LocalDNS` | ~6,140 |
 
 Both tables are queried in parallel and their results merged into a single table. The **Owner** column distinguishes the source. The **Owner** dropdown filter lets you restrict to one source.
 
@@ -291,7 +291,7 @@ Place exported CSV files in `local_dns_csv/` (relative to the project root). Fil
 
 ```bash
 # Sync local DNS CSV files only
-python3 local_dns_sync.py
+python3 import_local_dns.py
 
 # Sync both UltraDNS and local DNS CSV
 bash sync_all.sh
