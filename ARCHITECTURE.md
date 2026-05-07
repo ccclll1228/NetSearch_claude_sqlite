@@ -4,22 +4,25 @@
 
 ```
 NetSearch_claude_sqlite/
-├── server.js          Express server — in-memory state, API routes
-├── ultradns.py        UltraDNS → SQLite sync (standalone, crontab-ready)
+├── server.js               Express server — in-memory state, API routes
+├── ultradns.py             UltraDNS → SQLite sync (standalone, crontab-ready)
+├── import_local_dns.py     On-premise DNS CSV → SQLite sync
+├── sync_all.sh             Runs ultradns.py then import_local_dns.py (set -e)
 ├── lib/
-│   ├── discovery.js   Resolves latest backup file per device
-│   ├── parser.js      Config parsers: FortiGate / PaloAlto / SRX / F5
-│   ├── scheduler.js   node-cron auto-reload triggers
-│   └── fqdn_db.js     SQLite helper: search() + getLastSynced()
+│   ├── discovery.js        Resolves latest backup file per device
+│   ├── parser.js           Config parsers: FortiGate / PaloAlto / SRX / F5
+│   ├── scheduler.js        node-cron auto-reload triggers
+│   └── fqdn_db.js          SQLite helper: search/searchLocalDns + getLastSynced
 ├── public/
-│   └── index.html     Single-file frontend (~6,200 lines: CSS + JS + HTML)
+│   └── index.html          Single-file frontend (~6,200 lines: CSS + JS + HTML)
 ├── db/
-│   └── fqdn.db        SQLite — FQDN records written by ultradns.py
+│   └── fqdn.db             SQLite — fqdn table (UltraDNS + LocalDNS rows)
+├── local_dns_csv/          Drop timestamped CSV exports here (gitignored)
 ├── config/
-│   ├── settings.json  Local config (gitignored)
+│   ├── settings.json       Local config (gitignored)
 │   └── settings.example.json
 └── cache/
-    └── parsed.json    Parse cache written after each reload (gitignored)
+    └── parsed.json         Parse cache written after each reload (gitignored)
 ```
 
 ---
@@ -84,28 +87,48 @@ ultradns.py
         │     Standard A/CNAME/MX/TXT/SPF/APEXALIAS records
         │     NS / SOA silently skipped; unknown types logged + skipped
         │
-        └── db/fqdn.db  (SQLite)
+        └── db/fqdn.db  (fqdn table)
               BEGIN
                 DELETE FROM fqdn          ← atomic full replacement
                 INSERT all rows           ← synced_at = UTC ISO8601
               COMMIT  (ROLLBACK on error)
+              owner = "ultraDNS" · ~7,880 records · runtime ≈ 68 s
 
-              Columns: fqdn, ip, owner ("ultraDNS"), domain,
-                       type, ttl, geo_info, synced_at
-              Indexes: idx_fqdn, idx_ip, idx_geo
-              ~7,880 records · runtime ≈ 68 s
+local_dns_csv/DNS_Export_Auto_<timestamp>.csv   ← newest file only
+        │
+        ▼
+import_local_dns.py
+        │
+        ├── Select newest *.csv (alphabetical sort → last entry)
+        │
+        ├── Filter at import time:
+        │     Hidden domains: trz.prd, trz.uat, sso.trz, in-addr.arpa
+        │     Hidden types:   PTR, SOA, WINS
+        │
+        ├── DELETE FROM fqdn WHERE owner = 'localDNS'  ← full replace
+        │
+        └── db/fqdn.db  (fqdn table)
+              Per-file: INSERT rows → COMMIT
+                        on error:  ROLLBACK + continue
+              owner = "localDNS" · ~5,800+ records
 
-db/fqdn.db
+db/fqdn.db  (fqdn table — both sources)
         │
         ▼
 server.js  →  lib/fqdn_db.js
-        │      search(keyword, limit) — parameterised SQL
+        │      search(keyword, limit)       → /api/fqdn
+        │      searchLocalDns(keyword, limit) → /api/local_dns
         │      getLastSynced()
-        ▼
-GET /api/fqdn?q=<keyword>&limit=<n>
         │
-        ▼
-public/index.html  — FQDN tab
+        ├── GET /api/fqdn?q=<keyword>&limit=<n>
+        └── GET /api/local_dns?q=<keyword>&limit=<n>
+                        │               │
+                        └───────┬───────┘
+                                ▼
+                    Promise.all([...]) in fqdnDbAutoLoad()
+                    results merged → fqdnDb.results
+                                ▼
+                    public/index.html  — FQDN tab
 ```
 
 ---
@@ -128,9 +151,9 @@ public/index.html  (all logic runs in the browser)
         │     resolveObject()  (WeakMap cache for group expansion)
         │     Builds allRuleIps (capped 50) for route/addr/f5 chaining
         │     Builds fqdnRuleIpRanges (uncapped) for FQDN IP-range filter
-        │     Builds fqdnDeviceCidrRanges when exactly 1 device active
-        │       (destination addrs from secRules+natRules, recursively
-        │        resolved through groups; F5: virtual server IPs)
+        │     Builds fqdnDeviceCidrRanges for all active devices (union)
+        │       (destination addrs from secRules+natRules per device,
+        │        recursively resolved through groups; F5: virtual server IPs)
         │
         └── renderContent()
               ├── Sec Rules    renderSecRules()
@@ -154,27 +177,36 @@ state.appliedSearch  (global search bar)
         ▼
 _isFqdnDirectKeyword(keyword)?
         │
-   yes (IP / CIDR / domain with dot, single token)
-        │                   no (object/group name, multi-token OR, etc.)
-        ▼                           ▼
-GET /api/fqdn?q=keyword       GET /api/fqdn  (all records, no filter)
-Server filters SQLite          ~7,880 rows loaded into fqdnDb.results
-        │                           │
-        │                           ▼
-        │                   _fqdnBaseFilter(rows)
-        │                   1. keyword IP-range filter (fqdnRuleIpRanges)
-        │                      IPs extracted from matching Sec/NAT/LTM rules
-        │                   2. single-device CIDR filter (fqdnDeviceCidrRanges)
-        │                      only when exactly 1 device active;
-        │                      destination addrs resolved recursively
-        │                           │
-        └─────────────────────────►─┘
-                                   │
-                                   ▼
-                        fqdnDbFiltered()  ← base filter + local text/dropdowns
-                                   │
-                                   ▼
-                        Table rows + badge count
+   yes (IP / CIDR / single domain token)
+        │         OR-list of direct keywords        no (object/group name)
+        │         e.g. "a.com OR b.com OR c.com"          │
+        ▼                    ▼                             ▼
+GET /api/fqdn?q=kw    GET /api/fqdn?q=kw (per term, unioned)
+GET /api/local_dns    GET /api/local_dns  (per term, unioned)
+  (parallel)            (parallel per OR term)         GET /api/fqdn (all)
+        │                    │                         GET /api/local_dns?q=kw
+        │                    │                             │
+        └────────────────────┴─────────────────────────►──┘
+                                       │
+                             fqdnDb.results  (merged UltraDNS + LocalDNS)
+                                       │
+                                       ▼
+                             _fqdnBaseFilter(rows)
+                             1. keyword routing:
+                                • direct keyword  → pass through (server-filtered)
+                                • OR-of-directs   → text OR match on fqdn/ip
+                                • object/group    → IP-range filter (fqdnRuleIpRanges)
+                                                    returns [] if no rules matched
+                             2. device CIDR filter (fqdnDeviceCidrRanges)
+                                union of all active devices' destination CIDRs
+                                skipped when all devices are active (size=0)
+                                       │
+                                       ▼
+                             fqdnDbFiltered()  ← base filter + local text/dropdowns
+                             local text box supports OR splitting on Enter
+                                       │
+                                       ▼
+                             Table rows + badge count
 
 Background pre-load:
   After every renderContent() (any tab), fqdnDbAutoLoad(true) is called
@@ -183,7 +215,8 @@ Background pre-load:
   no local text/dropdown filters). Re-renders only when count changes.
 
 Local text filter (inside FQDN tab):
-  Updates fqdnDb.query on every keystroke but re-renders only on Enter.
+  Updates fqdnDb.query on Enter only (no keystroke filtering).
+  Supports OR splitting: "foo OR bar" matches rows containing either term.
   Dropdowns (Type / Owner / Geo) still apply immediately on change.
 ```
 
