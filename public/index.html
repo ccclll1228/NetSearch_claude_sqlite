@@ -5338,13 +5338,26 @@
     function _fqdnBaseFilter(rows) {
       const kw = state.appliedSearch || '';
       if (kw && !_isFqdnDirectKeyword(kw)) {
-        const ranges = (_cachedFilterData && _cachedFilterData.fqdnRuleIpRanges) || [];
-        if (ranges.length === 0) return [];
-        rows = rows.filter(row => {
-          if (!row.ip || !isExactIP(row.ip)) return false;
-          const rn = ipToNum(row.ip) >>> 0;
-          return ranges.some(range => ((rn & range.mask) >>> 0) === range.num);
-        });
+        // OR-separated direct keywords (e.g. "taptap.asia OR taptap.zone") — text match
+        const orTerms = kw.split(/\s+OR\s+/i).map(t => t.trim()).filter(Boolean);
+        if (orTerms.length > 1 && orTerms.every(t => _isFqdnDirectKeyword(t))) {
+          rows = rows.filter(row =>
+            orTerms.some(t => {
+              const tl = t.toLowerCase();
+              return (row.fqdn || '').toLowerCase().includes(tl) ||
+                     (row.ip   || '').toLowerCase().includes(tl);
+            })
+          );
+        } else {
+          // Object/group name — filter by IPs extracted from matching rules
+          const ranges = (_cachedFilterData && _cachedFilterData.fqdnRuleIpRanges) || [];
+          if (ranges.length === 0) return [];
+          rows = rows.filter(row => {
+            if (!row.ip || !isExactIP(row.ip)) return false;
+            const rn = ipToNum(row.ip) >>> 0;
+            return ranges.some(range => ((rn & range.mask) >>> 0) === range.num);
+          });
+        }
       }
       const deviceRanges = (_cachedFilterData && _cachedFilterData.fqdnDeviceCidrRanges) || [];
       if (deviceRanges.length > 0) {
@@ -5418,10 +5431,22 @@
           ? `/api/fqdn?q=${encodeURIComponent(keyword)}&limit=99999`
           : '/api/fqdn?limit=99999';
         // Fetch local DNS in parallel only when there is a keyword; empty query returns [] by design.
-        const localDnsPromise = keyword
-          ? fetch(`/api/local_dns?q=${encodeURIComponent(keyword)}&limit=200`)
-              .then(r => r.ok ? r.json() : null).catch(() => null)
-          : Promise.resolve(null);
+        // OR-separated direct keywords: fetch each term separately and union results.
+        const _ldOrTerms = keyword ? keyword.split(/\s+OR\s+/i).map(t => t.trim()).filter(Boolean) : [];
+        const _ldIsOrOfDirects = _ldOrTerms.length > 1 && _ldOrTerms.every(t => _isFqdnDirectKeyword(t));
+        const localDnsPromise = !keyword
+          ? Promise.resolve(null)
+          : _ldIsOrOfDirects
+            ? Promise.all(_ldOrTerms.map(t =>
+                fetch(`/api/local_dns?q=${encodeURIComponent(t)}&limit=200`)
+                  .then(r => r.ok ? r.json() : null).catch(() => null)
+              )).then(results => {
+                const allRows = results.flatMap(r => r ? (r.results || []) : []);
+                const lastSynced = (results.find(r => r && r.lastSynced) || {}).lastSynced || null;
+                return { results: allRows, lastSynced, total: allRows.length };
+              })
+            : fetch(`/api/local_dns?q=${encodeURIComponent(keyword)}&limit=200`)
+                .then(r => r.ok ? r.json() : null).catch(() => null);
         const [fqdnRes, localDnsData] = await Promise.all([fetch(fqdnUrl), localDnsPromise]);
         const data = await fqdnRes.json();
         fqdnDb.lastSynced   = data.lastSynced || null;
