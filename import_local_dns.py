@@ -92,7 +92,8 @@ def main():
     conn.execute("DELETE FROM fqdn WHERE owner = 'localDNS'")
     print("Cleared old localDNS rows.")
 
-    csv_files = sorted(glob.glob(os.path.join(CSV_DIR, '*.csv')))
+    all_csv   = sorted(glob.glob(os.path.join(CSV_DIR, '*.csv')))
+    csv_files = [all_csv[-1]] if all_csv else []
     if not csv_files:
         print(f"No CSV files found in {CSV_DIR}/")
         conn.commit()
