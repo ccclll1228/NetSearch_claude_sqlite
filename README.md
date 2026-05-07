@@ -234,6 +234,56 @@ The script fetches all zones (~1,349) and rrSets concurrently (20 workers), then
 
 ---
 
+## Local DNS CSV Sync
+
+On-premise DNS records exported from Windows PowerShell DNS servers can be imported into `db/fqdn.db` as a separate `local_dns` table alongside the UltraDNS `fqdn` table.
+
+### CSV folder
+
+Place exported CSV files in `local_dns_csv/` (relative to the project root). Files are discovered dynamically — no hardcoded filenames.
+
+### CSV columns
+
+| Column | Imported | Notes |
+|--------|----------|-------|
+| `ZoneName` | Yes | DNS zone |
+| `HostName` | Yes | Record host name |
+| `RecordType` | Yes | A, CNAME, MX, etc. |
+| `RecordData` | Yes | IP or target value |
+| `PSComputerName` | **No** | PowerShell metadata — ignored |
+| `RunspaceId` | **No** | PowerShell metadata — ignored |
+| `PSShowComputerName` | **No** | PowerShell metadata — ignored |
+
+### Manual sync
+
+```bash
+# Sync local DNS CSV files only
+python3 local_dns_sync.py
+
+# Sync both UltraDNS and local DNS CSV
+bash sync_all.sh
+```
+
+### Crontab example
+
+```cron
+0 3 * * * cd /home/local/SSO/yt0115/NetSearch_sqlite && bash sync_all.sh >> /var/log/dns_sync.log 2>&1
+```
+
+`sync_all.sh` uses `set -e` — if `ultradns.py` fails, the local DNS sync is skipped.
+
+### API endpoint
+
+```
+GET /api/local_dns?q=<keyword>&limit=<n>
+```
+
+- Returns `{ results, lastSynced, total }`
+- An empty `q` returns `[]` (no full-table dump)
+- Searches `zone_name`, `host_name`, and `record_data` fields
+
+---
+
 ## Supported Device Types
 
 | Type | Detection | Key sections parsed |
