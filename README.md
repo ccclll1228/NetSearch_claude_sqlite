@@ -215,7 +215,7 @@ When exactly one device is selected in the device bar, the FQDN tab additionally
 - **Firewall (FG / PA / SRX)**: collects address names from `secRules[].destination` and `natRules[].destination`, resolves them recursively through address groups, and converts to `{num, mask}` CIDR pairs.
 - **F5 LTM**: uses virtual server IPs directly.
 
-Source-only addresses are excluded. When "All" or multiple devices are selected this filter is not applied.
+Source-only addresses are excluded. When "All" is selected (no devices disabled) this filter is not applied. When **multiple specific devices** are selected, the filter shows the **union** of all selected devices' address ranges.
 
 ### Table layout
 
@@ -262,19 +262,39 @@ On-premise DNS records exported from Windows PowerShell DNS servers are imported
 
 ### CSV folder
 
-Place exported CSV files in `local_dns_csv/` (relative to the project root). Files are discovered dynamically — no hardcoded filenames. Each file is identified by its filename (e.g. `10.11.8.2-DNSRecords.csv`) and re-synced atomically on each run.
+Place exported CSV files in `local_dns_csv/` (relative to the project root). Export filenames use ISO-style timestamps (e.g. `DNS_Export_Auto_2026-05-07T07-32-09-148Z.csv`). On each run, **only the newest file** (last alphabetically) is imported — older files in the same folder are ignored.
 
 ### CSV columns
 
 | Column | Imported | Notes |
 |--------|----------|-------|
-| `ZoneName` | Yes | DNS zone |
+| `Zone` | Yes | DNS zone |
 | `HostName` | Yes | Record host name |
-| `RecordType` | Yes | A, CNAME, MX, etc. |
-| `RecordData` | Yes | IP or target value |
-| `PSComputerName` | **No** | PowerShell metadata — ignored |
-| `RunspaceId` | **No** | PowerShell metadata — ignored |
-| `PSShowComputerName` | **No** | PowerShell metadata — ignored |
+| `Type` | Yes | A, CNAME, MX, etc. |
+| `Data` | Yes | IP or target value |
+| `Server` | **No** | DNS server — read but not stored |
+| Any other columns | **No** | Ignored |
+
+### Import filtering
+
+Records are silently dropped at import time — they never reach SQLite:
+
+**Hidden domains** — any FQDN that exactly matches or is a subdomain of:
+
+| Domain |
+|--------|
+| `trz.prd` |
+| `trz.uat` |
+| `sso.trz` |
+| `in-addr.arpa` |
+
+**Hidden record types** — records whose `Type` field is:
+
+| Type | Reason |
+|------|--------|
+| `PTR` | Reverse-lookup noise |
+| `SOA` | Zone metadata |
+| `WINS` | Legacy Windows name service |
 
 ### SQLite schema (`local_dns` table)
 
@@ -301,12 +321,14 @@ bash sync_all.sh
 Example output:
 
 ```
-=== Local DNS CSV → SQLite sync ===
-Found 2 CSV file(s) in local_dns_csv/
-  10.11.8.2-DNSRecords.csv | 5004 rows | 0.31s
-  10.99.25.2-DNSRecords.csv | 1136 rows | 0.09s
-=== Sync complete ===
+Cleared old localDNS rows.
+  DNS_Export_Auto_2026-05-07T07-47-09-123Z.csv: 5823 rows
+
+Done. Total inserted: 5823
+=== Sync complete: 1 succeeded, 0 failed ===
 ```
+
+If a file fails to parse, the error is logged to stderr, that file's writes are rolled back, and processing continues. The summary line always reflects actual results.
 
 ### Crontab example
 
@@ -360,6 +382,22 @@ Example response:
 ---
 
 ## Changelog
+
+### 2026-05-07 (3)
+
+**`import_local_dns.py` — multiple improvements**
+
+- **Newest-only import**: only the last file alphabetically in `local_dns_csv/` is imported per run, preventing duplicates from multiple timestamped exports
+- **CSV column names updated**: `ZoneName→Zone`, `RecordType→Type`, `RecordData→Data`, `PSComputerName→Server`
+- **Import-time filtering**: records are dropped before insert for hidden domains (`trz.prd`, `trz.uat`, `sso.trz`, `in-addr.arpa`) and hidden types (`PTR`, `SOA`, `WINS`)
+- **Error resilience**: each file is wrapped in try/except; failures log to stderr and rollback without stopping remaining files; summary line printed at end (`N succeeded, N failed`)
+- **Per-file transactions**: each file is committed immediately on success; a failed file is rolled back without affecting already-committed files
+
+**Fix: FQDN tab — multi-device selection shows union of selected devices**
+
+Previously, selecting 2+ specific devices caused the device CIDR filter to return `[]` (the builder had a `configs.length !== 1` guard). Now iterates over all active devices and accumulates a union of their destination CIDRs.
+
+---
 
 ### 2026-05-07 (2)
 
