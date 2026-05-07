@@ -80,11 +80,12 @@ def main():
     for csv_path in csv_files:
         try:
             total += sync_file(conn, csv_path, now)
+            conn.commit()      # commit this file immediately
             succeeded += 1
         except Exception:
+            conn.rollback()    # discard partial writes for this file only
             failed += 1
 
-    conn.commit()
     conn.close()
     print(f"\nDone. Total inserted: {total}")
     print(f"=== Sync complete: {succeeded} succeeded, {failed} failed ===")
