@@ -230,6 +230,10 @@ The FQDN results table uses `table-layout: fixed` with the following column widt
 | Geo | 200px (fixed) | `white-space:nowrap; overflow:hidden; text-overflow:ellipsis` via `.fqdn-geo-cell` |
 | (actions) | 13% | |
 
+### Result limit
+
+The FQDN tab fetches up to **99,999 records** per source (UltraDNS and Local DNS). Both the frontend request (`limit=99999`) and the backend hard cap (`Math.min(..., 99999)`) enforce this ceiling. The previous limit of 10,000 silently truncated results when the database exceeded that count.
+
 ### Syncing FQDN records (`ultradns.py`)
 
 ```bash
@@ -351,6 +355,19 @@ Example response:
 | Palo Alto | `set security policies` | Security rules, NAT rules, address objects, schedules |
 | Juniper SRX | `set security zones` | Security policies, SNAT/DNAT rule-sets |
 | F5 LTM | `ltm virtual` | Virtual servers, pools, pool members |
+
+---
+
+## Changelog
+
+### 2026-05-07
+
+**Fix: FQDN result limit increased from 10,000 to 99,999**
+
+The API endpoints `/api/fqdn` and `/api/local_dns` were silently truncating results at 10,000 records. The database now contains 14,020+ FQDN records (7,880 UltraDNS + 6,140 Local DNS), so the old cap hid a significant portion of results.
+
+- `public/index.html` — frontend requests changed from `limit=10000` to `limit=99999`
+- `server.js` — backend hard cap changed from `Math.min(..., 10000)` to `Math.min(..., 99999)` for both `/api/fqdn` and `/api/local_dns`
 
 ---
 

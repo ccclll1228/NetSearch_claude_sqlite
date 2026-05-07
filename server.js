@@ -128,7 +128,7 @@ app.get('/api/status', (req, res) => {
 
 app.get('/api/fqdn', (req, res) => {
   const q = (req.query.q || '').trim();
-  const limit = Math.min(parseInt(req.query.limit, 10) || 200, 10000);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 200, 99999);
   const rows = q ? fqdnSearch(q, limit) : fqdnSearchAll(limit);
   res.json({ results: rows, lastSynced: getLastSynced(), total: rows.length });
 });
@@ -136,7 +136,7 @@ app.get('/api/fqdn', (req, res) => {
 app.get('/api/local_dns', (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ results: [], lastSynced: getLocalDnsLastSynced(), total: 0 });
-  const limit = Math.min(parseInt(req.query.limit, 10) || 200, 10000);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 200, 99999);
   const rows = searchLocalDns(q, limit);
   res.json({ results: rows, lastSynced: getLocalDnsLastSynced(), total: rows.length });
 });

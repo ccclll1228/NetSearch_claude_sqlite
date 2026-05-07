@@ -5409,8 +5409,8 @@
       if (!background) renderContent(); // show loading spinner only when FQDN tab is visible
       try {
         const fqdnUrl = (fetchKey !== '__all__')
-          ? `/api/fqdn?q=${encodeURIComponent(keyword)}&limit=10000`
-          : '/api/fqdn?limit=10000';
+          ? `/api/fqdn?q=${encodeURIComponent(keyword)}&limit=99999`
+          : '/api/fqdn?limit=99999';
         // Fetch local DNS in parallel only when there is a keyword; empty query returns [] by design.
         const localDnsPromise = keyword
           ? fetch(`/api/local_dns?q=${encodeURIComponent(keyword)}&limit=200`)
