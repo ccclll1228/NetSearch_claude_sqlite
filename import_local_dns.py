@@ -9,6 +9,7 @@ HIDDEN_DOMAINS = {
     'trz.prd',
     'trz.uat',
     'sso.trz',
+    'in-addr.arpa',
 }
 
 HIDDEN_TYPES = {
@@ -37,11 +38,11 @@ def sync_file(conn, csv_path, now):
             reader = csv.DictReader(f)
             rows = []
             for row in reader:
-                zone    = row.get('ZoneName',    '').strip()
-                host    = row.get('HostName',     '').strip()
-                rtype   = row.get('RecordType',   '').strip().upper()
-                rdata   = row.get('RecordData',   '').strip()
-                dns_srv = row.get('PSComputerName', '').strip()
+                zone    = row.get('Zone',     '').strip()
+                host    = row.get('HostName', '').strip()
+                rtype   = row.get('Type',     '').strip().upper()
+                rdata   = row.get('Data',     '').strip()
+                dns_srv = row.get('Server',   '').strip()
 
                 if rtype in HIDDEN_TYPES:
                     continue
