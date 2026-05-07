@@ -12,7 +12,7 @@ Parse and search across FortiGate, Palo Alto, Juniper SRX, and F5 LTM configurat
 - Filter by From Zone / To Zone / Tag / Source / Destination
 - Tabs: Sec Rules, NAT Rules, Routes, Objects, LTM VS, Pools, FQDN, Copy, Raw Config, Debug
 - Symmetric chaining — find related rules by shared IPs
-- FQDN lookup backed by SQLite (`db/fqdn.db`), populated via `ultradns.py`
+- FQDN lookup backed by SQLite (`db/fqdn.db`): UltraDNS cloud records via `ultradns.py` and on-premise DNS via `local_dns_sync.py` — both merged in the same results table
 - Disabled rule dimming, tag badges, resizable NAT columns
 - Auto-reload via cron schedule (default: 05:00 and 17:00)
 - Parsed data cached to disk; served instantly on restart
@@ -24,7 +24,7 @@ Parse and search across FortiGate, Palo Alto, Juniper SRX, and F5 LTM configurat
 
 - Node.js 18+
 - npm
-- Python 3.8+ with `requests` (for `ultradns.py` only)
+- Python 3.8+ with `requests` and `python-dotenv` (for `ultradns.py` and `local_dns_sync.py`)
 
 ---
 
@@ -111,22 +111,25 @@ curl http://localhost:3002/api/status
 ```
 NetSearch_claude_sqlite/
 ├── server.js                  # Express server, in-memory state, API routes
-├── ultradns.py                # UltraDNS → SQLite sync script (run via crontab)
+├── ultradns.py                # UltraDNS → SQLite sync (fqdn table)
+├── local_dns_sync.py          # Local DNS CSV → SQLite sync (local_dns table)
+├── sync_all.sh                # Runs ultradns.py then local_dns_sync.py (set -e)
 ├── package.json
 ├── CLAUDE.md                  # AI coding guidance
 ├── ARCHITECTURE.md            # Full data-flow diagrams
+├── local_dns_csv/             # Drop per-DNS-server CSV exports here
 ├── lib/
 │   ├── parser.js              # Config parsers (FortiGate, PaloAlto, SRX, F5)
 │   ├── scheduler.js           # node-cron auto-reload scheduler
 │   ├── discovery.js           # Resolves latest backup file per device
-│   └── fqdn_db.js             # SQLite helper: search() + getLastSynced()
+│   └── fqdn_db.js             # SQLite helper: search/searchLocalDns + getLastSynced
 ├── public/
 │   └── index.html             # Single-file frontend (CSS + JS + HTML inline)
 ├── config/
 │   ├── settings.json          # Local config (gitignored)
 │   └── settings.example.json  # Template
 ├── db/
-│   └── fqdn.db                # SQLite database (FQDN records, written by ultradns.py)
+│   └── fqdn.db                # SQLite database (fqdn + local_dns tables, gitignored)
 └── cache/
     └── parsed.json            # Auto-generated parse cache (gitignored)
 ```
@@ -147,10 +150,13 @@ config/settings.json  (backupRoot + devices[])
          ├──► GET  /api/data            full parsed state → browser
          ├──► GET  /api/status          load status
          ├──► POST /api/reload          manual trigger
-         └──► GET  /api/fqdn?q=…       SQLite search via lib/fqdn_db.js
-                                               │
-                                               ▼
-ultradns.py ──────────────────────►  db/fqdn.db  (SQLite)
+         ├──► GET  /api/fqdn?q=…       UltraDNS records (fqdn table)
+         └──► GET  /api/local_dns?q=…  on-premise DNS records (local_dns table)
+                                               │             │
+                                               ▼             ▼
+ultradns.py ────────────────►  db/fqdn.db  (fqdn table)
+local_dns_csv/*.csv
+   └── local_dns_sync.py ───►  db/fqdn.db  (local_dns table)
 
 GET /api/data
          │
@@ -159,6 +165,9 @@ public/index.html  (single-file frontend)
          ├── buildSearchIndex()         once per config load
          ├── getFilteredData()          every search (browser-side)
          └── tabs: Sec Rules / NAT / Routes / Objects / LTM VS / Pools / FQDN / Copy
+                                                                           │
+                                        Promise.all([/api/fqdn, /api/local_dns])
+                                        merged into single results table
 ```
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed flow diagrams.
@@ -172,20 +181,28 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed flow diagrams.
 | `GET` | `/api/data` | All parsed configs |
 | `GET` | `/api/status` | Load status + device list |
 | `POST` | `/api/reload` | Trigger immediate config reload |
-| `GET` | `/api/fqdn?q=<keyword>&limit=<n>` | Search FQDN records in SQLite |
+| `GET` | `/api/fqdn?q=<keyword>&limit=<n>` | Search UltraDNS records (`fqdn` table) |
+| `GET` | `/api/local_dns?q=<keyword>&limit=<n>` | Search on-premise DNS records (`local_dns` table); empty `q` returns `[]` |
 
 ---
 
 ## FQDN Tab
 
-FQDN records are stored in `db/fqdn.db` (SQLite) and served via `/api/fqdn`.
+FQDN records are stored in `db/fqdn.db` (SQLite) in two tables:
+
+| Table | Source | Owner value | Records |
+|-------|--------|-------------|---------|
+| `fqdn` | UltraDNS cloud DNS (`ultradns.py`) | `ultraDNS` | ~7,880 |
+| `local_dns` | On-premise DNS CSV exports (`local_dns_sync.py`) | `LocalDNS` | ~6,140 |
+
+Both tables are queried in parallel and their results merged into a single table. The **Owner** column distinguishes the source. The **Owner** dropdown filter lets you restrict to one source.
 
 ### Search behaviour
 
 | Search type | How it works |
 |-------------|-------------|
-| Direct IP / FQDN (e.g. `10.1.2.3`, `mail.example.com`) | Server filters the SQLite table by the keyword directly |
-| Object / group name (e.g. `vs28000_TapTap_MEM OR vs28004_TapTap_AFF`) | All records loaded; client filters by IPs extracted from matching Sec/NAT/LTM results |
+| Direct IP / FQDN (e.g. `10.1.2.3`, `mail.example.com`) | Server filters both SQLite tables by keyword; results merged client-side |
+| Object / group name (e.g. `vs28000_TapTap_MEM OR vs28004_TapTap_AFF`) | All UltraDNS records loaded; client filters by IPs extracted from matching Sec/NAT/LTM results. Local DNS searched by keyword text. |
 
 - The FQDN badge count is pre-loaded in the background after every search — no tab click required.
 - The local text filter inside the FQDN tab (FQDN / IP / domain / geo) applies **only when Enter is pressed**. Dropdowns (Type, Owner, Geo) still filter immediately on change.
@@ -236,11 +253,11 @@ The script fetches all zones (~1,349) and rrSets concurrently (20 workers), then
 
 ## Local DNS CSV Sync
 
-On-premise DNS records exported from Windows PowerShell DNS servers can be imported into `db/fqdn.db` as a separate `local_dns` table alongside the UltraDNS `fqdn` table.
+On-premise DNS records exported from Windows PowerShell DNS servers are imported into `db/fqdn.db` as a `local_dns` table alongside the UltraDNS `fqdn` table. The FQDN tab queries both in parallel and merges the results.
 
 ### CSV folder
 
-Place exported CSV files in `local_dns_csv/` (relative to the project root). Files are discovered dynamically — no hardcoded filenames.
+Place exported CSV files in `local_dns_csv/` (relative to the project root). Files are discovered dynamically — no hardcoded filenames. Each file is identified by its filename (e.g. `10.11.8.2-DNSRecords.csv`) and re-synced atomically on each run.
 
 ### CSV columns
 
@@ -254,6 +271,18 @@ Place exported CSV files in `local_dns_csv/` (relative to the project root). Fil
 | `RunspaceId` | **No** | PowerShell metadata — ignored |
 | `PSShowComputerName` | **No** | PowerShell metadata — ignored |
 
+### SQLite schema (`local_dns` table)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | INTEGER PK | Auto-increment |
+| `source_file` | TEXT | Filename (e.g. `10.11.8.2-DNSRecords.csv`) |
+| `zone_name` | TEXT | From `ZoneName` |
+| `host_name` | TEXT | From `HostName` |
+| `record_type` | TEXT | From `RecordType` |
+| `record_data` | TEXT | From `RecordData` |
+| `synced_at` | TEXT | ISO8601 UTC timestamp of the sync run |
+
 ### Manual sync
 
 ```bash
@@ -262,6 +291,16 @@ python3 local_dns_sync.py
 
 # Sync both UltraDNS and local DNS CSV
 bash sync_all.sh
+```
+
+Example output:
+
+```
+=== Local DNS CSV → SQLite sync ===
+Found 2 CSV file(s) in local_dns_csv/
+  10.11.8.2-DNSRecords.csv | 5004 rows | 0.31s
+  10.99.25.2-DNSRecords.csv | 1136 rows | 0.09s
+=== Sync complete ===
 ```
 
 ### Crontab example
@@ -281,6 +320,26 @@ GET /api/local_dns?q=<keyword>&limit=<n>
 - Returns `{ results, lastSynced, total }`
 - An empty `q` returns `[]` (no full-table dump)
 - Searches `zone_name`, `host_name`, and `record_data` fields
+
+Example response:
+
+```json
+{
+  "results": [
+    {
+      "id": 142,
+      "source_file": "10.11.8.2-DNSRecords.csv",
+      "zone_name": "example.local",
+      "host_name": "web01",
+      "record_type": "A",
+      "record_data": "10.11.8.50",
+      "synced_at": "2026-05-07T03:00:12.345678+00:00"
+    }
+  ],
+  "lastSynced": "2026-05-07T03:00:12.345678+00:00",
+  "total": 1
+}
+```
 
 ---
 
