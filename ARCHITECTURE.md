@@ -57,12 +57,15 @@ config/settings.json
         │      Read on startup for instant first response while
         │      the async parse runs in the background.
         │
-        ├──► GET  /api/data     → full parsedConfigs[] + metadata
-        ├──► GET  /api/status   → lastLoaded, device list, error state
-        ├──► POST /api/reload   → manual trigger for loadAllConfigs()
-        ├──► GET  /api/fqdn     → delegates to lib/fqdn_db.js search()
-        └──► GET  /api/local_dns → delegates to lib/fqdn_db.js searchLocalDns()
-                                   both cap results at Math.min(limit, 99999)
+        ├──► GET  /api/data       → full parsedConfigs[] + metadata
+        ├──► GET  /api/status     → lastLoaded, device list, error state
+        ├──► POST /api/reload     → manual trigger for loadAllConfigs()
+        ├──► GET  /api/fqdn       → delegates to lib/fqdn_db.js search()
+        ├──► GET  /api/local_dns  → delegates to lib/fqdn_db.js searchLocalDns()
+        │                           both cap results at Math.min(limit, 99999)
+        ├──► GET  /api/settings   → { backupRoot, devices, deviceTypes } from settings.json
+        └──► POST /api/settings   → validate + merge { backupRoot, devices, deviceTypes }
+                                    into settings.json (preserves port, cronSchedule, etc.)
 ```
 
 ---
@@ -186,6 +189,22 @@ Loading indicator:
   showLoading()    ← sets display:flex at top of full-render branch
   hideLoading()    ← double requestAnimationFrame; guarantees ≥1 painted
                      frame even on synchronous renders
+
+Device Manager (Import modal — Server Config tab):
+  #importModal .modal-body
+    ├── .devmgr-tabs tab bar  (Import | Server Config)
+    ├── #importTabImport      existing drag-drop content, unchanged
+    └── #importTabServerConfig
+          rendered entirely by renderDevMgr()
+          devMgr = { backupRoot, devices, deviceTypes, editingIdx }
+            ← local state, isolated from global state
+          loadDevMgr()    → GET /api/settings → populates devMgr
+          saveDevMgr()    → POST /api/settings
+                          → POST /api/reload
+                          → loadFromServer() → renderContent()
+          editingIdx = -1  no row in edit mode
+          editingIdx = N   row N shows name input + type <select>
+          type chip ×      disabled when type is used by any device
 ```
 
 ---

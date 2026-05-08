@@ -51,7 +51,7 @@ db/fqdn.db         — SQLite; fqdn table (UltraDNS + LocalDNS rows)
 
 - Holds in-memory state: `parsedConfigs[]`, `lastLoaded`
 - On startup: reads `cache/parsed.json` immediately, then async-parses from disk
-- API routes: `GET /api/data`, `GET /api/status`, `POST /api/reload`, `GET /api/fqdn`, `GET /api/local_dns`
+- API routes: `GET /api/data`, `GET /api/status`, `POST /api/reload`, `GET /api/fqdn`, `GET /api/local_dns`, `GET /api/settings`, `POST /api/settings`
 - `/api/fqdn` and `/api/local_dns` delegate to `lib/fqdn_db.js`; both cap results at `Math.min(limit, 99999)`
 - Calls `resolveDevicePaths()` at the start of `loadAllConfigs()` to get `[{path, type}]` from discovery; cron schedule comes from `config/settings.json`
 
@@ -158,6 +158,7 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
     { "name": "FRI-LTM01", "type": "f5" },
     { "name": "FRI-FW01",  "type": "fortigate" }
   ],
+  "deviceTypes": ["paloalto", "f5", "fortigate", "srx"],
   "cronSchedule": ["0 5 * * *", "0 17 * * *"]
 }
 ```
@@ -165,6 +166,7 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
 - `backupRoot` — absolute path to the Oxidized backup root; discovery scans `{SITE}_{YYYYMMDD}` subfolders
 - `devices[].name` — device identifier and filename prefix (e.g. `FRI-LTM01` matches `FRI-LTM01_*.txt`)
 - `devices[].type` — passed through to the parser: `"f5"`, `"fortigate"`, `"paloalto"`, `"srx"`, `"auto"`
+- `deviceTypes` — list of allowed device type strings shown in the Device Manager dropdown; defaults to `["paloalto", "f5", "fortigate", "srx"]` if absent; editable from the UI via `POST /api/settings`
 - `configFiles` — **removed**; replaced by `backupRoot + devices[]`
 - `fqdnFile` — **removed**; FQDN data is served exclusively via `db/fqdn.db` (`ultradns.py` + `import_local_dns.py`)
 
@@ -185,6 +187,7 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
 - **Objects tab layout** — two-panel CSS grid (Addresses | Address Groups) with a `1px` center divider; `table-layout:fixed` on the addresses table prevents content from overflowing the grid cell; NAME column wraps long names (`word-break:break-all`); TYPE badge is `white-space:nowrap`; alternating row tint (`var(--cds-layer-02)`) for scanability; section headers are `position:sticky` so they remain visible while scrolling.
 - **EXACT search mode in FQDN tab** — when `state.searchMode === 'exact'`, `_fqdnBaseFilter` uses `===` instead of `includes` for direct keyword and OR-of-directs matching; `fqdnDbFiltered` local text filter also uses `===` on `fqdn`/`ip` only (domain and geo fields are excluded from EXACT matching). KEYWORD mode is unchanged.
 - **Search loading indicator** — `<div id="search-loading">` sits as a static sibling between `#tabBar` and `#content` in the HTML. It is never inside `#content`, so it survives `el.innerHTML` replacement on synchronous renders. `showLoading()` sets its display to `flex`; `hideLoading()` hides it via double `requestAnimationFrame` to guarantee at least one painted frame. Both are called inside `renderContent()`: `showLoading()` at the top of the full-render (`!expandOnly`) branch, `hideLoading()` after the `el.innerHTML` switch. `expandOnly` calls (pill expand/collapse, device group toggle) do not trigger the indicator. The existing `#searchSpinner` in the header is separate and untouched.
+- **Device Manager** — Server Config tab in the Import modal (`#importModal`). Tab bar (`Import` | `Server Config`) inserted at top of `modal-body`; existing import content unchanged inside `#importTabImport`. `#importTabServerConfig` is rendered entirely by `renderDevMgr()`. Local state object `devMgr = { backupRoot, devices, deviceTypes, editingIdx }` — isolated from global `state`; all edits are local until Save & Reload. `loadDevMgr()` fetches `GET /api/settings` and populates `devMgr`. `saveDevMgr()` posts to `POST /api/settings`, then calls `POST /api/reload` + `loadFromServer()` to refresh the page. One row at a time can be in edit mode (`editingIdx`). Device type chips show `×` disabled (with tooltip) when the type is assigned to any device. `applyLang()` re-renders the panel when the Server Config tab is visible.
 
 ### resolveObject() is flatten-only — never reuse for hierarchical output
 
