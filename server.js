@@ -134,6 +134,54 @@ app.post('/api/reload', async (req, res) => {
   res.json(result);
 });
 
+app.get('/api/settings', (req, res) => {
+  try {
+    const s = JSON.parse(fs.readFileSync('./config/settings.json', 'utf8'));
+    res.json({
+      backupRoot:  s.backupRoot  || '',
+      devices:     s.devices     || [],
+      deviceTypes: s.deviceTypes || ['paloalto', 'f5', 'fortigate', 'srx'],
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/settings', (req, res) => {
+  const { backupRoot, devices, deviceTypes } = req.body || {};
+  if (!backupRoot || typeof backupRoot !== 'string' || !backupRoot.trim())
+    return res.status(400).json({ ok: false, error: 'backupRoot is required' });
+  if (!Array.isArray(devices))
+    return res.status(400).json({ ok: false, error: 'devices must be an array' });
+  for (const d of devices) {
+    if (!d.name || !String(d.name).trim())
+      return res.status(400).json({ ok: false, error: 'Each device must have a non-empty name' });
+    if (!d.type || !String(d.type).trim())
+      return res.status(400).json({ ok: false, error: `Device "${d.name}" must have a type` });
+  }
+  const names = devices.map(d => String(d.name).trim().toLowerCase());
+  if (new Set(names).size !== names.length)
+    return res.status(400).json({ ok: false, error: 'Duplicate device names are not allowed' });
+  if (!Array.isArray(deviceTypes) || deviceTypes.length === 0)
+    return res.status(400).json({ ok: false, error: 'deviceTypes must have at least one entry' });
+  for (const t of deviceTypes)
+    if (!t || !String(t).trim())
+      return res.status(400).json({ ok: false, error: 'Device type cannot be empty' });
+  try {
+    const current = JSON.parse(fs.readFileSync('./config/settings.json', 'utf8'));
+    const updated = {
+      ...current,
+      backupRoot:  backupRoot.trim(),
+      devices:     devices.map(d => ({ name: String(d.name).trim(), type: String(d.type).trim() })),
+      deviceTypes: deviceTypes.map(t => String(t).trim()),
+    };
+    fs.writeFileSync('./config/settings.json', JSON.stringify(updated, null, 2), 'utf8');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ── Startup ───────────────────────────────────────────────────────────────────
 const PORT = settings.port || 3002;
 const server = app.listen(PORT, async () => {
