@@ -96,7 +96,7 @@ def _parse_rrset(rrset: dict, zone_clean: str) -> list[dict]:
     Matches the original Flask logic exactly:
       - Profile (geo) records: one row per rdataInfo entry, ttl/type from rdataInfo
       - Non-profile records:   one row per rrset, rdata joined with ","
-      - NS (2): skip zone-apex records; store sub-zone NS rows
+      - NS (2): all NS rows stored (zone-apex and sub-zone)
       - Skip SOA (6)
       - Skip TXT longer than 255 chars after join
       - Skip ownerName containing sanbox888.com._domainkey
@@ -209,8 +209,6 @@ def _parse_rrset(rrset: dict, zone_clean: str) -> list[dict]:
         }]
 
     if "(2)" in rrtype:          # NS
-        if fqdn == zone_clean:   # skip zone apex NS (delegation only)
-            return []
         return [{
             "fqdn":     fqdn,
             "ip":       ",".join(rdata),
