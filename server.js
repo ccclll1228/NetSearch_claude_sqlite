@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const { parseConfig, parseFqdnFile } = require('./lib/parser');
+const { parseConfig } = require('./lib/parser');
 const { startScheduler } = require('./lib/scheduler');
 const { resolveDevicePaths } = require('./lib/discovery');
 const { search: fqdnSearch, searchAll: fqdnSearchAll, getLastSynced, searchLocalDns, getLocalDnsLastSynced } = require('./lib/fqdn_db');
@@ -18,7 +18,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── In-memory state ──────────────────────────────────────────────────────────
 const state = {
   parsedConfigs: [],   // [{ id, filename, parsed }]
-  fqdnRecords:   [],   // [{ id, fqdn, domain, ip, owner, type, geoInfo }]
   lastLoaded:    null, // ISO string
   loading:       false,
 };
@@ -31,7 +30,6 @@ function readCache() {
       const raw = fs.readFileSync(CACHE_PATH, 'utf8');
       const cached = JSON.parse(raw);
       state.parsedConfigs = cached.parsedConfigs || [];
-      state.fqdnRecords   = cached.fqdnRecords   || [];
       state.lastLoaded    = cached.lastLoaded     || null;
       console.log(`[cache] Restored ${state.parsedConfigs.length} devices from cache (${state.lastLoaded})`);
     }
@@ -45,7 +43,6 @@ function writeCache() {
     fs.mkdirSync(path.dirname(CACHE_PATH), { recursive: true });
     fs.writeFileSync(CACHE_PATH, JSON.stringify({
       parsedConfigs: state.parsedConfigs,
-      fqdnRecords:   state.fqdnRecords,
       lastLoaded:    state.lastLoaded,
     }), 'utf8');
     console.log('[cache] Cache written.');
@@ -84,15 +81,7 @@ async function loadAllConfigs() {
       console.log(`[load] Parsed: ${parsed.hostname} (${parsed.type})`);
     }
 
-    let newFqdnRecords = [];
-    if (settings.fqdnFile && fs.existsSync(settings.fqdnFile)) {
-      const text = fs.readFileSync(settings.fqdnFile, 'utf8');
-      newFqdnRecords = parseFqdnFile(text);
-      console.log(`[load] FQDN records: ${newFqdnRecords.length}`);
-    }
-
     state.parsedConfigs = newParsedConfigs;
-    state.fqdnRecords   = newFqdnRecords;
     state.lastLoaded    = new Date().toISOString();
     console.log(`[load] Done. ${newParsedConfigs.length} devices loaded.`);
     writeCache();
@@ -109,7 +98,6 @@ async function loadAllConfigs() {
 app.get('/api/data', (req, res) => {
   res.json({
     parsedConfigs: state.parsedConfigs,
-    fqdnRecords:   state.fqdnRecords,
     lastLoaded:    state.lastLoaded,
   });
 });

@@ -15,6 +15,5 @@
     { "name": "SAT-FW01",   "type": "fortigate" },
     { "name": "SAT-FW02",   "type": "fortigate" }
   ],
-  "fqdnFile": "/path/to/all_fqdn.csv",
   "cronSchedule": ["0 5 * * *", "0 17 * * *"]
 }
