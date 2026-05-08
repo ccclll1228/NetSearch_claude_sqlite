@@ -4,6 +4,14 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.4.1] - 2026-05-08
+
+### Docs
+- **CLAUDE.md** — added `GET/POST /api/settings` to server routes list; added `deviceTypes` to configuration example and description; added Device Manager feature bullet
+- **ARCHITECTURE.md** — expanded Config-file Data Flow with `GET/POST /api/settings`; added Device Manager block to Frontend Data Flow documenting `devMgr` state, `loadDevMgr`/`saveDevMgr` call chain, and modal structure
+
+---
+
 ## [2.4.0] - 2026-05-08
 
 ### Added

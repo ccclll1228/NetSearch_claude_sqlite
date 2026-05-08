@@ -383,6 +383,14 @@ Example response:
 
 ## Changelog
 
+### 2026-05-08 (6)
+
+**Docs: CLAUDE.md and ARCHITECTURE.md updated for Device Manager**
+
+`CLAUDE.md` updated: `GET/POST /api/settings` added to the server routes list; `deviceTypes` field added to the configuration example and description table; Device Manager feature bullet added to the Features section. `ARCHITECTURE.md` updated: Config-file Data Flow expanded with the two new routes; Frontend Data Flow block added documenting the Device Manager modal structure, `devMgr` state, and `loadDevMgr` → `saveDevMgr` → `loadFromServer` call chain.
+
+---
+
 ### 2026-05-08 (5)
 
 **Feature: Device Manager in the Import modal**
