@@ -377,6 +377,30 @@
       display: block;
     }
 
+    #search-loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      color: var(--cds-text-secondary);
+      font-size: 12px;
+      font-family: var(--cds-font-sans);
+    }
+
+    .loading-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--cds-border-subtle);
+      border-top-color: var(--cds-interactive);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .loading-spinner { animation: none; opacity: 0.5; }
+    }
+
     @keyframes spin {
       to {
         transform: translateY(-50%) rotate(360deg);
@@ -2634,6 +2658,10 @@
     <div class="tab-bar" id="tabBar"></div>
 
     <!-- Content -->
+    <div id="search-loading" style="display:none;" aria-live="polite">
+      <span class="loading-spinner"></span>
+      <span class="loading-text">Searching…</span>
+    </div>
     <div class="content" id="content"></div>
   </div>
 
@@ -2989,6 +3017,17 @@
       copyData = [];
       addToSearchHistory(value);
       renderContent();
+    }
+
+    function showLoading() {
+      document.getElementById('search-loading').style.display = 'flex';
+    }
+    function hideLoading() {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.getElementById('search-loading').style.display = 'none';
+        });
+      });
     }
 
     // ===== NETWORK UTILS =====
@@ -4544,6 +4583,7 @@
           return `<button class="tab-btn ${state.activeTab === t.id ? 'active' : ''}" onclick="switchTab('${t.id}')">${t.label[state.lang]}${cn}</button>`;
         }).join('');
       } else {
+        showLoading();
         _patchGeneration++; // cancel any in-flight rAF patch loops
         _groupTreeHtmlCache.clear();
         _pillContext.clear();
@@ -4565,6 +4605,7 @@
         case 'debug': el.innerHTML = renderDebugTab(); break;
         default: el.innerHTML = '<div class="empty-state">Select a tab</div>';
       }
+      hideLoading();
       updateFilterOptions();
       // Pre-load FQDN in background after every render so the badge is always correct.
       if (state.activeTab !== 'fqdn') setTimeout(() => fqdnDbAutoLoad(true), 0);
