@@ -59,7 +59,10 @@ config/settings.json
         │
         ├──► GET  /api/data     → full parsedConfigs[] + metadata
         ├──► GET  /api/status   → lastLoaded, device list, error state
-        └──► POST /api/reload   → manual trigger for loadAllConfigs()
+        ├──► POST /api/reload   → manual trigger for loadAllConfigs()
+        ├──► GET  /api/fqdn     → delegates to lib/fqdn_db.js search()
+        └──► GET  /api/local_dns → delegates to lib/fqdn_db.js searchLocalDns()
+                                   both cap results at Math.min(limit, 99999)
 ```
 
 ---
@@ -126,6 +129,8 @@ server.js  →  lib/fqdn_db.js
                         └───────┬───────┘
                                 ▼
                     Promise.all([...]) in fqdnDbAutoLoad()
+                    local DNS rows normalised via _normalizeLocalDnsRow()
+                      (owner='LocalDNS', fqdn=host.zone, ip=record_data)
                     results merged → fqdnDb.results
                                 ▼
                     public/index.html  — FQDN tab
