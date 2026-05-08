@@ -38,6 +38,8 @@ config/settings.json
   server.js
         ├──► lib/discovery.js
         │      Scan {backupRoot}/{SITE}_{YYYYMMDD}/ folders, newest first.
+        │      Folder regex uses 'i' flag; file startsWith uses .toLowerCase()
+        │      for case-insensitive matching on Linux filesystems.
         │      Pick the file with the highest HHMM timestamp.
         │      Exclude paths containing "UCS".
         │      Return [{path, type}] — one entry per device.
