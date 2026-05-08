@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.4.6] - 2026-05-08
+
+### Changed
+- **Filter bar dropdowns — smaller font and tighter padding** — `.filter-select` `font-size` changed from `14px` to `0.75em` and `padding` from `0 32px 0 12px` to `2px 18px 2px 6px`, reducing the visual footprint of all filter dropdowns (FROM ZONE, TO ZONE, TAG, SCHEDULE, IP, RULE, F5) to match the denser filter bar layout. No HTML or JS changes.
+
+---
+
 ## [2.4.5] - 2026-05-08
 
 ### Changed
