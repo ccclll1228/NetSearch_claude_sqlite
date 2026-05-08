@@ -49,7 +49,7 @@ db/fqdn.db         — SQLite; fqdn table (UltraDNS + LocalDNS rows)
 
 ### Server (`server.js`)
 
-- Holds in-memory state: `parsedConfigs[]`, `fqdnRecords[]`, `lastLoaded`
+- Holds in-memory state: `parsedConfigs[]`, `lastLoaded`
 - On startup: reads `cache/parsed.json` immediately, then async-parses from disk
 - API routes: `GET /api/data`, `GET /api/status`, `POST /api/reload`, `GET /api/fqdn`, `GET /api/local_dns`
 - `/api/fqdn` and `/api/local_dns` delegate to `lib/fqdn_db.js`; both cap results at `Math.min(limit, 99999)`
@@ -158,7 +158,6 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
     { "name": "FRI-LTM01", "type": "f5" },
     { "name": "FRI-FW01",  "type": "fortigate" }
   ],
-  "fqdnFile": "/path/to/all_fqdn.csv",
   "cronSchedule": ["0 5 * * *", "0 17 * * *"]
 }
 ```
@@ -167,6 +166,7 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
 - `devices[].name` — device identifier and filename prefix (e.g. `FRI-LTM01` matches `FRI-LTM01_*.txt`)
 - `devices[].type` — passed through to the parser: `"f5"`, `"fortigate"`, `"paloalto"`, `"srx"`, `"auto"`
 - `configFiles` — **removed**; replaced by `backupRoot + devices[]`
+- `fqdnFile` — **removed**; FQDN data is served exclusively via `db/fqdn.db` (`ultradns.py` + `import_local_dns.py`)
 
 `config/settings.json` is gitignored. Use `config/settings.example.json` as the template.
 
