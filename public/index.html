@@ -2705,16 +2705,6 @@
         <!-- Imported Devices -->
         <div class="device-list" id="deviceList"></div>
 
-        <!-- Auto URL Import -->
-        <div
-          style="margin:16px 0;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg)">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <b style="font-size:13px">🌐 Auto URL Import (Today's Backup)</b>
-            <button class="btn btn-sm" id="urlImportBtn" onclick="runUrlImport()">Import</button>
-          </div>
-          <div id="urlImportStatus" class="text-sm text-muted"></div>
-          <div id="urlImportResults"></div>
-        </div>
 
         <!-- Config Files -->
         <h3 id="importConfigTitle" style="margin:16px 0 8px;">Config Files (Palo Alto / FortiGate / Juniper SRX / F5)
@@ -6742,82 +6732,6 @@
         };
         reader.readAsText(f);
       });
-    }
-
-    // Auto URL Import
-    const BASE_URL = "https://librenms.opsware.xyz/RIO_Config";
-    const BACKUP_CONFIGS = [
-      { site: "FRI", dir: "FRI", host: "FRI-FW01", type: "FW" },
-      { site: "GICT", dir: "GICT", host: "GICT-FW01", type: "FW" },
-      { site: "GICT", dir: "GICT", host: "GICT-MGT-FW01", type: "FW" },
-      { site: "LOADTEST", dir: "LOADTEST", host: "LoadTest-FW01", type: "FW" },
-      { site: "MGT", dir: "MGT", host: "MGT-FW01", type: "FW" },
-      { site: "SAT", dir: "SAT", host: "SAT-FW01", type: "FW" },
-      { site: "SUN", dir: "SUN", host: "SUN-FW01", type: "FW" },
-      { site: "UAT", dir: "UAT", host: "UAT-FW01", type: "FW" },
-      { site: "FRI", dir: "FRI", host: "FRI-LTM01", type: "LTM" },
-      { site: "GICT", dir: "GICT", host: "GICT-LTM01", type: "LTM" },
-      { site: "LOADTEST", dir: "LOADTEST", host: "LoadTest-LTM01", type: "LTM" },
-      { site: "MGT", dir: "MGT", host: "MGT-LTM01", type: "LTM" },
-      { site: "SAT", dir: "SAT", host: "SAT-LTM01", type: "LTM" },
-      { site: "SUN", dir: "SUN", host: "SUN-LTM01", type: "LTM" },
-      { site: "UAT", dir: "UAT", host: "UAT-SLB01", type: "LTM" },
-    ];
-
-    const fmtDate = (d) => { const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0'); return `${y}${m}${day}`; };
-
-    const buildFallbackCandidates = (host, site, dir, type) => {
-      const now = new Date(), hour = now.getHours(), candidates = [];
-      const todayStr = fmtDate(now);
-      if (hour >= 18) candidates.push({ date: todayStr, time: '1700' });
-      candidates.push({ date: todayStr, time: '0500' });
-      const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = fmtDate(yesterday);
-      candidates.push({ date: yesterdayStr, time: '1700' });
-      candidates.push({ date: yesterdayStr, time: '0500' });
-      return candidates.map(c => ({ host, site, type, time: c.time, date: c.date, url: `${BASE_URL}/${dir}_${c.date}/${host}_${c.date}-${c.time}.txt` }));
-    };
-
-    async function runUrlImport() {
-      const btn = document.getElementById('urlImportBtn');
-      const statusEl = document.getElementById('urlImportStatus');
-      const resultsEl = document.getElementById('urlImportResults');
-      btn.disabled = true; btn.textContent = 'Importing...';
-      statusEl.innerHTML = `⏳ Fetching ${BACKUP_CONFIGS.length} devices...`;
-      resultsEl.innerHTML = '';
-      const TIMEOUT_MS = 3000;
-      const results = [];
-      for (const cfg of BACKUP_CONFIGS) {
-        const candidates = buildFallbackCandidates(cfg.host, cfg.site, cfg.dir, cfg.type);
-        let success = false;
-        for (const cand of candidates) {
-          try {
-            const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-            const res = await fetch(cand.url, { signal: ctrl.signal });
-            clearTimeout(timer);
-            if (!res.ok) continue;
-            const text = await res.text();
-            if (text.length < 100) continue;
-            addConfig(`${cand.host}_${cand.date}-${cand.time}.txt`, text);
-            results.push({ host: cand.host, status: 'success', url: cand.url, isFallback: cand !== candidates[0] });
-            success = true; break;
-          } catch (err) {
-            if (err.message?.includes('Failed to fetch') || err.message?.includes('CORS')) {
-              results.push({ host: cand.host, status: 'cors', url: cand.url }); success = true; break;
-            }
-            continue;
-          }
-        }
-        if (!success) results.push({ host: cfg.host, status: 'fail', url: candidates[0].url });
-        statusEl.innerHTML = `⏳ ${results.length}/${BACKUP_CONFIGS.length} done...`;
-      }
-      btn.disabled = false; btn.textContent = 'Re-Import';
-      const ok = results.filter(r => r.status === 'success').length;
-      const fail = results.filter(r => r.status === 'fail').length;
-      const cors = results.filter(r => r.status === 'cors').length;
-      statusEl.innerHTML = `✅ ${ok} success${fail > 0 ? `, ❌ ${fail} failed` : ''}${cors > 0 ? `, ⚠️ ${cors} CORS blocked` : ''}`;
-      resultsEl.innerHTML = results.map(r => `<div class="text-sm" style="padding:2px 0;color:${r.status === 'success' ? 'var(--green)' : (r.status === 'cors' ? 'var(--yellow)' : 'var(--red)')}">${r.status === 'success' ? '✅' : '❌'} ${esc(r.host)}</div>`).join('');
     }
 
     function importPastedText() {
