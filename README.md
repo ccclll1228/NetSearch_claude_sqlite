@@ -384,6 +384,14 @@ Example response:
 
 ## Changelog
 
+### 2026-05-08 (3)
+
+**Fix: `ultradns.py` — store zone-apex NS records**
+
+Removed the `fqdn == zone_clean` guard in `_parse_rrset()` so zone-apex NS records (e.g. `pdns1.ultradns.net.`) are stored in the database alongside delegation NS records. Previously only sub-zone NS rows were kept.
+
+---
+
 ### 2026-05-08 (2)
 
 **Feature: Schedule filter for Sec Rules**

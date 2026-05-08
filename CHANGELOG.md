@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.3.1] - 2026-05-08
+
+### Fixed
+- **`ultradns.py` — zone-apex NS records now stored** — removed the `fqdn == zone_clean` guard in `_parse_rrset()` so NS records at the zone apex (e.g. `pdns1.ultradns.net.`) are inserted into the database alongside delegation NS records. Previously only sub-zone NS rows were kept.
+
+---
+
 ## [2.3.0] - 2026-05-08
 
 ### Added
