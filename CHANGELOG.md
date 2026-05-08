@@ -4,6 +4,20 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.4.0] - 2026-05-08
+
+### Added
+- **Device Manager** — new Server Config tab in the Import modal for managing `config/settings.json` device list from the browser:
+  - `GET /api/settings` — returns `{ backupRoot, devices, deviceTypes }` from `settings.json`; defaults `deviceTypes` to `["paloalto", "f5", "fortigate", "srx"]` if absent
+  - `POST /api/settings` — validates and merges `{ backupRoot, devices, deviceTypes }` back into `settings.json`, preserving all other keys (`port`, `cronSchedule`, etc.)
+  - Tab bar (`Import` | `Server Config`) at top of Import modal; existing Import tab content unchanged
+  - `backupRoot` editable text field; device table with inline edit/delete/add; device type chips (× disabled when type is in use); Save & Reload button with `Saving… → Reloading… → Done. N device(s) loaded.` status feedback
+  - `devMgr` local state object; all edits are isolated from global `state` until Save & Reload completes and `loadFromServer()` refreshes the page
+  - `"deviceTypes"` field added to `config/settings.example.json`
+  - Fully bilingual (EN / 中文); 16 new i18n keys; `applyLang()` re-renders the panel on language switch
+
+---
+
 ## [2.3.2] - 2026-05-08
 
 ### Removed

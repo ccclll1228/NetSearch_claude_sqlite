@@ -13,6 +13,7 @@ Parse and search across FortiGate, Palo Alto, Juniper SRX, and F5 LTM configurat
 - Tabs: Sec Rules, NAT Rules, Routes, Objects, LTM VS, Pools, FQDN, Copy, Raw Config, Debug
 - Symmetric chaining — find related rules by shared IPs
 - FQDN lookup backed by SQLite (`db/fqdn.db`): UltraDNS cloud records via `ultradns.py` and on-premise DNS via `import_local_dns.py` — both merged in the same results table
+- Device Manager — add, edit, and delete server-configured devices from the browser; persists to `config/settings.json` and triggers a live reload without SSH access
 - Loading indicator (spinner + "Searching…") flashes on every search trigger across all tabs
 - Disabled rule dimming, tag badges, resizable NAT columns
 - Auto-reload via cron schedule (default: 05:00 and 17:00)
@@ -381,6 +382,21 @@ Example response:
 ---
 
 ## Changelog
+
+### 2026-05-08 (5)
+
+**Feature: Device Manager in the Import modal**
+
+A new **Server Config** tab in the Import modal (`📥 Import` button) lets users manage `config/settings.json` device entries directly from the browser without SSH access:
+
+- **backupRoot** — editable text field at the top of the panel
+- **Device table** — shows all configured devices with Name / Type / Actions columns; each row supports inline edit (name input + type dropdown) and delete; **＋ Add Device** appends a new editable row
+- **Device Types** — managed as chips; types currently assigned to a device cannot be deleted (chip × is greyed out); new types added via text input
+- **Save & Reload** — calls `POST /api/settings` to persist changes then `POST /api/reload` to apply them; status cycles `Saving… → Reloading… → Done. N device(s) loaded.`
+
+Backend: `GET /api/settings` returns `{ backupRoot, devices, deviceTypes }` from `settings.json`; `POST /api/settings` validates and merges the three fields (preserving `port`, `cronSchedule`, etc.) then writes back atomically. A new `"deviceTypes"` array is added to `settings.example.json` (default: `["paloalto", "f5", "fortigate", "srx"]`). Fully bilingual (EN / 中文).
+
+---
 
 ### 2026-05-08 (4)
 
