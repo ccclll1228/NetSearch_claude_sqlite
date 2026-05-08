@@ -5199,8 +5199,8 @@
           const expandableItems = [...(r.from || []), ...(r.to || []), ...(r.source || []), ...(r.destination || []), ...(r.service || []), ...(r.sourceTranslation || []), ...(r.destinationTranslation || [])];
           _ruleExpandMap[ruleKey] = { hostname: hn, items: expandableItems, ctx: ruleKey };
           const cells = [
-            `<div class="rule-field"><div class="rule-field-label">${T('natFrom')}</div>${renderPills(r.from, r._parsed, 'object', ruleKey)}</div>`,
-            `<div class="rule-field"><div class="rule-field-label">${T('natTo')}</div>${renderPills(r.to, r._parsed, 'object', ruleKey)}</div>`,
+            `<div class="rule-field"><div class="rule-field-label">${T('natFrom')}</div>${renderZonePills(r.from)}</div>`,
+            `<div class="rule-field"><div class="rule-field-label">${T('natTo')}</div>${renderZonePills(r.to)}</div>`,
             `<div class="rule-field"><div class="rule-field-label">${T('natSource')}</div>${renderPills(r.source, r._parsed, 'object', ruleKey)}</div>`,
             `<div class="rule-field"><div class="rule-field-label">${T('natDest')}</div>${renderPills(r.destination, r._parsed, 'object', ruleKey)}</div>`,
             `<div class="rule-field"><div class="rule-field-label">${T('natService')}</div>${renderPills(r.service, r._parsed, 'service', ruleKey)}</div>`,
