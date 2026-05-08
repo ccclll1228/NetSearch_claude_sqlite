@@ -5122,7 +5122,7 @@
           </div>
         </div>
         ${schedCell}
-        <div class="rule-field"><div style="display:flex;align-items:baseline;gap:5px;margin-bottom:3px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">FROM</span>${renderPills(r.from, r._parsed, 'object', ruleKey)}</div><div style="display:flex;align-items:baseline;gap:5px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">TO</span>${renderPills(r.to, r._parsed, 'object', ruleKey)}</div></div>
+        <div class="rule-field"><div style="display:flex;align-items:baseline;gap:5px;margin-bottom:3px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">FROM</span>${renderZonePills(r.from)}</div><div style="display:flex;align-items:baseline;gap:5px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">TO</span>${renderZonePills(r.to)}</div></div>
         <div class="rule-field">${renderPills(r.source, r._parsed, 'object', ruleKey)}</div>
         <div class="rule-field">${renderPills(r.destination, r._parsed, 'object', ruleKey)}${r.dstVips && r.dstVips.length ? `<div>${r.dstVips.map(v => `<div class="vip-mapping">${esc(v.extip)} → ${esc(v.mappedip)}</div>`).join('')}</div>` : ''}</div>
         <div class="rule-field">${renderPills(r.service, r._parsed, 'service', ruleKey)}</div>
