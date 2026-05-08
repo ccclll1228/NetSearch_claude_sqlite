@@ -13,6 +13,7 @@ Parse and search across FortiGate, Palo Alto, Juniper SRX, and F5 LTM configurat
 - Tabs: Sec Rules, NAT Rules, Routes, Objects, LTM VS, Pools, FQDN, Copy, Raw Config, Debug
 - Symmetric chaining — find related rules by shared IPs
 - FQDN lookup backed by SQLite (`db/fqdn.db`): UltraDNS cloud records via `ultradns.py` and on-premise DNS via `import_local_dns.py` — both merged in the same results table
+- Loading indicator (spinner + "Searching…") flashes on every search trigger across all tabs
 - Disabled rule dimming, tag badges, resizable NAT columns
 - Auto-reload via cron schedule (default: 05:00 and 17:00)
 - Parsed data cached to disk; served instantly on restart
@@ -382,6 +383,20 @@ Example response:
 ---
 
 ## Changelog
+
+### 2026-05-08
+
+**Feature: Search loading indicator**
+
+A spinner + "Searching…" label now appears above the results area on every search trigger — Enter key, filter dropdown changes, tab switches, search mode toggle, and FQDN async fetches. On synchronous tabs the indicator flashes for at least one visible frame using a double `requestAnimationFrame` hide, so users always get confirmation that a search was triggered regardless of render speed.
+
+Implementation details:
+- `<div id="search-loading">` inserted as a static sibling between the tab bar and `#content` — survives `el.innerHTML` replacement on sync renders
+- Pure CSS spinner reusing the existing `@keyframes spin` animation; styled with `--cds-*` tokens
+- `prefers-reduced-motion`: spinner animation disabled, label remains visible
+- `showLoading()` / `hideLoading()` wired into `renderContent()` full-render branch only; `expandOnly` calls (pill expand/collapse, device group toggle) are excluded
+
+---
 
 ### 2026-05-07 (4)
 

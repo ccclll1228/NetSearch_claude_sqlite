@@ -4,6 +4,17 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.2.0] - 2026-05-08
+
+### Added
+- **Search loading indicator** — a CSS spinner + "Searching…" label appears above the results area on every search trigger across all tabs (Enter key, filter dropdowns, tab switch, search mode toggle, FQDN async fetch). On synchronous tabs a double `requestAnimationFrame` ensures at least one visible frame before the indicator hides, so users always get feedback that a search was received.
+  - `<div id="search-loading">` inserted as a static sibling between `#tabBar` and `#content` — survives `el.innerHTML` replacement and works for both sync and async renders
+  - Reuses the existing `@keyframes spin` animation; all colors use `--cds-*` tokens
+  - `prefers-reduced-motion`: spinner animation disabled, "Searching…" text remains
+  - `showLoading()` / `hideLoading()` wired into `renderContent()` full-render branch only; `expandOnly` calls (pill expand/collapse, device group toggle) excluded
+
+---
+
 ## [2.1.0] - 2026-05-07
 
 ### Added
