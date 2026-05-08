@@ -4885,6 +4885,10 @@
       }).join('') + '</div>';
     }
 
+    function renderZonePills(list) {
+      if (!list || list.length === 0) return '<span class="text-muted text-sm">—</span>';
+      return '<div class="pills">' + list.map(z => `<span class="pill">${esc(z)}</span>`).join('') + '</div>';
+    }
 
     function togglePill(pid) {
       if (window.getSelection()?.toString().length > 0) return;
