@@ -313,7 +313,7 @@ Geo   .fqdn-geo-cell       200px       white-space:nowrap; overflow:hidden;
 │    (16)  TXT        → rdata joined ",", skip if > 255 chars     │
 │    (99)  SPF        → same as TXT                               │
 │    (65282) APEXALIAS → same as CNAME                            │
-│    (2)   NS         → zone-apex skipped; sub-zone rows stored   │
+│    (2)   NS         → all rows stored (zone-apex + sub-zone)    │
 │    (28)  AAAA       → logged [unhandled], skipped               │
 │    (33)  SRV        → logged [unhandled], skipped               │
 │    (6)   SOA        → silently skipped                          │
