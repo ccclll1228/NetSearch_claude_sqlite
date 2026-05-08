@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.4.2] - 2026-05-08
+
+### Fixed
+- **`lib/discovery.js` — case-insensitive folder and file matching** — site-folder regex now uses the `'i'` flag (`new RegExp(..., 'i')`) and the per-file `startsWith` check uses `.toLowerCase()` on both sides. Fixes devices whose backup folder name differs in case from the device name prefix (e.g. device `LoadTest-FW01` → folder `LOADTEST_20260508` on a case-sensitive Linux filesystem).
+
+---
+
 ## [2.4.1] - 2026-05-08
 
 ### Docs
