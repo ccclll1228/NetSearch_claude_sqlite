@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.4.7] - 2026-05-08
+
+### Fixed
+- **Filter bar dropdowns — right padding increased to clear arrow** — `.filter-select` `padding-right` increased from `18px` to `20px` so option text no longer overlaps the custom SVG chevron (10px wide, anchored at `right 10px`).
+
+---
+
 ## [2.4.6] - 2026-05-08
 
 ### Changed
