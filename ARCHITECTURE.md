@@ -176,7 +176,11 @@ public/index.html  (all logic runs in the browser)
               │   expandOnly (pill/group toggle): skips showLoading/hideLoading
               │
               ├── Sec Rules    renderSecRules()
+              │                FROM/TO cells → renderZonePills() (static, no expand)
+              │                all other cells → renderPills() (expandable)
               ├── NAT Rules    renderNatRules()
+              │                FROM/TO cells → renderZonePills() (static, no expand)
+              │                all other cells → renderPills() (expandable)
               ├── Routes       renderRoutes()
               ├── Objects      renderObjects()
               ├── LTM VS       renderF5Virtuals()
