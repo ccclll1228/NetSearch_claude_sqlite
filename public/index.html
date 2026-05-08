@@ -2624,6 +2624,12 @@
       <select class="filter-select" id="tagFilter">
         <option value="">TAG (All)</option>
       </select>
+      <select class="filter-select" id="scheduleFilter"
+        onchange="state.filters.scheduleFilter=this.value;renderContent()">
+        <option value="">SCHEDULE (All)</option>
+        <option value="scheduled">Scheduled Only</option>
+        <option value="unscheduled">Unscheduled Only</option>
+      </select>
       <label class="filter-toggle"><input type="checkbox" id="filterSource" /> <span
           id="lblFilterSrc">Src</span></label>
       <label class="filter-toggle"><input type="checkbox" id="filterDest" /> <span id="lblFilterDst">Dst</span></label>
@@ -2795,7 +2801,7 @@
       lastGeneratedFilters: { fromZone: '', toZone: '', tag: '' },
       filters: {
         sourceDevice: '',
-        fromZone: '', toZone: '', tag: '',
+        fromZone: '', toZone: '', tag: '', scheduleFilter: '',
         filterSource: false, filterDest: false,
         secHideDisabled: false, secShowDisabledOnly: false,
         natHideDisabled: false, natShowDisabledOnly: false,
@@ -2836,7 +2842,7 @@
         statusLoading: 'Loading...', statusNotLoaded: 'Not loaded',
         statusData: 'Data: {0}',
         sourceLabel: 'Source:', toggleAll: 'All ({0})',
-        fromZoneAll: 'FROM ZONE (All)', toZoneAll: 'TO ZONE (All)', tagAll: 'TAG (All)',
+        fromZoneAll: 'FROM ZONE (All)', toZoneAll: 'TO ZONE (All)', tagAll: 'TAG (All)', scheduleAll: 'SCHEDULE (All)', scheduleOnly: 'Scheduled Only', scheduleNone: 'Unscheduled Only',
         filterSrc: 'Src', filterDst: 'Dst',
         hideDisabled: 'Hide Disabled', disabledOnly: 'Disabled Only', f5Disabled: 'F5 Disabled',
         btnExpand: 'Expand', btnCollapse: 'Collapse', btnClear: '✕ Clear',
@@ -2916,7 +2922,7 @@
         statusLoading: '載入中...', statusNotLoaded: '尚未載入',
         statusData: '資料版本：{0}',
         sourceLabel: '來源：', toggleAll: '全部（{0}）',
-        fromZoneAll: 'FROM ZONE（全部）', toZoneAll: 'TO ZONE（全部）', tagAll: 'TAG（全部）',
+        fromZoneAll: 'FROM ZONE（全部）', toZoneAll: 'TO ZONE（全部）', tagAll: 'TAG（全部）', scheduleAll: '排程（全部）', scheduleOnly: '僅排程', scheduleNone: '僅無排程',
         filterSrc: '來源', filterDst: '目的',
         hideDisabled: '隱藏停用', disabledOnly: '只看停用', f5Disabled: 'F5 停用',
         btnExpand: '展開', btnCollapse: '收合', btnClear: '✕ 清除',
@@ -3017,6 +3023,11 @@
       copyData = [];
       addToSearchHistory(value);
       renderContent();
+    }
+
+    function hasAppliedSchedule(rule) {
+      const v = String(rule.schedule || '').trim().toLowerCase();
+      return !!v && v !== 'none' && v !== 'any' && v !== 'always';
     }
 
     function showLoading() {
@@ -4045,6 +4056,8 @@
           if (filters.fromZone && !r.from.includes(filters.fromZone)) return;
           if (filters.toZone && !r.to.includes(filters.toZone)) return;
           if (filters.tag && !(r.tag || []).includes(filters.tag)) return;
+          if (filters.scheduleFilter === 'scheduled'   && !hasAppliedSchedule(r)) return;
+          if (filters.scheduleFilter === 'unscheduled' &&  hasAppliedSchedule(r)) return;
           let match = true;
           let chainedFromFqdn = false;
           let chainedFromNat = false;
@@ -6265,6 +6278,8 @@
       const btnB = document.getElementById('btnBulk'); if (btnB) btnB.innerHTML = T('btnBulk');
       const btnI = document.getElementById('btnImportHeader'); if (btnI) btnI.textContent = T('btnImport');
       const btnR = document.getElementById('reloadBtn'); if (btnR && !btnR.disabled) btnR.innerHTML = T('btnReload');
+      const sfEl = document.getElementById('scheduleFilter');
+      if (sfEl) { sfEl.options[0].text = T('scheduleAll'); sfEl.options[1].text = T('scheduleOnly'); sfEl.options[2].text = T('scheduleNone'); }
       L('lblFilterSrc', 'filterSrc'); L('lblFilterDst', 'filterDst');
       L('lblHideDisabled', 'hideDisabled'); L('lblDisabledOnly', 'disabledOnly'); L('lblF5Disabled', 'f5Disabled');
       L('lblExpand', 'btnExpand'); L('lblCollapse', 'btnCollapse'); L('btnClearFilters', 'btnClear');
@@ -6387,11 +6402,12 @@
     }
 
     function clearAllFilters() {
-      state.filters = { sourceDevice: '', fromZone: '', toZone: '', tag: '', filterSource: false, filterDest: false, secHideDisabled: false, secShowDisabledOnly: false, natHideDisabled: false, natShowDisabledOnly: false, showDisabledMembersOnly: false, fqdnTypeFilter: '', fqdnOwnerFilter: '', fqdnGeoFilter: '' };
+      state.filters = { sourceDevice: '', fromZone: '', toZone: '', tag: '', scheduleFilter: '', filterSource: false, filterDest: false, secHideDisabled: false, secShowDisabledOnly: false, natHideDisabled: false, natShowDisabledOnly: false, showDisabledMembersOnly: false, fqdnTypeFilter: '', fqdnOwnerFilter: '', fqdnGeoFilter: '' };
       state.disabledHosts = new Set();
       document.getElementById('fromZoneFilter').value = '';
       document.getElementById('toZoneFilter').value = '';
       document.getElementById('tagFilter').value = '';
+      document.getElementById('scheduleFilter').value = '';
       document.getElementById('filterSource').checked = false;
       document.getElementById('filterDest').checked = false;
       document.getElementById('secHideDisabled').checked = false;
