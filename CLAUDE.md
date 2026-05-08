@@ -114,6 +114,7 @@ When a search term is an IP, `resolveIndexCandidates()` walks the index upward (
   - `_findRootPid(pid)` — strips `__suffix` to locate top-level `_pillContext` entry for nested node toggle
   - `_patchGeneration` counter — cancels stale rAF loops when a new render/patch starts
 - `_pillContext` Map (pid → `{item, type, parsed, ctx}`) and `_ruleExpandMap` (ruleKey → `{hostname, items, ctx}`) are populated during `renderPills()` and required by all DOM patch functions
+- `renderZonePills(list)` — static variant used **only** for FROM/TO zone columns in Sec Rules and NAT Rules. Emits plain `<span class="pill">` with no `data-ppid`, no onclick, no QS/copy buttons, and no `_pillContext` registration. Zone items still appear in `expandableItems` but `_patchPidsDirect` silently skips them (`if (!pctx) continue`). Do not use `renderPills` for FROM/TO zones.
 
 ### CSS Token System
 

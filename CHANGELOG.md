@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.4.4] - 2026-05-08
+
+### Changed
+- **Static zone pills for FROM/TO columns** — `renderZonePills(list)` replaces `renderPills` for the FROM and TO cells in both Sec Rules and NAT Rules expanded rows. Zone names (e.g. `trust`, `untrust`) are now rendered as plain non-interactive `.pill` spans with no expand arrow, no search button, and no copy button. All other columns (SOURCE, DESTINATION, SERVICE, APPLICATION, TRANSLATION) are unchanged. Zone items remain in `_ruleExpandMap.expandableItems` but are silently skipped by `_patchPidsDirect` (`if (!pctx) continue`) — no re-render penalty.
+
+---
+
 ## [2.4.3] - 2026-05-08
 
 ### Removed
