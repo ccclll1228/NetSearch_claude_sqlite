@@ -4,6 +4,17 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.4.5] - 2026-05-08
+
+### Changed
+- **Filter bar checkboxes replaced with dropdowns** — the three checkbox groups in the global filter bar are now `<select class="filter-select">` dropdowns matching the existing Carbon style (same as SCHEDULE, FROM ZONE, TO ZONE):
+  - **IP (All / Src / Dst)** — replaces the separate Src and Dst checkboxes; selecting Src sets `filterSource=true`, Dst sets `filterDest=true`, All resets both
+  - **RULE (All / Hide Disabled / Disabled Only)** — replaces the Hide Disabled + Disabled Only checkbox pair; selections map to `secHideDisabled`/`natHideDisabled` and `secShowDisabledOnly`/`natShowDisabledOnly` exactly as before
+  - **F5 (All / Disabled Only)** — replaces the F5 Disabled checkbox; Disabled Only maps to `showDisabledMembersOnly=true`
+  - All state variable names, filter logic, and renderer behavior are unchanged; the two separator `<span>` elements and five old `addEventListener` calls are removed; `clearAllFilters` resets via `.value = ''`
+
+---
+
 ## [2.4.4] - 2026-05-08
 
 ### Changed
