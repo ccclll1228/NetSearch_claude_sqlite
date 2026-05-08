@@ -15,5 +15,6 @@
     { "name": "SAT-FW01",   "type": "fortigate" },
     { "name": "SAT-FW02",   "type": "fortigate" }
   ],
+  "deviceTypes": ["paloalto", "f5", "fortigate", "srx"],
   "cronSchedule": ["0 5 * * *", "0 17 * * *"]
 }
