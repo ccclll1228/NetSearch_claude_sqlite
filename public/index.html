@@ -2648,17 +2648,23 @@
         <option value="scheduled">Scheduled Only</option>
         <option value="unscheduled">Unscheduled Only</option>
       </select>
-      <label class="filter-toggle"><input type="checkbox" id="filterSource" /> <span
-          id="lblFilterSrc">Src</span></label>
-      <label class="filter-toggle"><input type="checkbox" id="filterDest" /> <span id="lblFilterDst">Dst</span></label>
-      <span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>
-      <label class="filter-toggle"><input type="checkbox" id="secHideDisabled" /> <span id="lblHideDisabled">Hide
-          Disabled</span></label>
-      <label class="filter-toggle"><input type="checkbox" id="secShowDisabledOnly" /> <span
-          id="lblDisabledOnly">Disabled Only</span></label>
-      <span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>
-      <label class="filter-toggle"><input type="checkbox" id="showDisabledMembersOnly" /> <span id="lblF5Disabled">F5
-          Disabled</span></label>
+      <select class="filter-select" id="ipFilter"
+        onchange="const v=this.value;state.filters.filterSource=v==='src';state.filters.filterDest=v==='dst';renderContent()">
+        <option value="">IP (All)</option>
+        <option value="src">Src</option>
+        <option value="dst">Dst</option>
+      </select>
+      <select class="filter-select" id="ruleDisabledFilter"
+        onchange="const v=this.value;state.filters.secHideDisabled=v==='hide';state.filters.natHideDisabled=v==='hide';state.filters.secShowDisabledOnly=v==='only';state.filters.natShowDisabledOnly=v==='only';renderContent()">
+        <option value="">RULE (All)</option>
+        <option value="hide">Hide Disabled</option>
+        <option value="only">Disabled Only</option>
+      </select>
+      <select class="filter-select" id="f5DisabledFilter"
+        onchange="state.filters.showDisabledMembersOnly=this.value==='only';renderContent()">
+        <option value="">F5 (All)</option>
+        <option value="only">Disabled Only</option>
+      </select>
       <button class="btn btn-sm btn-expand-collapse" id="btnExpandAll" onclick="expandAllPills()" title="Expand All">
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.7"
           stroke-linecap="round" stroke-linejoin="round">
@@ -6327,8 +6333,6 @@
       L('tabServerConfig', 'tabServerConfig');
       const devMgrPanel = document.getElementById('importTabServerConfig');
       if (devMgrPanel && !devMgrPanel.classList.contains('hidden')) renderDevMgr();
-      L('lblFilterSrc', 'filterSrc'); L('lblFilterDst', 'filterDst');
-      L('lblHideDisabled', 'hideDisabled'); L('lblDisabledOnly', 'disabledOnly'); L('lblF5Disabled', 'f5Disabled');
       L('lblExpand', 'btnExpand'); L('lblCollapse', 'btnCollapse'); L('btnClearFilters', 'btnClear');
       L('importTitle', 'importTitle'); L('importConfigTitle', 'importConfigTitle');
       L('lblDropConfig', 'importDropConfig'); L('lblDropFqdn', 'importDropFqdn');
@@ -6350,11 +6354,6 @@
     document.getElementById('fromZoneFilter').addEventListener('change', e => { state.filters.fromZone = e.target.value; renderContent(); });
     document.getElementById('toZoneFilter').addEventListener('change', e => { state.filters.toZone = e.target.value; renderContent(); });
     document.getElementById('tagFilter').addEventListener('change', e => { state.filters.tag = e.target.value; renderContent(); });
-    document.getElementById('filterSource').addEventListener('change', e => { state.filters.filterSource = e.target.checked; renderContent(); });
-    document.getElementById('filterDest').addEventListener('change', e => { state.filters.filterDest = e.target.checked; renderContent(); });
-    document.getElementById('secHideDisabled').addEventListener('change', e => { state.filters.secHideDisabled = e.target.checked; state.filters.natHideDisabled = e.target.checked; if (e.target.checked) { state.filters.secShowDisabledOnly = false; state.filters.natShowDisabledOnly = false; } document.getElementById('secShowDisabledOnly').checked = false; renderContent(); });
-    document.getElementById('secShowDisabledOnly').addEventListener('change', e => { state.filters.secShowDisabledOnly = e.target.checked; state.filters.natShowDisabledOnly = e.target.checked; if (e.target.checked) { state.filters.secHideDisabled = false; state.filters.natHideDisabled = false; } document.getElementById('secHideDisabled').checked = false; renderContent(); });
-    document.getElementById('showDisabledMembersOnly').addEventListener('change', e => { state.filters.showDisabledMembersOnly = e.target.checked; renderContent(); });
 
     function expandAllPills() {
       if (state.activeTab === 'f5_vs') {
@@ -6455,11 +6454,9 @@
       document.getElementById('toZoneFilter').value = '';
       document.getElementById('tagFilter').value = '';
       document.getElementById('scheduleFilter').value = '';
-      document.getElementById('filterSource').checked = false;
-      document.getElementById('filterDest').checked = false;
-      document.getElementById('secHideDisabled').checked = false;
-      document.getElementById('secShowDisabledOnly').checked = false;
-      document.getElementById('showDisabledMembersOnly').checked = false;
+      document.getElementById('ipFilter').value = '';
+      document.getElementById('ruleDisabledFilter').value = '';
+      document.getElementById('f5DisabledFilter').value = '';
       renderContent();
     }
 
