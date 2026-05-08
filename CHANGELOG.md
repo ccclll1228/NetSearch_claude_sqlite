@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.4.3] - 2026-05-08
+
+### Removed
+- **Auto URL Import (Today's Backup)** — removed the hardcoded URL-fetch section from the Import modal. Deleted: HTML card (`urlImportBtn`, `urlImportStatus`, `urlImportResults`), `BASE_URL` constant, `BACKUP_CONFIGS` array, `fmtDate` helper, `buildFallbackCandidates` function, and `runUrlImport` async function. Manual drag-drop, config paste, Device Manager tab, and Reload button are unaffected.
+
+---
+
 ## [2.4.2] - 2026-05-08
 
 ### Fixed
