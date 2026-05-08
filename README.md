@@ -383,6 +383,14 @@ Example response:
 
 ## Changelog
 
+### 2026-05-08 (8)
+
+**Changed: Static zone pills for FROM/TO columns**
+
+FROM and TO zone values in Sec Rules and NAT Rules expanded rows are now rendered as plain static `.pill` spans. Previously they used the same expandable pill renderer as SOURCE/DESTINATION, showing a blue header bar, expand arrow, and search/copy buttons — none of which are useful for simple zone names like `trust` or `untrust`. SOURCE, DESTINATION, SERVICE, APPLICATION, and TRANSLATION columns are unchanged.
+
+---
+
 ### 2026-05-08 (7)
 
 **Removed: Auto URL Import (Today's Backup)**
