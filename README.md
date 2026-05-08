@@ -383,6 +383,16 @@ Example response:
 
 ## Changelog
 
+### 2026-05-08 (7)
+
+**Removed: Auto URL Import (Today's Backup)**
+
+The hardcoded Auto URL Import card has been removed from the Import modal. It fetched backup configs from a fixed internal URL (`librenms.opsware.xyz`) and was replaced by server-side auto-discovery via `lib/discovery.js` and the Device Manager. Manual drag-drop, config paste, Device Manager tab, and Reload button are unaffected.
+
+Deleted from `public/index.html`: HTML card (`urlImportBtn`, `urlImportStatus`, `urlImportResults`), `BASE_URL` constant, `BACKUP_CONFIGS` array, `fmtDate` helper, `buildFallbackCandidates` function, and `runUrlImport` async function.
+
+---
+
 ### 2026-05-08 (6)
 
 **Docs: CLAUDE.md and ARCHITECTURE.md updated for Device Manager**
