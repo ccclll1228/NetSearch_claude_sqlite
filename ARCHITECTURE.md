@@ -159,6 +159,12 @@ public/index.html  (all logic runs in the browser)
         │     Builds fqdnDeviceCidrRanges for all active devices (union)
         │       (destination addrs from secRules+natRules per device,
         │        recursively resolved through groups; F5: virtual server IPs)
+        │     Sec Rules guard chain (in order):
+        │       secHideDisabled / secShowDisabledOnly
+        │       fromZone / toZone / tag
+        │       scheduleFilter → hasAppliedSchedule(rule)
+        │         '' = pass all · 'scheduled' = keep matching · 'unscheduled' = keep non-matching
+        │       keyword AST match
         │
         └── renderContent(expandOnly)
               │   full render (!expandOnly): showLoading() → el.innerHTML → hideLoading()
