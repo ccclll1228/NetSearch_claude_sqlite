@@ -58,7 +58,7 @@ db/fqdn.db         — SQLite; fqdn table (UltraDNS + LocalDNS rows)
 ### Discovery (`lib/discovery.js`)
 
 - `resolveDevicePaths(devices, backupRoot)` — scans `{SITE}_{YYYYMMDD}` folders, newest first
-- Site prefix derived from device name: `FRI-LTM01` → looks in `FRI_*` folders
+- Site prefix derived from device name: `FRI-LTM01` → looks in `FRI_*` folders; folder regex uses `'i'` flag and file `startsWith` uses `.toLowerCase()` on both sides for case-insensitive matching on Linux filesystems (e.g. device `LoadTest-FW01` matches folder `LOADTEST_20260508`)
 - Within a folder, picks the file with the highest `HHMM` timestamp (1700 beats 0500); lexicographic tie-break
 - Any folder or file containing `"UCS"` is excluded
 - Returns `[{path, type}]` — same shape the existing `loadAllConfigs()` loop consumes
