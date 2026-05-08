@@ -9,7 +9,7 @@ Parse and search across FortiGate, Palo Alto, Juniper SRX, and F5 LTM configurat
 
 - Multi-device support: FortiGate, Palo Alto, Juniper SRX, F5 LTM
 - Full-text search with boolean operators (`AND`, `OR`, `NOT`)
-- Filter by From Zone / To Zone / Tag / Source / Destination
+- Filter by From Zone / To Zone / Tag / Schedule / Source / Destination
 - Tabs: Sec Rules, NAT Rules, Routes, Objects, LTM VS, Pools, FQDN, Copy, Raw Config, Debug
 - Symmetric chaining — find related rules by shared IPs
 - FQDN lookup backed by SQLite (`db/fqdn.db`): UltraDNS cloud records via `ultradns.py` and on-premise DNS via `import_local_dns.py` — both merged in the same results table
@@ -383,6 +383,20 @@ Example response:
 ---
 
 ## Changelog
+
+### 2026-05-08 (2)
+
+**Feature: Schedule filter for Sec Rules**
+
+A new `SCHEDULE` dropdown in the global filter bar lets users filter Sec Rules by whether a schedule is applied:
+
+- `SCHEDULE (All)` — no filtering (default)
+- `Scheduled Only` — shows only rules where `rule.schedule` is set to a real schedule (not `null`, `'always'`, `'none'`, or `'any'`)
+- `Unscheduled Only` — shows only rules with no meaningful schedule applied
+
+The filter is always visible in the filter bar and applies only to Sec Rules. It composes with all existing filters (keyword search, FROM ZONE, TO ZONE, TAG, Hide Disabled, Disabled Only). Fully bilingual (EN / 中文). Implemented via a `hasAppliedSchedule(rule)` utility and two guard lines in the sec rules filtering pipeline; NAT Rules and all other tabs are unaffected.
+
+---
 
 ### 2026-05-08
 

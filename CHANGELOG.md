@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.3.0] - 2026-05-08
+
+### Added
+- **Schedule filter for Sec Rules** — new `SCHEDULE` dropdown in the global filter bar with three options: `SCHEDULE (All)` (default), `Scheduled Only`, `Unscheduled Only`. Applies only to the Sec Rules filtering pipeline; NAT Rules and all other tabs are unaffected. Composes with all existing filters. Implemented via `hasAppliedSchedule(rule)` utility (checks `rule.schedule` against `null`/`'always'`/`'none'`/`'any'`) and two guard lines in the sec rules loop. Fully bilingual (EN / 中文).
+
+---
+
 ## [2.2.0] - 2026-05-08
 
 ### Added
