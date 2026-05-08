@@ -155,7 +155,10 @@ public/index.html  (all logic runs in the browser)
         │       (destination addrs from secRules+natRules per device,
         │        recursively resolved through groups; F5: virtual server IPs)
         │
-        └── renderContent()
+        └── renderContent(expandOnly)
+              │   full render (!expandOnly): showLoading() → el.innerHTML → hideLoading()
+              │   expandOnly (pill/group toggle): skips showLoading/hideLoading
+              │
               ├── Sec Rules    renderSecRules()
               ├── NAT Rules    renderNatRules()
               ├── Routes       renderRoutes()
@@ -165,6 +168,13 @@ public/index.html  (all logic runs in the browser)
               ├── FQDN         renderFqdnDb() + fqdnDbAutoLoad()
               ├── Copy         renderCopyTab()
               └── Raw Config   renderRawConfig()
+
+Loading indicator:
+  #search-loading  ← static sibling between #tabBar and #content (never
+                     inside #content, so survives el.innerHTML replacement)
+  showLoading()    ← sets display:flex at top of full-render branch
+  hideLoading()    ← double requestAnimationFrame; guarantees ≥1 painted
+                     frame even on synchronous renders
 ```
 
 ---
