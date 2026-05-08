@@ -57,7 +57,6 @@ cp config/settings.example.json config/settings.json
     { "name": "FRI-FW01",  "type": "paloalto" },
     { "name": "FRI-LTM01", "type": "f5" }
   ],
-  "fqdnFile": "/path/to/all_fqdn.csv",
   "cronSchedule": ["0 5 * * *", "0 17 * * *"]
 }
 ```
@@ -68,7 +67,6 @@ cp config/settings.example.json config/settings.json
 | `backupRoot` | Absolute path to the Oxidized backup root directory |
 | `devices[].name` | Device name — also used as the filename prefix to locate the latest backup |
 | `devices[].type` | `"fortigate"`, `"paloalto"`, `"srx"`, `"f5"`, or `"auto"` |
-| `fqdnFile` | (Legacy) Path to a CSV with columns `fqdn,ip,owner,…` — superseded by SQLite |
 | `cronSchedule` | Cron expressions for auto-reload (two entries = twice daily) |
 
 **Discovery** — on every reload, `lib/discovery.js` scans `{backupRoot}/{SITE}_{YYYYMMDD}/` folders (newest first) and picks the file with the highest `HHMM` timestamp. Any path containing `"UCS"` is excluded.
@@ -383,6 +381,18 @@ Example response:
 ---
 
 ## Changelog
+
+### 2026-05-08 (4)
+
+**Refactor: remove dead `fqdnFile` CSV-load code**
+
+The `fqdnFile` setting (`/home/oxidized/backups/all_fqdn.csv`) was a pre-SQLite holdover that is no longer used. FQDN data is now served exclusively via `db/fqdn.db` (populated by `ultradns.py` and `import_local_dns.py`).
+
+Removed from `server.js`: `parseFqdnFile` import, `state.fqdnRecords`, the `settings.fqdnFile` file-read block in `loadAllConfigs()`, and `fqdnRecords` from the cache and `/api/data` response. The `fqdnFile` key is also removed from `config/settings.example.json`.
+
+`parseFqdnFile` in `lib/parser.js` and `public/index.html` is retained — it is still used for manual drag-drop config uploads in the UI.
+
+---
 
 ### 2026-05-08 (3)
 

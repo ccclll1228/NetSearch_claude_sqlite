@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.3.2] - 2026-05-08
+
+### Removed
+- **`fqdnFile` CSV-load path** — the `settings.fqdnFile` key and all associated server-side logic have been removed. FQDN records are served exclusively via `db/fqdn.db` (populated by `ultradns.py` and `import_local_dns.py`). Removed from `server.js`: `parseFqdnFile` import, `state.fqdnRecords`, the file-read block in `loadAllConfigs()`, and `fqdnRecords` from cache and `/api/data` response. `"fqdnFile"` key removed from `config/settings.example.json`. `parseFqdnFile` in `lib/parser.js` and `public/index.html` is retained for manual drag-drop uploads.
+
+---
+
 ## [2.3.1] - 2026-05-08
 
 ### Fixed
