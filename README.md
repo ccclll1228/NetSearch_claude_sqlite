@@ -70,7 +70,7 @@ cp config/settings.example.json config/settings.json
 | `devices[].type` | `"fortigate"`, `"paloalto"`, `"srx"`, `"f5"`, or `"auto"` |
 | `cronSchedule` | Cron expressions for auto-reload (two entries = twice daily) |
 
-**Discovery** — on every reload, `lib/discovery.js` scans `{backupRoot}/{SITE}_{YYYYMMDD}/` folders (newest first) and picks the file with the highest `HHMM` timestamp. Any path containing `"UCS"` is excluded.
+**Discovery** — on every reload, `lib/discovery.js` scans `{backupRoot}/{SITE}_{YYYYMMDD}/` folders (newest first) and picks the file with the highest `HHMM` timestamp. Folder and file matching is case-insensitive so device names like `LoadTest-FW01` correctly match backup folders named `LOADTEST_20260508` on Linux filesystems. Any path containing `"UCS"` is excluded.
 
 ---
 
