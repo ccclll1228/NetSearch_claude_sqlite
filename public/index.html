@@ -4236,6 +4236,7 @@
         });
 
         // Addresses & Groups — with FQDN IP + Rule IP chaining
+        const searchTermIsIP = positiveTerms.every(t => isExactIP(t) || isCIDR(t) || isIPWithMask(t));
         Object.entries(parsed.addresses || {}).forEach(([name, addr]) => {
           let match = true;
           let chainedMatch = false;
@@ -4247,16 +4248,32 @@
                 return matchObject(name, addr.value, term, forceExact || searchMode === 'exact', ignoreCIDR);
               });
             }
-            // Chain from FQDN IPs
-            if (!match && allFqdnIps.size > 0) {
+            // Chain from FQDN IPs — only when search term is a domain, not an IP
+            if (!match && !searchTermIsIP && allFqdnIps.size > 0) {
               for (const fip of allFqdnIps) {
                 if (matchObject(name, addr.value, fip, true, ignoreCIDR)) { match = true; chainedMatch = true; break; }
               }
             }
-            // Chain from Rule IPs
-            if (!match && allRuleIps.size > 0) {
+            if (!match && !searchTermIsIP && allFqdnIps.size > 0 && addr.value && !isExactIP(addr.value) && !isCIDR(addr.value)) {
+              const fqdnVal = String(addr.value).toLowerCase();
+              for (const row of _allFqdnRows) {
+                if (!row.ip || !isExactIP(row.ip)) continue;
+                const rowFqdn = (row.fqdn || row.domain || '').toLowerCase();
+                if (rowFqdn === fqdnVal && allFqdnIps.has(row.ip)) { match = true; chainedMatch = true; break; }
+              }
+            }
+            // Chain from Rule IPs — only when search term is a domain, not an IP
+            if (!match && !searchTermIsIP && allRuleIps.size > 0) {
               for (const rip of allRuleIps) {
                 if (matchObject(name, addr.value, rip, true, ignoreCIDR)) { match = true; chainedMatch = true; break; }
+              }
+            }
+            if (!match && !searchTermIsIP && allRuleIps.size > 0 && addr.value && !isExactIP(addr.value) && !isCIDR(addr.value)) {
+              const fqdnVal = String(addr.value).toLowerCase();
+              for (const row of _allFqdnRows) {
+                if (!row.ip || !isExactIP(row.ip)) continue;
+                const rowFqdn = (row.fqdn || row.domain || '').toLowerCase();
+                if (rowFqdn === fqdnVal && allRuleIps.has(row.ip)) { match = true; chainedMatch = true; break; }
               }
             }
           }
