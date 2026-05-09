@@ -4554,20 +4554,35 @@
         });
       }
 
-      // 2. Collect DNAT IPs from matched NAT rules → chain to F5 VS
+      // 2. Collect DNAT IPs from matched rules → chain to F5 VS
+      // Guard: only expand when query is a single exact IP to avoid over-matching on keyword/CIDR
+      const _isSingleExactIpSearch = positiveTerms.length === 1 && isExactIP(positiveTerms[0]);
       const chainedDnatIPs = new Set();
-      result.natRules.forEach(r => {
-        (r.destinationTranslation || []).forEach(dt => {
-          resolveObject(dt, r._parsed.addresses, r._parsed.groups).forEach(resolved => {
-            if (resolved.value) {
-              const raw = isIPWithMask(resolved.value) ? normalizeIP(resolved.value) : resolved.value;
-              // Strip :port suffix (e.g. "10.1.2.3:80" → "10.1.2.3") before IP validation
+      if (_isSingleExactIpSearch) {
+        // Path A: explicit NAT rules with destinationTranslation (PA, SRX, FortiGate central-DNAT)
+        result.natRules.forEach(r => {
+          (r.destinationTranslation || []).forEach(dt => {
+            resolveObject(dt, r._parsed.addresses, r._parsed.groups).forEach(resolved => {
+              if (resolved.value) {
+                const raw = isIPWithMask(resolved.value) ? normalizeIP(resolved.value) : resolved.value;
+                // Strip :port suffix (e.g. "10.1.2.3:80" → "10.1.2.3") before IP validation
+                const rv = (!isCIDR(raw) && raw.includes(':')) ? raw.split(':')[0] : raw;
+                if (isExactIP(rv) || isCIDR(rv)) chainedDnatIPs.add(rv);
+              }
+            });
+          });
+        });
+        // Path B: FortiGate VIP-based DNAT — mappedip is on secRule.dstVips, not in natRules
+        result.secRules.forEach(r => {
+          (r.dstVips || []).forEach(v => {
+            if (v.mappedip) {
+              const raw = isIPWithMask(v.mappedip) ? normalizeIP(v.mappedip) : String(v.mappedip);
               const rv = (!isCIDR(raw) && raw.includes(':')) ? raw.split(':')[0] : raw;
               if (isExactIP(rv) || isCIDR(rv)) chainedDnatIPs.add(rv);
             }
           });
         });
-      });
+      }
 
       // Pull in F5 VS whose IP matches a DNAT IP (if not already in results)
       if (chainedDnatIPs.size > 0) {
