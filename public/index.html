@@ -4555,10 +4555,10 @@
       }
 
       // 2. Collect DNAT IPs from matched rules → chain to F5 VS
-      // Guard: only expand when query is a single exact IP to avoid over-matching on keyword/CIDR
-      const _isSingleExactIpSearch = positiveTerms.length === 1 && isExactIP(positiveTerms[0]);
+      // Guard: only expand when search has IP semantics (direct IP or FQDN resolved to IPs)
+      // to avoid over-matching on pure keyword searches whose matched rules have arbitrary translations.
       const chainedDnatIPs = new Set();
-      if (_isSingleExactIpSearch) {
+      if (positiveTerms.some(t => isExactIP(t)) || allFqdnIps.size > 0) {
         // Path A: explicit NAT rules with destinationTranslation (PA, SRX, FortiGate central-DNAT)
         result.natRules.forEach(r => {
           (r.destinationTranslation || []).forEach(dt => {
