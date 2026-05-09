@@ -3938,7 +3938,8 @@
     // ===== FILTERING ENGINE =====
     function getFilteredData() {
       _matchNameOnlyCache.clear();
-      const { appliedSearch, searchAST, searchMode, ignoreCIDR, filters } = state;
+      const { appliedSearch, searchAST, searchMode, ignoreCIDR: _rawIgnoreCIDR, filters } = state;
+      const ignoreCIDR = _rawIgnoreCIDR || (searchMode === 'exact' && (searchAST ? extractTerms(searchAST) : []).some(t => isExactIP(t) || isCIDR(t) || isIPWithMask(t)));
       let configs = state.parsedConfigs.map(c => c.parsed);
       // Source Device filter — disabledHosts toggle
       if (state.disabledHosts && state.disabledHosts.size > 0) configs = configs.filter(c => !state.disabledHosts.has(c.hostname));
