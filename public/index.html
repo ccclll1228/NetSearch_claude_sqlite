@@ -577,12 +577,12 @@
 
     /* Carbon Select — bottom-border only, 0px radius, Gray 10 bg */
     .filter-select {
-      padding: 0 32px 0 12px;
+      padding: 2px 20px 2px 6px;
       height: 32px;
       border: none;
       border-bottom: 1px solid var(--cds-border-strong);
       border-radius: 0;
-      font-size: 14px;
+      font-size: 0.75em;
       background: var(--cds-background);
       color: var(--cds-text-primary);
       outline: none;
@@ -2648,17 +2648,23 @@
         <option value="scheduled">Scheduled Only</option>
         <option value="unscheduled">Unscheduled Only</option>
       </select>
-      <label class="filter-toggle"><input type="checkbox" id="filterSource" /> <span
-          id="lblFilterSrc">Src</span></label>
-      <label class="filter-toggle"><input type="checkbox" id="filterDest" /> <span id="lblFilterDst">Dst</span></label>
-      <span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>
-      <label class="filter-toggle"><input type="checkbox" id="secHideDisabled" /> <span id="lblHideDisabled">Hide
-          Disabled</span></label>
-      <label class="filter-toggle"><input type="checkbox" id="secShowDisabledOnly" /> <span
-          id="lblDisabledOnly">Disabled Only</span></label>
-      <span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>
-      <label class="filter-toggle"><input type="checkbox" id="showDisabledMembersOnly" /> <span id="lblF5Disabled">F5
-          Disabled</span></label>
+      <select class="filter-select" id="ipFilter"
+        onchange="const v=this.value;state.filters.filterSource=v==='src';state.filters.filterDest=v==='dst';renderContent()">
+        <option value="">IP (All)</option>
+        <option value="src">Src</option>
+        <option value="dst">Dst</option>
+      </select>
+      <select class="filter-select" id="ruleDisabledFilter"
+        onchange="const v=this.value;state.filters.secHideDisabled=v==='hide';state.filters.natHideDisabled=v==='hide';state.filters.secShowDisabledOnly=v==='only';state.filters.natShowDisabledOnly=v==='only';renderContent()">
+        <option value="">RULE (All)</option>
+        <option value="hide">Hide Disabled</option>
+        <option value="only">Disabled Only</option>
+      </select>
+      <select class="filter-select" id="f5DisabledFilter"
+        onchange="state.filters.showDisabledMembersOnly=this.value==='only';renderContent()">
+        <option value="">F5 (All)</option>
+        <option value="only">Disabled Only</option>
+      </select>
       <button class="btn btn-sm btn-expand-collapse" id="btnExpandAll" onclick="expandAllPills()" title="Expand All">
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.7"
           stroke-linecap="round" stroke-linejoin="round">
@@ -3257,7 +3263,7 @@
       const isSC = isCIDR(normalizedSearch), isSI = isExactIP(normalizedSearch);
       if (isExact) { if (name && String(name).toLowerCase() === s) return true; if (value && String(value).toLowerCase() === s) return true; }
       else { const isIPLike = isSI || isSC || isSM || /^\d[\d._/]*$/.test(String(search).toLowerCase()); if (!isIPLike && name && String(name).toLowerCase().includes(s)) return true; const isVI = value && (isExactIP(value) || isCIDR(value)); if (value && (!isVI || (!isSI && !isSC)) && String(value).toLowerCase().includes(s)) return true; }
-      if (value) { const v = String(value); if (!ignoreCIDR) { if (isSC) { if (isCIDR(v)) return cidrOverlaps(search, v); if (isExactIP(v)) return ipInCIDR(v, search); } if (isSI) { if (isCIDR(v)) return ipInCIDR(search, v); if (isExactIP(v)) return search === v; } } else if (isSI) { if (v.split('/')[0] === s) return true; } else if (isSC) { if (v.split('/')[0] === s.split('/')[0]) return true; } }
+      if (value) { const v = String(value); if (!ignoreCIDR) { if (isSC) { if (isCIDR(v)) return cidrOverlaps(search, v); if (isExactIP(v)) return ipInCIDR(v, search); } if (isSI) { if (isCIDR(v)) return v.split('/')[0] === s; if (isExactIP(v)) return search === v; } } else if (isSI) { if (v.split('/')[0] === s) return true; } else if (isSC) { if (v.split('/')[0] === s.split('/')[0]) return true; } }
       return false;
     };
 
@@ -3943,9 +3949,10 @@
       const positiveTerms = searchAST ? extractPositiveTerms(searchAST) : (appliedSearch ? [appliedSearch] : []);
       const termFqdnIpsMap = {};
       const _fqdnMapExact = searchMode === 'exact';
+      const _allFqdnRows = fqdnDb.results.length > 0 ? [...fqdnRecords, ...fqdnDb.results] : fqdnRecords;
       positiveTerms.forEach(term => {
         const s = term.toLowerCase(), ips = new Set();
-        fqdnRecords.forEach(r => {
+        _allFqdnRows.forEach(r => {
           let match = false;
           // In exact mode use strict equality so sibling FQDNs that merely contain
           // the search term as a substring don't contribute IPs to the chain.
@@ -3980,7 +3987,7 @@
           idx.cidrList.forEach(e => { if (String(e.cidr).split('/')[0] === baseT) hits.push(e); });
         } else if (isExactIP(t)) {
           (idx.ipToObjects.get(t) || []).forEach(h => hits.push(h));
-          idx.cidrList.forEach(e => { if (ipInCIDR(t, e.cidr)) hits.push(e); });
+          idx.cidrList.forEach(e => { if (String(e.cidr).split('/')[0] === t) hits.push(e); });
         } else if (isCIDR(t)) {
           idx.cidrList.forEach(e => { if (cidrOverlaps(t, e.cidr)) hits.push(e); });
           idx.ipToObjects.forEach((arr, ip) => { if (ipInCIDR(ip, t)) arr.forEach(h => hits.push(h)); });
@@ -4195,7 +4202,7 @@
             const s = aSearch.toLowerCase();
             match = String(r.destination).toLowerCase().includes(s) || String(r.nexthop).toLowerCase().includes(s) || String(r.interface).toLowerCase().includes(s) || String(r.name).toLowerCase().includes(s);
             if (!ignoreCIDR && !match && isCIDR(aSearch) && isCIDR(r.destination)) match = cidrOverlaps(aSearch, r.destination);
-            if (!ignoreCIDR && !match && isExactIP(aSearch) && isCIDR(r.destination)) match = ipInCIDR(aSearch, r.destination);
+            if (!ignoreCIDR && !match && isExactIP(aSearch) && isCIDR(r.destination)) match = r.destination.split('/')[0] === s;
             // AST-based matching for boolean search
             if (!match && searchAST) {
               match = evaluateAST(searchAST, (term, forceExact) => {
@@ -4303,6 +4310,7 @@
             if (!match && allFqdnIps.size > 0) {
               for (const fip of allFqdnIps) {
                 if (vs.ip === fip) { match = true; chainedFromRule = true; break; }
+                if (!ignoreCIDR && isCIDR(fip) && ipInCIDR(vs.ip, fip)) { match = true; chainedFromRule = true; break; }
               }
             }
           }
@@ -4546,15 +4554,35 @@
         });
       }
 
-      // 2. Collect DNAT IPs from matched NAT rules → chain to F5 VS
+      // 2. Collect DNAT IPs from matched rules → chain to F5 VS
+      // Guard: only expand when search has IP semantics (direct IP or FQDN resolved to IPs)
+      // to avoid over-matching on pure keyword searches whose matched rules have arbitrary translations.
       const chainedDnatIPs = new Set();
-      result.natRules.forEach(r => {
-        (r.destinationTranslation || []).forEach(dt => {
-          resolveObject(dt, r._parsed.addresses, r._parsed.groups).forEach(resolved => {
-            if (resolved.value) { const rv = isIPWithMask(resolved.value) ? normalizeIP(resolved.value) : resolved.value; if (isExactIP(rv) || isCIDR(rv)) chainedDnatIPs.add(rv); }
+      if (positiveTerms.some(t => isExactIP(t)) || allFqdnIps.size > 0) {
+        // Path A: explicit NAT rules with destinationTranslation (PA, SRX, FortiGate central-DNAT)
+        result.natRules.forEach(r => {
+          (r.destinationTranslation || []).forEach(dt => {
+            resolveObject(dt, r._parsed.addresses, r._parsed.groups).forEach(resolved => {
+              if (resolved.value) {
+                const raw = isIPWithMask(resolved.value) ? normalizeIP(resolved.value) : resolved.value;
+                // Strip :port suffix (e.g. "10.1.2.3:80" → "10.1.2.3") before IP validation
+                const rv = (!isCIDR(raw) && raw.includes(':')) ? raw.split(':')[0] : raw;
+                if (isExactIP(rv) || isCIDR(rv)) chainedDnatIPs.add(rv);
+              }
+            });
           });
         });
-      });
+        // Path B: FortiGate VIP-based DNAT — mappedip is on secRule.dstVips, not in natRules
+        result.secRules.forEach(r => {
+          (r.dstVips || []).forEach(v => {
+            if (v.mappedip) {
+              const raw = isIPWithMask(v.mappedip) ? normalizeIP(v.mappedip) : String(v.mappedip);
+              const rv = (!isCIDR(raw) && raw.includes(':')) ? raw.split(':')[0] : raw;
+              if (isExactIP(rv) || isCIDR(rv)) chainedDnatIPs.add(rv);
+            }
+          });
+        });
+      }
 
       // Pull in F5 VS whose IP matches a DNAT IP (if not already in results)
       if (chainedDnatIPs.size > 0) {
@@ -4567,6 +4595,22 @@
             for (const dip of chainedDnatIPs) {
               if (isExactIP(dip) && vs.ip === dip) { existingF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
               if (!ignoreCIDR && isCIDR(dip) && ipInCIDR(vs.ip, dip)) { existingF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
+            }
+          });
+        });
+      }
+
+      // Chain FQDN-resolved IPs → F5 VS (post-loop fallback; covers cases in-loop missed)
+      if (allFqdnIps.size > 0) {
+        const fqdnF5Keys = new Set(result.f5Virtuals.map(v => `${v._hostname}|${v.name}`));
+        configs.forEach(parsed => {
+          const hn = parsed.hostname;
+          (parsed.virtuals || []).forEach(vs => {
+            const key = `${hn}|${vs.name}`;
+            if (fqdnF5Keys.has(key)) return;
+            for (const fip of allFqdnIps) {
+              if (vs.ip === fip) { fqdnF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
+              if (!ignoreCIDR && isCIDR(fip) && ipInCIDR(vs.ip, fip)) { fqdnF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
             }
           });
         });
@@ -5574,7 +5618,11 @@
         // Background: lightweight badge-only update (don't re-render the whole page).
         // Foreground / user on FQDN tab: full render so the table appears immediately.
         if (background && state.activeTab !== 'fqdn') {
-          refreshFqdnBadge(filteredCount);
+          if (state.appliedSearch) {
+            renderContent(); // Re-render so rule tabs pick up FQDN-resolved IPs for active search
+          } else {
+            refreshFqdnBadge(filteredCount);
+          }
         } else {
           renderContent();
         }
@@ -6327,8 +6375,6 @@
       L('tabServerConfig', 'tabServerConfig');
       const devMgrPanel = document.getElementById('importTabServerConfig');
       if (devMgrPanel && !devMgrPanel.classList.contains('hidden')) renderDevMgr();
-      L('lblFilterSrc', 'filterSrc'); L('lblFilterDst', 'filterDst');
-      L('lblHideDisabled', 'hideDisabled'); L('lblDisabledOnly', 'disabledOnly'); L('lblF5Disabled', 'f5Disabled');
       L('lblExpand', 'btnExpand'); L('lblCollapse', 'btnCollapse'); L('btnClearFilters', 'btnClear');
       L('importTitle', 'importTitle'); L('importConfigTitle', 'importConfigTitle');
       L('lblDropConfig', 'importDropConfig'); L('lblDropFqdn', 'importDropFqdn');
@@ -6350,11 +6396,6 @@
     document.getElementById('fromZoneFilter').addEventListener('change', e => { state.filters.fromZone = e.target.value; renderContent(); });
     document.getElementById('toZoneFilter').addEventListener('change', e => { state.filters.toZone = e.target.value; renderContent(); });
     document.getElementById('tagFilter').addEventListener('change', e => { state.filters.tag = e.target.value; renderContent(); });
-    document.getElementById('filterSource').addEventListener('change', e => { state.filters.filterSource = e.target.checked; renderContent(); });
-    document.getElementById('filterDest').addEventListener('change', e => { state.filters.filterDest = e.target.checked; renderContent(); });
-    document.getElementById('secHideDisabled').addEventListener('change', e => { state.filters.secHideDisabled = e.target.checked; state.filters.natHideDisabled = e.target.checked; if (e.target.checked) { state.filters.secShowDisabledOnly = false; state.filters.natShowDisabledOnly = false; } document.getElementById('secShowDisabledOnly').checked = false; renderContent(); });
-    document.getElementById('secShowDisabledOnly').addEventListener('change', e => { state.filters.secShowDisabledOnly = e.target.checked; state.filters.natShowDisabledOnly = e.target.checked; if (e.target.checked) { state.filters.secHideDisabled = false; state.filters.natHideDisabled = false; } document.getElementById('secHideDisabled').checked = false; renderContent(); });
-    document.getElementById('showDisabledMembersOnly').addEventListener('change', e => { state.filters.showDisabledMembersOnly = e.target.checked; renderContent(); });
 
     function expandAllPills() {
       if (state.activeTab === 'f5_vs') {
@@ -6455,11 +6496,9 @@
       document.getElementById('toZoneFilter').value = '';
       document.getElementById('tagFilter').value = '';
       document.getElementById('scheduleFilter').value = '';
-      document.getElementById('filterSource').checked = false;
-      document.getElementById('filterDest').checked = false;
-      document.getElementById('secHideDisabled').checked = false;
-      document.getElementById('secShowDisabledOnly').checked = false;
-      document.getElementById('showDisabledMembersOnly').checked = false;
+      document.getElementById('ipFilter').value = '';
+      document.getElementById('ruleDisabledFilter').value = '';
+      document.getElementById('f5DisabledFilter').value = '';
       renderContent();
     }
 
