@@ -3949,9 +3949,10 @@
       const positiveTerms = searchAST ? extractPositiveTerms(searchAST) : (appliedSearch ? [appliedSearch] : []);
       const termFqdnIpsMap = {};
       const _fqdnMapExact = searchMode === 'exact';
+      const _allFqdnRows = fqdnDb.results.length > 0 ? [...fqdnRecords, ...fqdnDb.results] : fqdnRecords;
       positiveTerms.forEach(term => {
         const s = term.toLowerCase(), ips = new Set();
-        fqdnRecords.forEach(r => {
+        _allFqdnRows.forEach(r => {
           let match = false;
           // In exact mode use strict equality so sibling FQDNs that merely contain
           // the search term as a substring don't contribute IPs to the chain.
@@ -4309,6 +4310,7 @@
             if (!match && allFqdnIps.size > 0) {
               for (const fip of allFqdnIps) {
                 if (vs.ip === fip) { match = true; chainedFromRule = true; break; }
+                if (!ignoreCIDR && isCIDR(fip) && ipInCIDR(vs.ip, fip)) { match = true; chainedFromRule = true; break; }
               }
             }
           }
@@ -4557,7 +4559,12 @@
       result.natRules.forEach(r => {
         (r.destinationTranslation || []).forEach(dt => {
           resolveObject(dt, r._parsed.addresses, r._parsed.groups).forEach(resolved => {
-            if (resolved.value) { const rv = isIPWithMask(resolved.value) ? normalizeIP(resolved.value) : resolved.value; if (isExactIP(rv) || isCIDR(rv)) chainedDnatIPs.add(rv); }
+            if (resolved.value) {
+              const raw = isIPWithMask(resolved.value) ? normalizeIP(resolved.value) : resolved.value;
+              // Strip :port suffix (e.g. "10.1.2.3:80" → "10.1.2.3") before IP validation
+              const rv = (!isCIDR(raw) && raw.includes(':')) ? raw.split(':')[0] : raw;
+              if (isExactIP(rv) || isCIDR(rv)) chainedDnatIPs.add(rv);
+            }
           });
         });
       });
@@ -4573,6 +4580,22 @@
             for (const dip of chainedDnatIPs) {
               if (isExactIP(dip) && vs.ip === dip) { existingF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
               if (!ignoreCIDR && isCIDR(dip) && ipInCIDR(vs.ip, dip)) { existingF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
+            }
+          });
+        });
+      }
+
+      // Chain FQDN-resolved IPs → F5 VS (post-loop fallback; covers cases in-loop missed)
+      if (allFqdnIps.size > 0) {
+        const fqdnF5Keys = new Set(result.f5Virtuals.map(v => `${v._hostname}|${v.name}`));
+        configs.forEach(parsed => {
+          const hn = parsed.hostname;
+          (parsed.virtuals || []).forEach(vs => {
+            const key = `${hn}|${vs.name}`;
+            if (fqdnF5Keys.has(key)) return;
+            for (const fip of allFqdnIps) {
+              if (vs.ip === fip) { fqdnF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
+              if (!ignoreCIDR && isCIDR(fip) && ipInCIDR(vs.ip, fip)) { fqdnF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
             }
           });
         });
@@ -5580,7 +5603,11 @@
         // Background: lightweight badge-only update (don't re-render the whole page).
         // Foreground / user on FQDN tab: full render so the table appears immediately.
         if (background && state.activeTab !== 'fqdn') {
-          refreshFqdnBadge(filteredCount);
+          if (state.appliedSearch) {
+            renderContent(); // Re-render so rule tabs pick up FQDN-resolved IPs for active search
+          } else {
+            refreshFqdnBadge(filteredCount);
+          }
         } else {
           renderContent();
         }
