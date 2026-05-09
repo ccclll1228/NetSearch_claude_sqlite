@@ -3995,18 +3995,18 @@
         const candidateRules = new Set();
         const directKeys = new Set();
         const seen = new Set();
-        const walk = (objectName, device, isDirect) => {
+        const walk = (objectName, device) => {
           const k = `${device}|${objectName}`;
           if (seen.has(k)) return;
           seen.add(k);
-          if (isDirect) directKeys.add(k);
+          directKeys.add(k);
           (idx.nameToRules.get(k) || new Set()).forEach(rule => candidateRules.add(rule));
           (idx.memberToParents.get(k) || new Set()).forEach(parentKey => {
             const [dev, grpName] = parentKey.split('|');
-            walk(grpName, dev, false);
+            walk(grpName, dev);
           });
         };
-        hits.forEach(({ objectName, device }) => walk(objectName, device, true));
+        hits.forEach(({ objectName, device }) => walk(objectName, device));
         return { candidateRules, matchedKeys: directKeys };
       };
 
