@@ -4043,7 +4043,7 @@
             (parsed.secRules || []).forEach(rule => {
               const ruleNameMatch = checkMatch(rule.name);
               const appMatch = (rule.application || []).some(a => checkMatch(a));
-              const svcMatch = serviceListMatchesSearch(rule.service, term, parsed.services, parsed.serviceGroups, searchMode);
+              const svcMatch = !isIPTerm && serviceListMatchesSearch(rule.service, term, parsed.services, parsed.serviceGroups, searchMode);
               const srcMatchObjs = []; const dstMatchObjs = [];
               if (!searchDstOnly) (rule.source || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) srcMatchObjs.push(obj); });
               if (!searchSrcOnly) (rule.destination || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) dstMatchObjs.push(obj); });
@@ -4059,7 +4059,7 @@
             // Collect IPs from matching NAT rules
             (parsed.natRules || []).forEach(rule => {
               const ruleNameMatch = checkMatch(rule.name);
-              const svcMatch = serviceListMatchesSearch(rule.service, term, parsed.services, parsed.serviceGroups, searchMode);
+              const svcMatch = !isIPTerm && serviceListMatchesSearch(rule.service, term, parsed.services, parsed.serviceGroups, searchMode);
               const srcMatchObjs = []; const dstMatchObjs = [];
               if (!searchDstOnly) {
                 (rule.source || []).forEach(obj => { if (objectListMatchesSearch([obj], term, parsed.addresses, parsed.groups, searchMode, ignoreCIDR)) srcMatchObjs.push(obj); });
@@ -4123,12 +4123,14 @@
               if (mkeys) {
                 const ms = !searchDstOnly ? (r.source || []).some(obj => mkeys.has(`${hn}|${obj}`)) : false;
                 const md = !searchSrcOnly ? (r.destination || []).some(obj => mkeys.has(`${hn}|${obj}`)) : false;
-                direct = ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+                const svcDirect = (!searchSrcOnly && !searchDstOnly) ? serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am) : false;
+                direct = ms || md || svcDirect;
               } else {
                 // Source / destination (full address-object resolution — keyword fallback)
                 const ms = !searchDstOnly ? objectListMatchesSearch(r.source, term, parsed.addresses, parsed.groups, am, ignoreCIDR) : false;
                 const md = !searchSrcOnly ? objectListMatchesSearch(r.destination, term, parsed.addresses, parsed.groups, am, ignoreCIDR) : false;
-                direct = ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+                const svcFallback = (!searchSrcOnly && !searchDstOnly) ? serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am) : false;
+                direct = ms || md || svcFallback;
               }
               if (direct) return true;
               // Per-term FQDN chain: only this term's FQDN-resolved IPs may satisfy it.
@@ -4170,11 +4172,13 @@
               if (mkeys) {
                 const ms = !searchDstOnly ? ((r.source || []).some(obj => mkeys.has(`${hn}|${obj}`)) || (r.sourceTranslation || []).some(obj => mkeys.has(`${hn}|${obj}`))) : false;
                 const md = !searchSrcOnly ? ((r.destination || []).some(obj => mkeys.has(`${hn}|${obj}`)) || (r.destinationTranslation || []).some(obj => mkeys.has(`${hn}|${obj}`))) : false;
-                direct = ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+                const svcDirect = (!searchSrcOnly && !searchDstOnly) ? serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am) : false;
+                direct = ms || md || svcDirect;
               } else {
                 const ms = !searchDstOnly ? (objectListMatchesSearch(r.source, term, parsed.addresses, parsed.groups, am, ignoreCIDR) || objectListMatchesSearch(r.sourceTranslation || [], term, parsed.addresses, parsed.groups, am, ignoreCIDR)) : false;
                 const md = !searchSrcOnly ? (objectListMatchesSearch(r.destination, term, parsed.addresses, parsed.groups, am, ignoreCIDR) || objectListMatchesSearch(r.destinationTranslation || [], term, parsed.addresses, parsed.groups, am, ignoreCIDR)) : false;
-                direct = ms || md || serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am);
+                const svcFallback = (!searchSrcOnly && !searchDstOnly) ? serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am) : false;
+                direct = ms || md || svcFallback;
               }
               if (direct) return true;
               // Per-term FQDN chain: only this term's FQDN-resolved IPs may satisfy it.
