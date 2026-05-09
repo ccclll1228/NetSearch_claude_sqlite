@@ -4251,7 +4251,7 @@
             // Chain from FQDN IPs — only when search term is a domain, not an IP
             if (!match && !searchTermIsIP && allFqdnIps.size > 0) {
               for (const fip of allFqdnIps) {
-                if (matchObject(name, addr.value, fip, true, ignoreCIDR)) { match = true; chainedMatch = true; break; }
+                if (matchObject(name, addr.value, fip, false, ignoreCIDR)) { match = true; chainedMatch = true; break; }
               }
             }
             if (!match && !searchTermIsIP && allFqdnIps.size > 0 && addr.value && !isExactIP(addr.value) && !isCIDR(addr.value)) {
@@ -4265,7 +4265,7 @@
             // Chain from Rule IPs — only when search term is a domain, not an IP
             if (!match && !searchTermIsIP && allRuleIps.size > 0) {
               for (const rip of allRuleIps) {
-                if (matchObject(name, addr.value, rip, true, ignoreCIDR)) { match = true; chainedMatch = true; break; }
+                if (matchObject(name, addr.value, rip, false, ignoreCIDR)) { match = true; chainedMatch = true; break; }
               }
             }
             if (!match && !searchTermIsIP && allRuleIps.size > 0 && addr.value && !isExactIP(addr.value) && !isCIDR(addr.value)) {
