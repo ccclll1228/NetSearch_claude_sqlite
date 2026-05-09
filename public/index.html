@@ -3993,20 +3993,21 @@
           idx.ipToObjects.forEach((arr, ip) => { if (ipInCIDR(ip, t)) arr.forEach(h => hits.push(h)); });
         }
         const candidateRules = new Set();
+        const directKeys = new Set();
         const seen = new Set();
-        const walk = (objectName, device) => {
+        const walk = (objectName, device, isDirect) => {
           const k = `${device}|${objectName}`;
           if (seen.has(k)) return;
           seen.add(k);
-          matchedKeys.add(k);
+          if (isDirect) directKeys.add(k);
           (idx.nameToRules.get(k) || new Set()).forEach(rule => candidateRules.add(rule));
           (idx.memberToParents.get(k) || new Set()).forEach(parentKey => {
             const [dev, grpName] = parentKey.split('|');
-            walk(grpName, dev);
+            walk(grpName, dev, false);
           });
         };
-        hits.forEach(({ objectName, device }) => walk(objectName, device));
-        return { candidateRules, matchedKeys };
+        hits.forEach(({ objectName, device }) => walk(objectName, device, true));
+        return { candidateRules, matchedKeys: directKeys };
       };
 
       // 當次搜尋的索引命中物件集（供 checkSingleResolvedMatch 標記 ✦）
@@ -4599,6 +4600,7 @@
             for (const dip of chainedDnatIPs) {
               if (isExactIP(dip) && vs.ip === dip) { existingF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
               if (!ignoreCIDR && isCIDR(dip) && ipInCIDR(vs.ip, dip)) { existingF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
+              if (ignoreCIDR && isCIDR(dip) && vs.ip === dip.split('/')[0]) { existingF5Keys.add(key); result.f5Virtuals.push({ ...vs, _hostname: hn, _parsed: parsed, _chainedFromRule: true }); break; }
             }
           });
         });
