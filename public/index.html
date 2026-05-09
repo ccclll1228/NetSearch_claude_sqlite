@@ -3943,7 +3943,9 @@
       let configs = state.parsedConfigs.map(c => c.parsed);
       // Source Device filter — disabledHosts toggle
       if (state.disabledHosts && state.disabledHosts.size > 0) configs = configs.filter(c => !state.disabledHosts.has(c.hostname));
-      const fqdnRecords = state.fqdnRecords;
+      const fqdnRecords = fqdnDb.results.length > 0
+        ? [...state.fqdnRecords, ...fqdnDb.results]
+        : state.fqdnRecords;
 
       // FQDN→IP map: only positive terms (NOT branches excluded) to avoid chaining negated terms
       const terms = searchAST ? extractTerms(searchAST) : [];
