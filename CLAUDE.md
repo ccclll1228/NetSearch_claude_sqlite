@@ -220,6 +220,45 @@ name line **before** recursing into its members. See `tasks/lessons.md` for the 
 
 `lib/parser.js` and `public/index.html` contain near-identical parser implementations. `lib/parser.js` is the server-side copy; the inline copy in `index.html` is used only for the drag-drop debug flow. If parsing logic changes, update both.
 
+### Search Logic Invariants — Rules That Must Never Be Broken
+
+The following invariants protect the correctness of AND/OR/NOT Boolean search semantics.
+Any future modification to the search pipeline must verify all invariants still hold.
+
+#### 1. extractPositiveTerms vs extractTerms
+- `termFqdnIpsMap` and `termRuleIpsMap` must be built using `extractPositiveTerms` only
+- Terms inside NOT branches must NOT contribute IPs to any chain
+- Reason: searching `NOT DENY_NON_SERVICE` must not let that rule's IPs pollute other terms' chain results
+
+#### 2. Per-term FQDN chain (termFqdnIpsMap[term])
+- Inside `evaluateAST`'s `matchFn`, each term must only use its own `termFqdnIpsMap[term]` IP set
+- Never use `allFqdnIps` (the global union) inside `matchFn`
+- Reason: in `AND(term1, term2)`, if term1's FQDN IPs satisfy term2's match condition, AND semantics break
+
+#### 3. allRuleIps size cap (>50 → clear)
+- If `allRuleIps.size > 50`, call `allRuleIps.clear()` — do NOT use it for route/address chaining
+- Keep `allRuleIpsForFqdn` uncapped — FQDN IP matching uses bitwise ops (cheap)
+- Scenario this protects: searching an address group with 243 members causes O(N×M) freeze
+
+#### 4. /32 CIDR must go into exactIps, never cidrRanges
+- Any CIDR with prefix length 32 must be added to `exactIps`, not `cidrRanges`
+- Reason: JavaScript `>>>` is mod-32, so `0xFFFFFFFF >>> 32 === 0xFFFFFFFF`
+  This makes mask=0, which matches every IP — the entire FQDN DB would be displayed
+
+#### 5. ignoreCIDR auto-enable in Exact+IP mode
+- If `searchMode === 'exact'` AND `searchAST` contains any IP/CIDR term → force `ignoreCIDR = true`
+- This ensures exact mode only does base-IP equality matching, no containment checks
+
+#### 6. resolveObject is flatten-only
+- `resolveObject` returns a flat leaf-node list with no depth or parent information
+- Features requiring tree structure (copy text, tree view) must write a separate recursive walker
+  directly over `groups[name]` — do NOT attempt to reuse `resolveObject` for this
+
+#### 7. renderZonePills vs renderPills
+- FROM/TO zone columns must use `renderZonePills` (no `data-ppid`, no `onclick`)
+- Using `renderPills` on zone columns will cause `_pillContext` to register zone entries,
+  and `_patchPidsDirect` will attempt to patch a pill structure that does not exist
+
 
 ## MCP Tools
 - Always use Context7 when referencing any library documentation
