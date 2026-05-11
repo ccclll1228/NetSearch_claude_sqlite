@@ -658,16 +658,16 @@
 
     /* Device toggle chips — Carbon Tag style */
     .device-toggle-btn {
-      padding: 0 10px;
-      border-radius: var(--cds-radius-tag);
-      font-size: 12px;
+      padding: 0 6px;
+      border-radius: 2px;
+      font-size: 10px;
       font-weight: 400;
-      border: 1px solid var(--cds-border-subtle);
-      background: var(--cds-layer-02);
-      color: var(--cds-text-secondary);
-      height: 24px;
+      border: none;
+      background: #e0e0e0;
+      color: #161616;
+      height: 20px;
       cursor: pointer;
-      transition: background .1s, color .1s, border-color .1s;
+      transition: background .1s, color .1s;
       white-space: nowrap;
       font-family: var(--cds-font-sans);
       letter-spacing: 0.16px;
@@ -676,49 +676,42 @@
     }
 
     .device-toggle-btn:hover {
-      background: var(--cds-layer-hover);
-      border-color: var(--cds-border-strong);
-      color: var(--cds-text-primary);
+      background: #c6c6c6;
     }
 
     .device-toggle-btn.active {
+      background: #0f62fe;
+      color: #ffffff;
       font-weight: 600;
     }
 
-    .device-toggle-btn.active.pa {
-      background: var(--cds-device-pa-bg);
-      border-color: var(--cds-device-pa-border);
-      color: var(--cds-device-pa);
+    .device-toggle-btn.active:hover {
+      background: #0353e9;
     }
 
-    .device-toggle-btn.active.fortigate {
-      background: var(--cds-device-fortigate-bg);
-      border-color: var(--cds-device-fortigate-border);
-      color: var(--cds-device-fortigate);
-    }
-
-    .device-toggle-btn.active.f5 {
-      background: var(--cds-device-f5-bg);
-      border-color: var(--cds-device-f5-border);
-      color: var(--cds-device-f5);
-    }
-
-    .device-toggle-btn.active.srx {
-      background: var(--cds-device-srx-bg);
-      border-color: var(--cds-device-srx-border);
-      color: var(--cds-device-srx);
-    }
-
+    .device-toggle-btn.active.pa,
+    .device-toggle-btn.active.fortigate,
+    .device-toggle-btn.active.f5,
+    .device-toggle-btn.active.srx,
     .device-toggle-btn.active.all {
-      background: var(--cds-highlight);
-      border-color: rgba(15, 98, 254, 0.30);
-      color: var(--cds-interactive);
+      background: #0f62fe;
+      color: #ffffff;
+    }
+
+    .device-toggle-btn.active.pa:hover,
+    .device-toggle-btn.active.fortigate:hover,
+    .device-toggle-btn.active.f5:hover,
+    .device-toggle-btn.active.srx:hover,
+    .device-toggle-btn.active.all:hover {
+      background: #0353e9;
     }
 
     .device-toggle-btn.disabled {
       opacity: 0.4;
       text-decoration: line-through;
     }
+
+    #sourceDeviceBar::-webkit-scrollbar { display: none; }
 
     /* ── Tab Bar — IBM Carbon Tabs ── */
     .tab-bar {
@@ -2624,7 +2617,7 @@
     </div>
 
     <!-- Source Device Toggle Bar -->
-    <div class="filter-bar" id="sourceDeviceBar" style="gap:4px;padding:4px 20px;border-bottom:none">
+    <div class="filter-bar" id="sourceDeviceBar" style="gap:6px;padding:4px 20px;border-bottom:none;overflow-x:auto;white-space:nowrap;flex-wrap:nowrap;scrollbar-width:none">
       <span class="text-sm text-muted" style="font-weight:700;margin-right:4px">Source:</span>
       <button class="device-toggle-btn active" id="deviceToggleAll" onclick="toggleAllDevices()">All</button>
     </div>
@@ -6281,18 +6274,38 @@
       renderDeviceToggleBar();
     }
 
+    let _sourceTagExpanded = false;
+    const _SOURCE_TAG_MAX = 8;
     function renderDeviceToggleBar() {
       const bar = document.getElementById('sourceDeviceBar');
       if (!bar) return;
       const allActive = state.disabledHosts.size === 0;
-      let html = `<span class="text-sm text-muted" style="font-weight:700;margin-right:4px">${T('sourceLabel')}</span>`;
+      let html = `<span class="text-sm text-muted" style="font-weight:700;margin-right:4px;font-size:10px">${T('sourceLabel')}</span>`;
       html += `<button class="device-toggle-btn ${allActive ? 'active all' : ''}" onclick="toggleAllDevices()">${T('toggleAll', state.parsedConfigs.length)}</button>`;
-      state.parsedConfigs.forEach(c => {
-        const p = c.parsed;
+      const devices = state.parsedConfigs.map(c => c.parsed);
+      const needCollapse = devices.length > _SOURCE_TAG_MAX && !_sourceTagExpanded;
+      const activeSet = new Set();
+      if (needCollapse) {
+        devices.forEach((p, i) => { if (!state.disabledHosts.has(p.hostname) && i >= _SOURCE_TAG_MAX) activeSet.add(i); });
+      }
+      let visibleCount = 0;
+      const overflow = [];
+      devices.forEach((p, i) => {
         const isDisabled = state.disabledHosts.has(p.hostname);
         const tc = p.type === 'PA' ? 'pa' : (p.type === 'FortiGate' ? 'fortigate' : (p.type === 'SRX' ? 'srx' : 'f5'));
-        html += `<button class="device-toggle-btn ${isDisabled ? 'disabled' : 'active ' + tc}" onclick="toggleDevice('${esc(p.hostname)}')" title="${isDisabled ? T('clickEnable') : T('clickDisable')}">${esc(displayHostname(p.hostname))}</button>`;
+        const btn = `<button class="device-toggle-btn ${isDisabled ? 'disabled' : 'active ' + tc}" onclick="toggleDevice('${esc(p.hostname)}')" title="${isDisabled ? T('clickEnable') : T('clickDisable')}">${esc(displayHostname(p.hostname))}</button>`;
+        if (!needCollapse || visibleCount < _SOURCE_TAG_MAX || activeSet.has(i)) {
+          html += btn;
+          visibleCount++;
+        } else {
+          overflow.push(btn);
+        }
       });
+      if (needCollapse && overflow.length > 0) {
+        html += `<button class="device-toggle-btn" style="background:#6f6f6f;color:#fff" onclick="_sourceTagExpanded=true;renderDeviceToggleBar()">+${overflow.length} more</button>`;
+      } else if (_sourceTagExpanded && devices.length > _SOURCE_TAG_MAX) {
+        html += `<button class="device-toggle-btn" style="background:#6f6f6f;color:#fff" onclick="_sourceTagExpanded=false;renderDeviceToggleBar()">− less</button>`;
+      }
       bar.innerHTML = html;
     }
 
