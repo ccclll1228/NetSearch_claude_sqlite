@@ -6556,13 +6556,19 @@
       }
     }
 
+    let _devDragIdx = -1;
     function renderDevMgr() {
       const inUseTypes = new Set(devMgr.devices.map(d => d.type));
       const rows = devMgr.devices.map((d, i) => {
+        const dragAttrs = devMgr.editingIdx === -1
+          ? ` draggable="true" ondragstart="_devDragIdx=${i};this.style.opacity='0.4'" ondragend="this.style.opacity=''" ondragover="event.preventDefault();this.style.borderTop='2px solid var(--cds-focus)'" ondragleave="this.style.borderTop=''" ondrop="event.preventDefault();this.style.borderTop='';devMgrDrop(${i})"`
+          : '';
+        const handle = `<td style="cursor:grab;color:#888;font-size:16px;padding:0 8px;user-select:none">⠿</td>`;
         if (i === devMgr.editingIdx) {
           const opts = devMgr.deviceTypes.map(t =>
             `<option value="${esc(t)}"${t === d.type ? ' selected' : ''}>${esc(t)}</option>`).join('');
-          return `<tr>
+          return `<tr${dragAttrs}>
+            ${handle}
             <td><input id="devMgrEditName" value="${esc(d.name)}"
               style="width:100%;padding:3px 6px;border:1px solid var(--cds-focus);font-size:12px;font-family:var(--cds-font-mono);box-sizing:border-box"></td>
             <td><select id="devMgrEditType" style="padding:3px 6px;font-size:12px">${opts}</select></td>
@@ -6571,7 +6577,8 @@
               <button class="btn btn-sm" onclick="cancelDevRow()" style="margin-left:4px">${T('devMgrCancel')}</button>
             </td></tr>`;
         }
-        return `<tr>
+        return `<tr${dragAttrs}>
+          ${handle}
           <td style="font-family:var(--cds-font-mono);font-size:12px">${esc(d.name)}</td>
           <td style="font-size:12px">${esc(d.type)}</td>
           <td style="white-space:nowrap">
@@ -6597,7 +6604,7 @@
           <button class="btn btn-sm" onclick="addDevRow()">${T('devMgrAddDevice')}</button>
         </div>
         <table class="devmgr-table">
-          <thead><tr><th>Name</th><th>Type</th><th>Actions</th></tr></thead>
+          <thead><tr><th style="width:32px"></th><th>Name</th><th>Type</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
         <div style="margin-top:12px">
@@ -6628,6 +6635,15 @@
       devMgr.devices[i] = { name, type };
       devMgr.editingIdx = -1;
       renderDevMgr();
+    }
+
+    function devMgrDrop(toIdx) {
+      if (_devDragIdx < 0 || _devDragIdx === toIdx) return;
+      const [item] = devMgr.devices.splice(_devDragIdx, 1);
+      devMgr.devices.splice(toIdx, 0, item);
+      _devDragIdx = -1;
+      renderDevMgr();
+      saveDevMgr();
     }
 
     function addDevRow() {
