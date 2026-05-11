@@ -4,6 +4,32 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.5.0] - 2026-05-11
+
+### Fixed
+- **DNAT→F5 chain fires for FQDN searches** — the DNAT-to-LTM chain previously only triggered for bare IP searches; now also fires when the search originates from an FQDN domain lookup
+- **DNAT→LTM chain matches CIDR DNAT IPs when ignoreCIDR=true** — `/32` and other CIDR-notation DNAT IPs now match F5 virtual server IPs via base-IP comparison when ignoreCIDR is active
+- **EXACT search mode implies ignoreCIDR for IP terms** — searching an IP in EXACT mode no longer matches CIDR ranges containing that IP; only exact base-IP equality is used
+- **Service match no longer bypasses direction filter for IP searches** — in keyword fallback path, service matches were incorrectly included even when Src/Dst filter was active, causing false positives
+- **Objects tab FQDN/Rule IP chaining guarded by search term type** — when searching for an IP address, the allFqdnIps and allRuleIps chain blocks in the Objects tab are now skipped, preventing false-positive address object matches from unrelated FQDN IPs
+- **Objects tab FQDN/Rule IP chain matches CIDR address values** — chain blocks now use `matchObject` with `isExact=false` so CIDR address objects are included via containment matching
+- **Copy tab FQDN data merged from SQLite** — `fqdnDb.results` from `/api/fqdn` are now merged into `fqdnRecords` so the Copy tab preview includes server-fetched FQDN records, not just local state
+- **LTM Copy Row includes pool members** — copying an F5 virtual server row now appends pool members (IP:port + status) as indented sub-lines
+- **Objects Address Group Copy walks full tree** — `copyGroupTree()` recursively walks nested address groups with indentation, replacing the previous flat member-list copy; circular references are guarded by a `seen` Set with depth limit 12
+- **FQDN table column widths** — adjusted colgroup from 7 columns to 6 columns with wider DOMAIN/FQDN and percentage-based GEO column (15%)
+
+### Added
+- **Drag-and-drop reordering for Device Manager** — device rows in the Server Config tab can now be reordered by dragging the `⠿` handle; new order is persisted on Save & Reload
+- **Source device tags collapse/expand** — tags exceeding 8 items collapse with a `+N more` chip; clicking expands to show all; 20% smaller tag size
+- **Auto-trigger server reload on page open** — opening or refreshing the page triggers a `POST /api/reload` to ensure configs are current
+
+### Changed
+- **Design system migration** — full visual migration from IBM Carbon to Claude-inspired warm cream + coral palette: canvas `#faf9f5`, coral accent `#cc785c`, Inter/Cormorant Garamond/JetBrains Mono typography, `8px` border radius, serif logo treatment
+- **DENY/ALLOW badges** — solid filled high-contrast badges (red `#c0392b` / green `#27ae60` with white text) replacing the previous outlined style
+- **Favicon** — inline SVG dinosaur on coral background replacing the previous favicon
+
+---
+
 ## [2.4.7] - 2026-05-08
 
 ### Fixed
