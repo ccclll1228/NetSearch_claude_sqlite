@@ -3016,6 +3016,7 @@
     function clearSearch() {
       document.getElementById('searchInput').value = '';
       state.search = ''; state.appliedSearch = ''; state.searchAST = null;
+      fqdnDb._loadedQuery = null;
       copyData = [];
       renderContent();
     }
@@ -3023,6 +3024,7 @@
     function quickSearch(value) {
       document.getElementById('searchInput').value = value;
       state.search = value; state.appliedSearch = value; state.searchAST = parseSearch(value);
+      fqdnDb._loadedQuery = null;
       state.searchMode = 'exact';
       document.getElementById('searchModeBtn').textContent = T('searchModeExact');
       copyData = [];
@@ -3222,7 +3224,7 @@
       const s = String(normalizedSearch).toLowerCase();
       const isSC = isCIDR(normalizedSearch), isSI = isExactIP(normalizedSearch);
       if (isExact) { if (name && String(name).toLowerCase() === s) return true; if (value && String(value).toLowerCase() === s) return true; }
-      else { const isIPLike = isSI || isSC || isSM || /^\d[\d._/]*$/.test(String(search).toLowerCase()); if (!isIPLike && name && String(name).toLowerCase().includes(s)) return true; const isVI = value && (isExactIP(value) || isCIDR(value)); if (value && (!isVI || (!isSI && !isSC)) && String(value).toLowerCase().includes(s)) return true; }
+      else { const isIPLike = isSI || isSC || isSM || /^\d[\d._/]*$/.test(String(search).toLowerCase()); if (!isIPLike && name && String(name).toLowerCase().includes(s)) return true; if (value && !isIPLike && String(value).toLowerCase().includes(s)) return true; }
       if (value) { const v = String(value); if (!ignoreCIDR) { if (isSC) { if (isCIDR(v)) return cidrOverlaps(search, v); if (isExactIP(v)) return ipInCIDR(v, search); } if (isSI) { if (isCIDR(v)) return v.split('/')[0] === s; if (isExactIP(v)) return search === v; } } else if (isSI) { if (v.split('/')[0] === s) return true; } else if (isSC) { if (v.split('/')[0] === s.split('/')[0]) return true; } }
       return false;
     };
@@ -6970,6 +6972,7 @@
       }
       document.getElementById('searchInput').value = query;
       state.search = query; state.appliedSearch = query; state.searchAST = parseSearch(query);
+      fqdnDb._loadedQuery = null;
       copyData = [];
       addToSearchHistory(query);
       closeBulkSearch();
@@ -6979,6 +6982,7 @@
     function applyBulkSearchNew() {
       // Clear current search first, then apply
       state.search = ''; state.appliedSearch = ''; state.searchAST = null;
+      fqdnDb._loadedQuery = null;
       applyBulkSearch();
     }
 
@@ -7029,6 +7033,7 @@
       const query = _hq(entry);
       document.getElementById('searchInput').value = query;
       state.search = query; state.appliedSearch = query; state.searchAST = parseSearch(query);
+      fqdnDb._loadedQuery = null;
       copyData = [];
       historyOpen = false;
       renderSearchHistory();
@@ -7115,6 +7120,7 @@
         state.search = query;
         state.appliedSearch = query;
         state.searchAST = parseSearch(query);
+        fqdnDb._loadedQuery = null;
         copyData = [];
         if (query) addToSearchHistory(query);
         historyOpen = false;
