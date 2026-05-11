@@ -6,150 +6,106 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NetSearch — Config Visualizer</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <!-- IBM Plex fonts — served locally from /fonts/ (no external network required) -->
+  <!-- Claude Design System — Cormorant Garamond (serif display), Inter (body sans), JetBrains Mono (code) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    /* ── IBM Plex — local font-face (no CDN) ── */
-    @font-face {
-      font-family: 'IBM Plex Sans';
-      src: url('/fonts/ibm-plex-sans-latin-300-normal.woff2') format('woff2');
-      font-weight: 300;
-      font-style: normal;
-      font-display: swap;
-    }
-
-    @font-face {
-      font-family: 'IBM Plex Sans';
-      src: url('/fonts/ibm-plex-sans-latin-400-normal.woff2') format('woff2');
-      font-weight: 400;
-      font-style: normal;
-      font-display: swap;
-    }
-
-    @font-face {
-      font-family: 'IBM Plex Sans';
-      src: url('/fonts/ibm-plex-sans-latin-600-normal.woff2') format('woff2');
-      font-weight: 600;
-      font-style: normal;
-      font-display: swap;
-    }
-
-    @font-face {
-      font-family: 'IBM Plex Mono';
-      src: url('/fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2');
-      font-weight: 400;
-      font-style: normal;
-      font-display: swap;
-    }
-
-    @font-face {
-      font-family: 'IBM Plex Mono';
-      src: url('/fonts/ibm-plex-mono-latin-600-normal.woff2') format('woff2');
-      font-weight: 600;
-      font-style: normal;
-      font-display: swap;
-    }
-
     :root {
-      /* ── IBM Carbon Design System — Hybrid White/Gray10 Theme ── */
+      /* ── Claude Design System — Warm Cream Canvas ── */
 
-      /* Backgrounds */
-      --cds-background: #f4f4f4;
-      /* Gray 10 — page/body surface */
-      --cds-layer-01: #ffffff;
-      /* White  — card/tile surface */
-      --cds-layer-hover: #e8e8e8;
-      /* Gray 10 Hover */
-      --cds-layer-02: #e0e0e0;
-      /* Gray 20 — elevated panels */
-      --cds-nav-bg: #161616;
-      /* Gray 100 — masthead */
-      --cds-nav-hover: #262626;
-      /* Gray 90  — masthead item hover */
+      /* Backgrounds / Surfaces */
+      --cds-background: #faf9f5;
+      /* Canvas — warm cream */
+      --cds-layer-01: #efe9de;
+      /* Surface Card — feature cards */
+      --cds-layer-hover: #e8e0d2;
+      /* Surface Cream Strong — hover */
+      --cds-layer-02: #f5f0e8;
+      /* Surface Soft — elevated panels */
+      --cds-nav-bg: #181715;
+      /* Surface Dark — masthead */
+      --cds-nav-hover: #252320;
+      /* Surface Dark Elevated — masthead hover */
 
       /* Borders */
-      --cds-border-subtle: #c6c6c6;
-      /* Gray 30 */
-      --cds-border-strong: #8d8d8d;
-      /* Gray 50 */
-      --cds-border-interactive: #0f62fe;
-      /* Blue 60 — focus */
+      --cds-border-subtle: #e6dfd8;
+      /* Hairline */
+      --cds-border-strong: #e8e0d2;
+      /* Hairline strong */
+      --cds-border-interactive: #cc785c;
+      /* Coral — focus */
 
       /* Text */
-      --cds-text-primary: #161616;
-      /* Gray 100 */
-      --cds-text-secondary: #525252;
-      /* Gray 70 */
-      --cds-text-placeholder: #6f6f6f;
-      /* Gray 60 */
+      --cds-text-primary: #141413;
+      /* Ink */
+      --cds-text-secondary: #3d3d3a;
+      /* Body */
+      --cds-text-placeholder: #6c6a64;
+      /* Muted */
       --cds-text-on-color: #ffffff;
 
-      /* Interactive — IBM Blue 60 is the sole accent */
-      --cds-interactive: #0f62fe;
-      /* Blue 60 */
-      --cds-interactive-hover: #0353e9;
-      /* Blue 60 Hover */
-      --cds-interactive-active: #002d9c;
-      /* Blue 80 */
-      --cds-highlight: #edf5ff;
-      /* Blue 10 — selected bg */
-      --cds-focus: #0f62fe;
-      --cds-link-primary: #0f62fe;
-      --cds-link-primary-hover: #0043ce;
-      /* Blue 70 */
+      /* Interactive — Coral is the sole accent */
+      --cds-interactive: #cc785c;
+      /* Coral Primary */
+      --cds-interactive-hover: #a9583e;
+      /* Coral Active */
+      --cds-interactive-active: #8e4530;
+      /* Coral deep */
+      --cds-highlight: rgba(204, 120, 92, 0.10);
+      /* Coral 10 — selected bg */
+      --cds-focus: #cc785c;
+      --cds-link-primary: #cc785c;
+      --cds-link-primary-hover: #a9583e;
 
       /* Support / Status */
-      --cds-support-error: #da1e28;
-      /* Red 60 */
-      --cds-support-error-bg: rgba(218, 30, 40, 0.10);
-      --cds-support-success: #24a148;
-      /* Green 50 */
-      --cds-support-success-bg: rgba(36, 161, 72, 0.10);
-      --cds-support-warning: #f1c21b;
-      /* Yellow 30 */
-      --cds-support-warning-bg: rgba(241, 194, 27, 0.10);
-      --cds-support-caution: #ff832b;
-      /* Orange 40 — deny/caution */
-      --cds-support-caution-bg: rgba(255, 131, 43, 0.10);
+      --cds-support-error: #c64545;
+      --cds-support-error-bg: rgba(198, 69, 69, 0.10);
+      --cds-support-success: #5db872;
+      --cds-support-success-bg: rgba(93, 184, 114, 0.10);
+      --cds-support-warning: #d4a017;
+      --cds-support-warning-bg: rgba(212, 160, 23, 0.10);
+      --cds-support-caution: #e8a55a;
+      /* Accent Amber */
+      --cds-support-caution-bg: rgba(232, 165, 90, 0.10);
 
-      /* Device-type semantic colors (Carbon support scale) */
+      /* Device-type semantic colors */
       --cds-device-pa: #6929c4;
       --cds-device-pa-bg: rgba(105, 41, 196, 0.10);
       --cds-device-pa-border: rgba(105, 41, 196, 0.30);
-      --cds-device-fortigate: #da1e28;
-      --cds-device-fortigate-bg: rgba(218, 30, 40, 0.10);
-      --cds-device-fortigate-border: rgba(218, 30, 40, 0.30);
-      --cds-device-f5: #0043ce;
-      --cds-device-f5-bg: rgba(0, 67, 206, 0.10);
-      --cds-device-f5-border: rgba(0, 67, 206, 0.30);
+      --cds-device-fortigate: #c64545;
+      --cds-device-fortigate-bg: rgba(198, 69, 69, 0.10);
+      --cds-device-fortigate-border: rgba(198, 69, 69, 0.30);
+      --cds-device-f5: #5db8a6;
+      --cds-device-f5-bg: rgba(93, 184, 166, 0.10);
+      --cds-device-f5-border: rgba(93, 184, 166, 0.30);
       --cds-device-srx: #007d79;
       --cds-device-srx-bg: rgba(0, 125, 121, 0.10);
       --cds-device-srx-border: rgba(0, 125, 121, 0.30);
 
-      /* Elevation — Carbon uses minimal shadows only for floating elements */
-      --cds-shadow: 0 2px 6px rgba(0, 0, 0, 0.30);
-      --cds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.10);
+      /* Elevation — minimal shadows */
+      --cds-shadow: 0 1px 3px rgba(20, 20, 19, 0.08);
+      --cds-shadow-sm: 0 1px 2px rgba(20, 20, 19, 0.06);
 
       /* Geometry */
-      --cds-radius: 0px;
-      /* Carbon: 0px on buttons/inputs/cards */
-      --cds-radius-tag: 24px;
-      /* Tags/pills — the sole rounded exception */
+      --cds-radius: 8px;
+      /* Claude: 8px on buttons/inputs */
+      --cds-radius-tag: 9999px;
+      /* Pill badges */
 
       /* Fonts */
-      --cds-font-sans: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
-      --cds-font-mono: 'IBM Plex Mono', Menlo, Courier, monospace;
+      --cds-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --cds-font-serif: 'Cormorant Garamond', 'EB Garamond', 'Times New Roman', serif;
+      --cds-font-mono: 'JetBrains Mono', ui-monospace, Menlo, Courier, monospace;
 
-      /* Typography scale (Carbon productive set) */
+      /* Typography scale */
       --fs-micro: 10px;
       --fs-sm: 11px;
       --fs-base: 12px;
       --fs-name: 13px;
       --fs-body: 14px;
-      /* Body Short 01: 14px / 0.16px tracking */
       --fs-head: 16px;
-      /* Body Long 01 */
       --fs-disp: 20px;
-      /* Heading 04 */
 
       /* ── Legacy alias bridge — existing CSS rules keep working unchanged ── */
       --bg: var(--cds-background);
@@ -174,7 +130,7 @@
       --yellow: var(--cds-support-warning);
       --yellow-bg: var(--cds-support-warning-bg);
       --blue: var(--cds-link-primary);
-      --blue-bg: rgba(15, 98, 254, 0.10);
+      --blue-bg: rgba(204, 120, 92, 0.10);
       --pill-bg: var(--cds-background);
       --pill-match: var(--cds-highlight);
       --shadow-sm: var(--cds-shadow-sm);
@@ -197,8 +153,8 @@
       background: var(--cds-background);
       color: var(--cds-text-primary);
       font-size: 14px;
-      line-height: 1.5;
-      letter-spacing: 0.16px;
+      line-height: 1.55;
+      letter-spacing: 0;
     }
 
     button {
@@ -220,7 +176,7 @@
       background: var(--bg);
     }
 
-    /* ── Header — IBM Carbon Masthead ── */
+    /* ── Header — Claude Dark Masthead ── */
     .header {
       display: flex;
       align-items: center;
@@ -229,7 +185,7 @@
       height: 48px;
       min-height: 48px;
       background: var(--cds-nav-bg);
-      border-bottom: 1px solid #393939;
+      border-bottom: 1px solid #252320;
       flex-shrink: 0;
     }
 
@@ -241,20 +197,20 @@
     }
 
     .logo-title {
-      font-family: var(--cds-font-sans);
+      font-family: var(--cds-font-serif);
       font-weight: 400;
-      font-size: 14px;
-      line-height: 1.29;
-      letter-spacing: 0.16px;
-      color: #ffffff;
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: -0.3px;
+      color: #faf9f5;
     }
 
     .logo-sub {
       font-size: 11px;
-      color: #c6c6c6;
+      color: #a09d96;
       font-weight: 400;
       font-family: var(--cds-font-mono);
-      letter-spacing: 0.16px;
+      letter-spacing: 0;
     }
 
     .logo-icon {
@@ -273,14 +229,14 @@
       align-items: center;
     }
 
-    /* Search mode button — Carbon ghost on dark bg */
+    /* Search mode button — Claude ghost on dark bg */
     .search-mode-btn {
       background: transparent;
-      border: 1px solid #78a9ff;
-      border-radius: 0;
+      border: 1px solid #cc785c;
+      border-radius: 6px;
       font-size: 11px;
-      font-weight: 400;
-      color: #78a9ff;
+      font-weight: 500;
+      color: #cc785c;
       padding: 0 12px;
       height: 32px;
       font-family: var(--cds-font-mono);
@@ -290,12 +246,12 @@
     }
 
     .search-mode-btn:hover {
-      background: rgba(120, 169, 255, 0.12);
-      color: #a6c8ff;
-      border-color: #a6c8ff;
+      background: rgba(204, 120, 92, 0.15);
+      color: #e8a078;
+      border-color: #e8a078;
     }
 
-    /* Search input — Carbon field on dark, bottom-border only */
+    /* Search input — Claude field on dark, bottom-border only */
     .search-input-wrap {
       position: relative;
       flex: 1;
@@ -307,19 +263,19 @@
       height: 40px;
       line-height: 40px;
       border: none;
-      border-bottom: 2px solid #8d8d8d;
-      border-radius: 0;
+      border-bottom: 2px solid #6c6a64;
+      border-radius: 8px 8px 0 0;
       font-size: 14px;
       outline: none;
-      color: #f4f4f4;
-      background: #262626;
+      color: #faf9f5;
+      background: #252320;
       font-family: var(--cds-font-mono);
-      letter-spacing: 0.16px;
+      letter-spacing: 0;
       transition: border-color .15s;
     }
 
     .search-input:focus {
-      border-bottom-color: #78a9ff;
+      border-bottom-color: #cc785c;
     }
 
     .search-input::placeholder {
@@ -367,7 +323,7 @@
       width: 14px;
       height: 14px;
       border: 2px solid #393939;
-      border-top-color: #78a9ff;
+      border-top-color: #cc785c;
       border-radius: 50%;
       animation: spin .6s linear infinite;
       display: none;
@@ -391,7 +347,7 @@
       width: 14px;
       height: 14px;
       border: 2px solid var(--cds-border-subtle);
-      border-top-color: var(--cds-interactive);
+      border-top-color: #cc785c;
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
       flex-shrink: 0;
@@ -429,14 +385,14 @@
     }
 
     .search-hl-btn.on {
-      background: rgba(241, 194, 27, 0.15);
-      border-color: rgba(241, 194, 27, 0.5);
-      color: #f1c21b;
+      background: rgba(232, 165, 90, 0.15);
+      border-color: rgba(232, 165, 90, 0.5);
+      color: #e8a55a;
     }
 
     .search-hl-btn:hover:not(.on) {
-      background: #262626;
-      color: #f4f4f4;
+      background: #252320;
+      color: #faf9f5;
     }
 
     /* Quick search pill button */
@@ -477,13 +433,13 @@
     .btn {
       padding: 0 16px;
       height: 32px;
-      border-radius: 0;
+      border-radius: 8px;
       font-size: 14px;
-      font-weight: 400;
-      letter-spacing: 0.16px;
-      border: 1px solid #525252;
-      background: #393939;
-      color: #f4f4f4;
+      font-weight: 500;
+      letter-spacing: 0;
+      border: 1px solid var(--cds-border-subtle);
+      background: var(--cds-background);
+      color: var(--cds-text-primary);
       transition: background .1s, border-color .1s;
       font-family: var(--cds-font-sans);
       display: inline-flex;
@@ -491,8 +447,8 @@
     }
 
     .btn:hover {
-      background: #4c4c4c;
-      border-color: #6f6f6f;
+      background: var(--cds-layer-hover);
+      border-color: var(--cds-border-strong);
     }
 
     .btn:focus {
@@ -501,22 +457,22 @@
     }
 
     .btn-primary {
-      background: var(--cds-interactive);
+      background: #cc785c;
       color: #ffffff;
-      border-color: var(--cds-interactive);
-      font-weight: 400;
+      border-color: #cc785c;
+      font-weight: 500;
     }
 
     .btn-primary:hover {
-      background: var(--cds-interactive-hover);
-      border-color: var(--cds-interactive-hover);
+      background: #a9583e;
+      border-color: #a9583e;
     }
 
     .btn-sm {
       padding: 0 12px;
       height: 28px;
       font-size: 12px;
-      letter-spacing: 0.32px;
+      letter-spacing: 0;
     }
 
     .btn-icon {
@@ -552,15 +508,15 @@
     }
 
     .btn-danger {
-      background: #da1e28;
+      background: #c64545;
       color: #ffffff;
-      border: 1px solid #da1e28;
-      border-radius: 0;
+      border: 1px solid #c64545;
+      border-radius: 8px;
     }
 
     .btn-danger:hover {
-      background: #b81922;
-      border-color: #b81922;
+      background: #a83838;
+      border-color: #a83838;
     }
 
     /* ── Filter Bar — IBM Carbon toolbar ── */
@@ -653,18 +609,18 @@
 
     #ignoreCidr {
       color-scheme: dark;
-      accent-color: #78a9ff;
+      accent-color: #cc785c;
     }
 
     /* Device toggle chips — Carbon Tag style */
     .device-toggle-btn {
       padding: 0 6px;
-      border-radius: 2px;
+      border-radius: 9999px;
       font-size: 10px;
       font-weight: 400;
       border: none;
-      background: #e0e0e0;
-      color: #161616;
+      background: #efe9de;
+      color: #3d3d3a;
       height: 20px;
       cursor: pointer;
       transition: background .1s, color .1s;
@@ -676,17 +632,17 @@
     }
 
     .device-toggle-btn:hover {
-      background: #c6c6c6;
+      background: #e8e0d2;
     }
 
     .device-toggle-btn.active {
-      background: #0f62fe;
+      background: #cc785c;
       color: #ffffff;
-      font-weight: 600;
+      font-weight: 500;
     }
 
     .device-toggle-btn.active:hover {
-      background: #0353e9;
+      background: #a9583e;
     }
 
     .device-toggle-btn.active.pa,
@@ -694,7 +650,7 @@
     .device-toggle-btn.active.f5,
     .device-toggle-btn.active.srx,
     .device-toggle-btn.active.all {
-      background: #0f62fe;
+      background: #cc785c;
       color: #ffffff;
     }
 
@@ -703,7 +659,7 @@
     .device-toggle-btn.active.f5:hover,
     .device-toggle-btn.active.srx:hover,
     .device-toggle-btn.active.all:hover {
-      background: #0353e9;
+      background: #a9583e;
     }
 
     .device-toggle-btn.disabled {
@@ -732,14 +688,14 @@
       padding: 12px 16px;
       font-size: 14px;
       font-weight: 400;
-      color: var(--cds-text-secondary);
+      color: var(--cds-text-placeholder);
       border: none;
       background: none;
       border-bottom: 2px solid transparent;
       transition: color .15s, border-color .15s, background .15s;
       white-space: nowrap;
       font-family: var(--cds-font-sans);
-      letter-spacing: 0.16px;
+      letter-spacing: 0;
       position: relative;
     }
 
@@ -749,8 +705,9 @@
     }
 
     .tab-btn.active {
-      color: var(--cds-interactive);
-      border-bottom-color: var(--cds-interactive);
+      color: #cc785c;
+      border-bottom-color: #cc785c;
+      font-weight: 500;
     }
 
     .tab-count {
@@ -765,8 +722,8 @@
     }
 
     .tab-btn.active .tab-count {
-      background: var(--cds-highlight);
-      color: var(--cds-interactive);
+      background: rgba(204, 120, 92, 0.12);
+      color: #cc785c;
     }
 
     /* ── Content ── */
@@ -795,11 +752,11 @@
       font-family: var(--font-mono);
     }
 
-    /* ── Rule Cards — Carbon Tile ── */
+    /* ── Rule Cards — Claude Tile ── */
     .rule-card {
       background: var(--cds-layer-01);
       border: 1px solid var(--cds-border-subtle);
-      border-radius: var(--cds-radius);
+      border-radius: 12px;
       padding: 0;
       margin-bottom: 4px;
       transition: border-color .15s, background .15s;
