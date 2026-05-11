@@ -116,36 +116,41 @@ When a search term is an IP, `resolveIndexCandidates()` walks the index upward (
 - `_pillContext` Map (pid → `{item, type, parsed, ctx}`) and `_ruleExpandMap` (ruleKey → `{hostname, items, ctx}`) are populated during `renderPills()` and required by all DOM patch functions
 - `renderZonePills(list)` — static variant used **only** for FROM/TO zone columns in Sec Rules and NAT Rules. Emits plain `<span class="pill">` with no `data-ppid`, no onclick, no QS/copy buttons, and no `_pillContext` registration. Zone items still appear in `expandableItems` but `_patchPidsDirect` silently skips them (`if (!pctx) continue`). Do not use `renderPills` for FROM/TO zones.
 
-### CSS Token System
+### Design System
 
-All CSS variables use `--cds-*` (Carbon Design System) tokens. Key mapping from legacy names:
+Claude-inspired design system (migrated from IBM Carbon on 2026-05-11). Reference `DESIGN.md` for the full specification.
+
+- **Primary accent**: Coral `#cc785c` (hover: `#a9583e`)
+- **Background/canvas**: Warm cream `#faf9f5`
+- **Card surfaces**: `#efe9de` (feature cards), `#f5f0e8` (soft/elevated)
+- **Borders**: Warm hairline `#e6dfd8`
+- **Typography**: Inter (body sans), Cormorant Garamond (logo/display serif), JetBrains Mono (code) — loaded via Google Fonts CDN
+- **Status colors**: error `#c64545`, success `#5db872`, warning `#d4a017`
+- **Border radius**: buttons `8px`, cards `12px`, tags/pills `9999px`
+- **Favicon**: inline SVG dinosaur logo with coral background and cream fill
+
+CSS variables still use `--cds-*` names with legacy aliases (`--bg`, `--accent`, etc.) for backwards compatibility. Key token mapping:
 
 | Legacy | `--cds-*` token | Value |
 |--------|----------------|-------|
-| `--bg` | `--cds-background` | `#f4f4f4` |
-| `--bg-card` | `--cds-layer-01` | `#ffffff` |
-| `--bg-hover` | `--cds-layer-hover` | `#e8e8e8` |
-| `--bg-elevated` | `--cds-layer-02` | `#e0e0e0` |
-| `--border` | `--cds-border-subtle` | `#c6c6c6` |
-| `--border-focus` | `--cds-focus` | `#0f62fe` |
-| `--text` | `--cds-text-primary` | `#161616` |
-| `--text-secondary` | `--cds-text-secondary` | `#525252` |
-| `--text-muted` | `--cds-text-placeholder` | `#6f6f6f` |
-| `--accent` | `--cds-interactive` | `#0f62fe` |
-| `--accent-light` | `--cds-highlight` | `#edf5ff` |
-| `--accent-hover` | `--cds-interactive-hover` | `#0353e9` |
-| `--accent-glow` | — | `transparent` |
-| `--green` | `--cds-support-success` | `#24a148` |
-| `--red` | `--cds-support-error` | `#da1e28` |
-| `--yellow` | `--cds-support-warning` | `#f1c21b` |
-| `--orange` | `--cds-support-caution` | `#ff832b` |
-| `--blue` | `--cds-link-primary` | `#0f62fe` |
-| `--pill-bg` | `--cds-background` | `#f4f4f4` |
-| `--pill-match` | `--cds-highlight` | `#edf5ff` |
-| `--radius` | `--cds-radius` | `0px` |
-| `--radius-sm` | `--cds-radius` | `0px` |
-| `--font-ui` | `--cds-font-sans` | IBM Plex Sans |
-| `--font-mono` | `--cds-font-mono` | IBM Plex Mono |
+| `--bg` | `--cds-background` | `#faf9f5` |
+| `--bg-card` | `--cds-layer-01` | `#efe9de` |
+| `--bg-hover` | `--cds-layer-hover` | `#e8e0d2` |
+| `--bg-elevated` | `--cds-layer-02` | `#f5f0e8` |
+| `--border` | `--cds-border-subtle` | `#e6dfd8` |
+| `--border-focus` | `--cds-focus` | `#cc785c` |
+| `--text` | `--cds-text-primary` | `#141413` |
+| `--text-secondary` | `--cds-text-secondary` | `#3d3d3a` |
+| `--text-muted` | `--cds-text-placeholder` | `#6c6a64` |
+| `--accent` | `--cds-interactive` | `#cc785c` |
+| `--accent-hover` | `--cds-interactive-hover` | `#a9583e` |
+| `--green` | `--cds-support-success` | `#5db872` |
+| `--red` | `--cds-support-error` | `#c64545` |
+| `--yellow` | `--cds-support-warning` | `#d4a017` |
+| `--orange` | `--cds-support-caution` | `#e8a55a` |
+| `--radius` | `--cds-radius` | `8px` |
+| `--font-ui` | `--cds-font-sans` | Inter |
+| `--font-mono` | `--cds-font-mono` | JetBrains Mono |
 
 Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
 
@@ -202,12 +207,12 @@ name line **before** recursing into its members. See `tasks/lessons.md` for the 
 
 ### Frontend Design System
 
-`DESIGN.md` defines the IBM Carbon-inspired visual language used throughout the UI:
-- Single accent: IBM Blue 60 (`#0f62fe`) — buttons, links, focus states
-- 0px border-radius on all interactive elements (buttons, inputs, cards)
-- IBM Plex Sans (weight 300/400/600 only) + IBM Plex Mono for code/data
-- Depth via background-color layering (`#fff` → `#f4f4f4` → `#e0e0e0`), no box-shadows
-- Bottom-border inputs only (not boxed); 8px spacing grid throughout
+`DESIGN.md` defines the Claude-inspired visual language used throughout the UI:
+- Single accent: Coral (`#cc785c`) — buttons, links, focus states
+- 8px border-radius on buttons/inputs, 12px on cards, pill (9999px) on tags
+- Inter (body sans) + Cormorant Garamond (display serif) + JetBrains Mono (code)
+- Warm cream canvas (`#faf9f5`) with cream card surfaces (`#efe9de`), minimal shadows
+- Bottom-border inputs; 8px spacing grid throughout
 
 ### FQDN Device Filter — Technical Notes
 
