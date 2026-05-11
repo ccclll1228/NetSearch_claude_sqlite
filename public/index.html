@@ -4802,7 +4802,17 @@
     }
 
     function copyPillText(text) { copyToClipboard(text).then(() => showCopyFeedback()); }
-    function copyF5VsRow(name, ip, port, pool) { copyPillText(`${name}\t${ip}\t${port}\t${pool}`); }
+    function copyF5VsRow(name, ip, port, poolName, hostname) {
+      let text = `${name}\t${ip}\t${port}\t${poolName}`;
+      if (poolName && hostname) {
+        const cfg = state.parsedConfigs.find(c => c.parsed.hostname === hostname);
+        const pool = cfg?.parsed?.pools?.find(p => p.name === poolName);
+        if (pool && pool.members) {
+          pool.members.forEach(m => { text += `\n  ${m.ip}:${m.port}\t${m.status || ''}`; });
+        }
+      }
+      copyPillText(text);
+    }
 
     // Fully-expanded tree (no per-node toggle) — used in Objects tab
     function renderGroupTreeFull(name, addresses, groups, depth, _seen) {
@@ -5373,10 +5383,10 @@
           const isExp = f5LtmExpandedRows.has(vs.name);
           const isChained = vs._chainedFromRule;
           const dot = `<span class="ltm-dot ${vs.status === 'enabled' ? 'enabled' : 'disabled'}"></span>`;
-          const _n = vs.name.replace(/'/g, "\\'"), _i = (vs.ip || '').replace(/'/g, "\\'"), _po = (vs.port || '').replace(/'/g, "\\'"), _pl = (vs.pool || '').replace(/'/g, "\\'");
+          const _n = vs.name.replace(/'/g, "\\'"), _i = (vs.ip || '').replace(/'/g, "\\'"), _po = (vs.port || '').replace(/'/g, "\\'"), _pl = (vs.pool || '').replace(/'/g, "\\'"), _hn = (vs._hostname || '').replace(/'/g, "\\'");
           let row = `<tr class="${isChained ? 'chained' : ''}" style="cursor:pointer" onclick="toggleF5LtmRow('${esc(vs.name)}')">
         <td><span class="f5-ltm-expand ${isExp ? 'open' : ''}">▶</span></td>
-        <td onclick="event.stopPropagation()"><button class="rule-copy-btn" onclick="copyF5VsRow('${_n}','${_i}','${_po}','${_pl}')" title="Copy row">${SVG_COPY}</button></td>
+        <td onclick="event.stopPropagation()"><button class="rule-copy-btn" onclick="copyF5VsRow('${_n}','${_i}','${_po}','${_pl}','${_hn}')" title="Copy row">${SVG_COPY}</button></td>
         <td><b>${esc(vs.name)}</b>${isChained ? '<span class="chain-pill dnat">DNAT → IP</span>' : ''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(vs.name)}')" title="Search">${SVG_QS}</button></td>
         <td style="font-family:monospace">${esc(vs.ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(vs.ip)}')" title="Search">${SVG_QS}</button></td>
         <td>${esc(vs.port)}</td>
