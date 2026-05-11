@@ -5131,7 +5131,7 @@
       const stats = `<div class="stats-bar">${T('statsSecRules', rules.length, groups.length)}</div>`;
       _lastFilteredSecRules = rules;
 
-      // Build FQDN-by-IP lookup: ip → fqdn[]
+      // Build FQDN-by-IP lookup: ip → fqdn[]  (FortiGate annotations only)
       const _fqdnByIp = new Map();
       (fqdnDb.results || []).forEach(r => {
         if (!r.ip || !r.fqdn) return;
@@ -5142,13 +5142,20 @@
         if (!arr.includes(fqdn)) arr.push(fqdn);
       });
 
-      // Build LTM VS lookup: vs_name_lowercase → {ip, hostname}
-      const _ltmVsByName = new Map();
+      // Build LTM VS lookups (FortiGate annotations only)
+      // _ltmVsByName: vs_name_lowercase → {name, ip, hostname}  (exact + prefix match)
+      // _ltmVsByIp:   ip → {name, ip, hostname}  (mappedip → F5 VS ip match)
+      const _ltmVsList = [];
+      const _ltmVsByIp = new Map();
       (state.parsedConfigs || []).forEach(c => {
         const p = c.parsed;
         if (!p || !p.virtuals) return;
         p.virtuals.forEach(vs => {
-          if (vs.name && vs.ip) _ltmVsByName.set(vs.name.toLowerCase(), { ip: vs.ip, hostname: p.hostname || '' });
+          if (vs.name && vs.ip) {
+            const entry = { name: vs.name, ip: vs.ip, hostname: p.hostname || '' };
+            _ltmVsList.push(entry);
+            if (!_ltmVsByIp.has(vs.ip)) _ltmVsByIp.set(vs.ip, entry);
+          }
         });
       });
 
@@ -5215,16 +5222,27 @@
         <div class="rule-field"><div style="display:flex;align-items:baseline;gap:5px;margin-bottom:3px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">FROM</span>${renderZonePills(r.from)}</div><div style="display:flex;align-items:baseline;gap:5px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">TO</span>${renderZonePills(r.to)}</div></div>
         <div class="rule-field">${renderPills(r.source, r._parsed, 'object', ruleKey)}</div>
         <div class="rule-field">${renderPills(r.destination, r._parsed, 'object', ruleKey)}${r.dstVips && r.dstVips.length ? `<div>${r.dstVips.map(v => `<div class="vip-mapping">${esc(v.extip)} → ${esc(v.mappedip)}</div>`).join('')}</div>` : ''}${(() => {
+          if (r._parsed?.type !== 'FortiGate') return '';
           const annots = [];
           const addrs = r._parsed?.addresses || {};
+          const vipMap = r._parsed?.vipMap || {};
           (r.destination || []).forEach(name => {
-            const addr = addrs[name];
-            const ip = addr?.value;
+            // FQDN lookup: use VIP extip first, then regular address value
+            const vip = vipMap[name];
+            const ip = vip ? vip.extip : addrs[name]?.value;
             if (ip && isExactIP(ip) && _fqdnByIp.has(ip)) {
               _fqdnByIp.get(ip).forEach(fqdn => annots.push(`<div class="dst-annot fqdn">${esc(ip)} → ${esc(fqdn)}</div>`));
             }
-            const ltm = _ltmVsByName.get(name.toLowerCase());
-            if (ltm) annots.push(`<div class="dst-annot ltm">LTM → ${esc(ltm.ip)} (${esc(ltm.hostname)})</div>`);
+            // LTM lookup: match VIP mappedip against F5 VS ip, or match name (exact then prefix)
+            if (vip && vip.mappedip && isExactIP(vip.mappedip) && _ltmVsByIp.has(vip.mappedip)) {
+              const ltm = _ltmVsByIp.get(vip.mappedip);
+              annots.push(`<div class="dst-annot ltm">LTM → ${esc(ltm.ip)} ${esc(ltm.name)} (${esc(ltm.hostname)})</div>`);
+            } else {
+              const nl = name.toLowerCase();
+              let ltm = _ltmVsList.find(v => v.name.toLowerCase() === nl);
+              if (!ltm) ltm = _ltmVsList.find(v => v.name.toLowerCase().startsWith(nl) || nl.startsWith(v.name.toLowerCase()));
+              if (ltm) annots.push(`<div class="dst-annot ltm">LTM → ${esc(ltm.ip)} ${esc(ltm.name)} (${esc(ltm.hostname)})</div>`);
+            }
           });
           return annots.length ? `<div>${annots.join('')}</div>` : '';
         })()}</div>
