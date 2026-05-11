@@ -4815,6 +4815,35 @@
     }
 
     // Fully-expanded tree (no per-node toggle) — used in Objects tab
+    function buildGroupTreeText(name, addresses, groups, depth, _seen) {
+      if (depth > 12) return '';
+      if (!_seen) _seen = new Set();
+      if (_seen.has(name)) return '';
+      const indent = '  '.repeat(depth);
+      if (groups && groups[name]) {
+        const members = groups[name];
+        const seen2 = new Set(_seen); seen2.add(name);
+        let text = indent + name;
+        members.forEach(m => { text += '\n' + buildGroupTreeText(m, addresses, groups, depth + 1, seen2); });
+        return text;
+      }
+      const addr = addresses && addresses[name];
+      const val = addr && addr.value && addr.value !== name ? addr.value : '';
+      return indent + name + (val ? '  ' + val : '');
+    }
+
+    function copyGroupTree(groupName, hostname) {
+      const cfg = state.parsedConfigs.find(c => c.parsed.hostname === hostname);
+      if (!cfg) { copyPillText(groupName); return; }
+      const addresses = cfg.parsed.addresses || {};
+      const groups = cfg.parsed.groups || {};
+      const members = groups[groupName];
+      if (!members) { copyPillText(groupName); return; }
+      let text = groupName;
+      members.forEach(m => { text += '\n' + buildGroupTreeText(m, addresses, groups, 1, new Set([groupName])); });
+      copyPillText(text);
+    }
+
     function renderGroupTreeFull(name, addresses, groups, depth, _seen) {
       if (depth > 12) return '';
       if (!_seen) _seen = new Set();
@@ -5317,7 +5346,6 @@
             const isGrpExp = expandedPills.has(outerPid) || expandedPills.has(`__ALL_${state.activeTab}__`);
             const addresses_dict = g._parsed?.addresses || {};
             const groups_dict = g._parsed?.groups || {};
-            const membersText = g.name + '\\n' + g.members.join('\\n');
             // Store meta for targeted DOM patch in togglePill()
             _lastObjGroupMeta.set(outerPid, { g, addresses_dict, groups_dict });
             // Render member rows (with tree cache)
@@ -5331,13 +5359,14 @@
               }
             }
             const arrow = isGrpExp ? ARROW_COLLAPSE : ARROW_EXPAND;
+            const _gn = g.name.replace(/'/g, "\\'"), _ghn = (g._hostname || hn).replace(/'/g, "\\'");
             return `<div class="obj-group-card${g._chained ? ' chained' : ''}">
           <div class="obj-group-header" onclick="event.stopPropagation();togglePill('${outerPid}')">
             <span id="grparrow-${esc(outerPid)}" style="display:inline-flex;align-items:center;margin-right:6px;color:var(--accent)">${arrow}</span>
             <span class="obj-group-name">${esc(g.name)}</span>
             <span class="obj-group-count">(${g.members.length})</span>
             <button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(g.name)}')" title="Search" style="margin-left:auto">${SVG_QS}</button>
-            <button class="rule-copy-btn" onclick="event.stopPropagation();copyToClipboard('${esc(membersText)}').then(()=>showCopyFeedback())" title="Copy group name + all members">${SVG_COPY}</button>
+            <button class="rule-copy-btn" onclick="event.stopPropagation();copyGroupTree('${_gn}','${_ghn}')" title="Copy group tree">${SVG_COPY}</button>
           </div>
           <div id="grpmembers-${esc(outerPid)}" class="obj-group-members">${memberRows}</div>
         </div>`;
