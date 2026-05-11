@@ -1207,6 +1207,18 @@
       white-space: nowrap;
     }
 
+    /* ── Destination annotations (FQDN + LTM cross-ref) ── */
+    .dst-annot {
+      font-size: 0.7rem;
+      font-family: var(--cds-font-mono);
+      padding: 1px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dst-annot.fqdn { color: #3a8a5c; }
+    .dst-annot.ltm  { color: #4a7ab5; }
+
     /* ── Schedule column ── */
     .sched-cell {
       display: block;
@@ -5119,6 +5131,27 @@
       const stats = `<div class="stats-bar">${T('statsSecRules', rules.length, groups.length)}</div>`;
       _lastFilteredSecRules = rules;
 
+      // Build FQDN-by-IP lookup: ip → fqdn[]
+      const _fqdnByIp = new Map();
+      (fqdnDb.results || []).forEach(r => {
+        if (!r.ip || !r.fqdn) return;
+        const ip = String(r.ip).replace(/\.$/, '');
+        const fqdn = String(r.fqdn).replace(/\.$/, '');
+        if (!_fqdnByIp.has(ip)) _fqdnByIp.set(ip, []);
+        const arr = _fqdnByIp.get(ip);
+        if (!arr.includes(fqdn)) arr.push(fqdn);
+      });
+
+      // Build LTM VS lookup: vs_name_lowercase → {ip, hostname}
+      const _ltmVsByName = new Map();
+      (state.parsedConfigs || []).forEach(c => {
+        const p = c.parsed;
+        if (!p || !p.virtuals) return;
+        p.virtuals.forEach(vs => {
+          if (vs.name && vs.ip) _ltmVsByName.set(vs.name.toLowerCase(), { ip: vs.ip, hostname: p.hostname || '' });
+        });
+      });
+
       const _isAlways = sch => !sch || (typeof sch === 'string' && sch.toLowerCase() === 'always');
       const _fmtDt = iso => iso.replace('T', ' ');
       const _schedActive = endStr => { const d = new Date(endStr.replace('T', ' ') + ':00'); return !isNaN(d) && d > new Date(); };
@@ -5181,7 +5214,20 @@
         ${schedCell}
         <div class="rule-field"><div style="display:flex;align-items:baseline;gap:5px;margin-bottom:3px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">FROM</span>${renderZonePills(r.from)}</div><div style="display:flex;align-items:baseline;gap:5px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">TO</span>${renderZonePills(r.to)}</div></div>
         <div class="rule-field">${renderPills(r.source, r._parsed, 'object', ruleKey)}</div>
-        <div class="rule-field">${renderPills(r.destination, r._parsed, 'object', ruleKey)}${r.dstVips && r.dstVips.length ? `<div>${r.dstVips.map(v => `<div class="vip-mapping">${esc(v.extip)} → ${esc(v.mappedip)}</div>`).join('')}</div>` : ''}</div>
+        <div class="rule-field">${renderPills(r.destination, r._parsed, 'object', ruleKey)}${r.dstVips && r.dstVips.length ? `<div>${r.dstVips.map(v => `<div class="vip-mapping">${esc(v.extip)} → ${esc(v.mappedip)}</div>`).join('')}</div>` : ''}${(() => {
+          const annots = [];
+          const addrs = r._parsed?.addresses || {};
+          (r.destination || []).forEach(name => {
+            const addr = addrs[name];
+            const ip = addr?.value;
+            if (ip && isExactIP(ip) && _fqdnByIp.has(ip)) {
+              _fqdnByIp.get(ip).forEach(fqdn => annots.push(`<div class="dst-annot fqdn">${esc(ip)} → ${esc(fqdn)}</div>`));
+            }
+            const ltm = _ltmVsByName.get(name.toLowerCase());
+            if (ltm) annots.push(`<div class="dst-annot ltm">LTM → ${esc(ltm.ip)} (${esc(ltm.hostname)})</div>`);
+          });
+          return annots.length ? `<div>${annots.join('')}</div>` : '';
+        })()}</div>
         <div class="rule-field">${renderPills(r.service, r._parsed, 'service', ruleKey)}</div>
         <div class="rule-field">${r.application && r.application.length > 0 ? renderPills(r.application, r._parsed, 'object', ruleKey) : ''}</div>
         <div class="rule-field">${r.category && r.category.length > 0 ? `<div class="pills">${r.category.map(c => renderUrlCategoryPill(c, r._parsed)).join('')}</div>` : ''}</div>
