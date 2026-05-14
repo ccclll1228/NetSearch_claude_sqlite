@@ -5750,14 +5750,13 @@
       const all      = fqdnDb.results;
       const filtered = fqdnDbFiltered();
 
-      // Build dropdown options from all loaded records
+      // Build dropdown options from all loaded records; Geo/TTL cascade from Owner
       const types = new Set(), owners = new Set(), geos = new Set(), ttls = new Set();
-      all.forEach(r => {
-        if (r.type)     types.add(r.type);
-        if (r.owner)    owners.add(r.owner);
-        if (r.geo_info) geos.add(r.geo_info);
-        if (r.ttl != null) ttls.add(r.ttl);
-      });
+      all.forEach(r => { if (r.type) types.add(r.type); if (r.owner) owners.add(r.owner); });
+      const _ownerSub = fqdnDb.ownerFilter ? all.filter(r => r.owner === fqdnDb.ownerFilter) : all;
+      _ownerSub.forEach(r => { if (r.geo_info) geos.add(r.geo_info); if (r.ttl != null) ttls.add(r.ttl); });
+      if (fqdnDb.geoFilter && !geos.has(fqdnDb.geoFilter)) fqdnDb.geoFilter = '';
+      if (fqdnDb.ttlFilter && !ttls.has(Number(fqdnDb.ttlFilter))) fqdnDb.ttlFilter = '';
 
       const controlBar = `<div class="flex gap-2 items-center" style="flex-wrap:wrap;padding:8px 0 10px">
         <input type="text" class="filter-select fqdn-filter-input"
@@ -5851,7 +5850,11 @@
       if (!state.appliedSearch && !state.forceShowFqdn && filtered.length > 0) {
         // Build filter dropdowns
         const types = new Set(), owners = new Set(), geos = new Set(), ttls = new Set();
-        list.forEach(r => { if (r.type) types.add(r.type); if (r.owner) owners.add(r.owner); if (r.geoInfo && r.geoInfo !== 'null') geos.add(r.geoInfo); if (r.ttl != null) ttls.add(r.ttl); });
+        list.forEach(r => { if (r.type) types.add(r.type); if (r.owner) owners.add(r.owner); });
+        const _oSub = state.filters.fqdnOwnerFilter ? list.filter(r => r.owner === state.filters.fqdnOwnerFilter) : list;
+        _oSub.forEach(r => { if (r.geoInfo && r.geoInfo !== 'null') geos.add(r.geoInfo); if (r.ttl != null) ttls.add(r.ttl); });
+        if (state.filters.fqdnGeoFilter && !geos.has(state.filters.fqdnGeoFilter)) state.filters.fqdnGeoFilter = '';
+        if (state.filters.fqdnTtlFilter && !ttls.has(Number(state.filters.fqdnTtlFilter))) state.filters.fqdnTtlFilter = '';
         const filterHtml = `<div class="flex gap-2 items-center mb-2" style="flex-wrap:wrap">
       <select class="filter-select" onchange="state.filters.fqdnTypeFilter=this.value;renderContent()"><option value="">Type (All)</option>${Array.from(types).sort().map(t => `<option value="${esc(t)}" ${state.filters.fqdnTypeFilter === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
       <select class="filter-select" onchange="state.filters.fqdnOwnerFilter=this.value;renderContent()"><option value="">Owner (All)</option>${Array.from(owners).sort().map(o => `<option value="${esc(o)}" ${state.filters.fqdnOwnerFilter === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>
@@ -5872,7 +5875,11 @@
       const arrow = (k) => fqdnSortState.key === k ? `<span class="sort-arrow">${fqdnSortState.dir === 'asc' ? '▲' : '▼'}</span>` : '';
       // Build filter dropdowns
       const types = new Set(), owners = new Set(), geos = new Set(), ttls = new Set();
-      list.forEach(r => { if (r.type) types.add(r.type); if (r.owner) owners.add(r.owner); if (r.geoInfo && r.geoInfo !== 'null') geos.add(r.geoInfo); if (r.ttl != null) ttls.add(r.ttl); });
+      list.forEach(r => { if (r.type) types.add(r.type); if (r.owner) owners.add(r.owner); });
+      const _oSub = state.filters.fqdnOwnerFilter ? list.filter(r => r.owner === state.filters.fqdnOwnerFilter) : list;
+      _oSub.forEach(r => { if (r.geoInfo && r.geoInfo !== 'null') geos.add(r.geoInfo); if (r.ttl != null) ttls.add(r.ttl); });
+      if (state.filters.fqdnGeoFilter && !geos.has(state.filters.fqdnGeoFilter)) state.filters.fqdnGeoFilter = '';
+      if (state.filters.fqdnTtlFilter && !ttls.has(Number(state.filters.fqdnTtlFilter))) state.filters.fqdnTtlFilter = '';
       const filterHtml = `<div class="flex gap-2 items-center mb-2" style="flex-wrap:wrap">
     <select class="filter-select" onchange="state.filters.fqdnTypeFilter=this.value;renderContent()"><option value="">Type (All)</option>${Array.from(types).sort().map(t => `<option value="${esc(t)}" ${state.filters.fqdnTypeFilter === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
     <select class="filter-select" onchange="state.filters.fqdnOwnerFilter=this.value;renderContent()"><option value="">Owner (All)</option>${Array.from(owners).sort().map(o => `<option value="${esc(o)}" ${state.filters.fqdnOwnerFilter === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>
