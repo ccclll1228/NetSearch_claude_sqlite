@@ -2787,11 +2787,11 @@
         secHideDisabled: false, secShowDisabledOnly: false,
         natHideDisabled: false, natShowDisabledOnly: false,
         showDisabledMembersOnly: false,
-        fqdnTypeFilter: '', fqdnOwnerFilter: '', fqdnGeoFilter: '',
+        fqdnTypeFilter: '', fqdnOwnerFilter: '', fqdnGeoFilter: '', fqdnTtlFilter: '',
       }
     };
 
-    const fqdnDb = { query: '', results: [], lastSynced: null, localDnsLastSynced: null, typeFilter: '', ownerFilter: '', geoFilter: '', loading: false, _timer: null, _loadedQuery: null, badgeCount: 0 };
+    const fqdnDb = { query: '', results: [], lastSynced: null, localDnsLastSynced: null, typeFilter: '', ownerFilter: '', geoFilter: '', ttlFilter: '', loading: false, _timer: null, _loadedQuery: null, badgeCount: 0 };
 
     const TABS = [
       { id: 'fqdn', label: { en: 'FQDN', zh: 'FQDN' } },
@@ -5656,6 +5656,7 @@
       if (fqdnDb.typeFilter)  r = r.filter(row => row.type     === fqdnDb.typeFilter);
       if (fqdnDb.ownerFilter) r = r.filter(row => row.owner    === fqdnDb.ownerFilter);
       if (fqdnDb.geoFilter)   r = r.filter(row => row.geo_info === fqdnDb.geoFilter);
+      if (fqdnDb.ttlFilter)   r = r.filter(row => String(row.ttl) === fqdnDb.ttlFilter);
       return r;
     }
 
@@ -5750,11 +5751,12 @@
       const filtered = fqdnDbFiltered();
 
       // Build dropdown options from all loaded records
-      const types = new Set(), owners = new Set(), geos = new Set();
+      const types = new Set(), owners = new Set(), geos = new Set(), ttls = new Set();
       all.forEach(r => {
         if (r.type)     types.add(r.type);
         if (r.owner)    owners.add(r.owner);
         if (r.geo_info) geos.add(r.geo_info);
+        if (r.ttl != null) ttls.add(r.ttl);
       });
 
       const controlBar = `<div class="flex gap-2 items-center" style="flex-wrap:wrap;padding:8px 0 10px">
@@ -5774,6 +5776,10 @@
         <select class="filter-select" onchange="fqdnDb.geoFilter=this.value;renderContent()">
           <option value="">Geo (All)</option>
           ${Array.from(geos).sort().map(g => `<option value="${esc(g)}"${fqdnDb.geoFilter===g?' selected':''}>${esc(g)}</option>`).join('')}
+        </select>
+        <select class="filter-select" onchange="fqdnDb.ttlFilter=this.value;renderContent()">
+          <option value="">TTL (All)</option>
+          ${Array.from(ttls).sort((a,b) => a-b).map(t => `<option value="${t}"${fqdnDb.ttlFilter===String(t)?' selected':''}>${t}</option>`).join('')}
         </select>
       </div>`;
 
@@ -5839,18 +5845,20 @@
       if (state.filters.fqdnTypeFilter) filtered = filtered.filter(r => r.type === state.filters.fqdnTypeFilter);
       if (state.filters.fqdnOwnerFilter) filtered = filtered.filter(r => r.owner === state.filters.fqdnOwnerFilter);
       if (state.filters.fqdnGeoFilter) filtered = filtered.filter(r => r.geoInfo === state.filters.fqdnGeoFilter);
+      if (state.filters.fqdnTtlFilter) filtered = filtered.filter(r => String(r.ttl) === state.filters.fqdnTtlFilter);
 
       // Initial state: don't show all FQDN until search or force
       if (!state.appliedSearch && !state.forceShowFqdn && filtered.length > 0) {
         // Build filter dropdowns
-        const types = new Set(), owners = new Set(), geos = new Set();
-        list.forEach(r => { if (r.type) types.add(r.type); if (r.owner) owners.add(r.owner); if (r.geoInfo && r.geoInfo !== 'null') geos.add(r.geoInfo); });
+        const types = new Set(), owners = new Set(), geos = new Set(), ttls = new Set();
+        list.forEach(r => { if (r.type) types.add(r.type); if (r.owner) owners.add(r.owner); if (r.geoInfo && r.geoInfo !== 'null') geos.add(r.geoInfo); if (r.ttl != null) ttls.add(r.ttl); });
         const filterHtml = `<div class="flex gap-2 items-center mb-2" style="flex-wrap:wrap">
       <select class="filter-select" onchange="state.filters.fqdnTypeFilter=this.value;renderContent()"><option value="">Type (All)</option>${Array.from(types).sort().map(t => `<option value="${esc(t)}" ${state.filters.fqdnTypeFilter === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
       <select class="filter-select" onchange="state.filters.fqdnOwnerFilter=this.value;renderContent()"><option value="">Owner (All)</option>${Array.from(owners).sort().map(o => `<option value="${esc(o)}" ${state.filters.fqdnOwnerFilter === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>
       <select class="filter-select" onchange="state.filters.fqdnGeoFilter=this.value;renderContent()"><option value="">Geo (All)</option>${Array.from(geos).sort().map(g => `<option value="${esc(g)}" ${state.filters.fqdnGeoFilter === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>
+      <select class="filter-select" onchange="state.filters.fqdnTtlFilter=this.value;renderContent()"><option value="">TTL (All)</option>${Array.from(ttls).sort((a,b)=>a-b).map(t => `<option value="${t}" ${state.filters.fqdnTtlFilter === String(t) ? 'selected' : ''}>${t}</option>`).join('')}</select>
     </div>`;
-        if (state.filters.fqdnTypeFilter || state.filters.fqdnOwnerFilter || state.filters.fqdnGeoFilter) {
+        if (state.filters.fqdnTypeFilter || state.filters.fqdnOwnerFilter || state.filters.fqdnGeoFilter || state.filters.fqdnTtlFilter) {
           // Show filtered results
         } else {
           return filterHtml + `<div class="empty-state"><p>${T('fqdnPrompt')}</p><button class="btn btn-primary mt-2" onclick="state.forceShowFqdn=true;renderContent()">${T('fqdnShowAll', list.length)}</button></div>`;
@@ -5863,12 +5871,13 @@
       const display = sorted.slice(0, 2000);
       const arrow = (k) => fqdnSortState.key === k ? `<span class="sort-arrow">${fqdnSortState.dir === 'asc' ? '▲' : '▼'}</span>` : '';
       // Build filter dropdowns
-      const types = new Set(), owners = new Set(), geos = new Set();
-      list.forEach(r => { if (r.type) types.add(r.type); if (r.owner) owners.add(r.owner); if (r.geoInfo && r.geoInfo !== 'null') geos.add(r.geoInfo); });
+      const types = new Set(), owners = new Set(), geos = new Set(), ttls = new Set();
+      list.forEach(r => { if (r.type) types.add(r.type); if (r.owner) owners.add(r.owner); if (r.geoInfo && r.geoInfo !== 'null') geos.add(r.geoInfo); if (r.ttl != null) ttls.add(r.ttl); });
       const filterHtml = `<div class="flex gap-2 items-center mb-2" style="flex-wrap:wrap">
     <select class="filter-select" onchange="state.filters.fqdnTypeFilter=this.value;renderContent()"><option value="">Type (All)</option>${Array.from(types).sort().map(t => `<option value="${esc(t)}" ${state.filters.fqdnTypeFilter === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
     <select class="filter-select" onchange="state.filters.fqdnOwnerFilter=this.value;renderContent()"><option value="">Owner (All)</option>${Array.from(owners).sort().map(o => `<option value="${esc(o)}" ${state.filters.fqdnOwnerFilter === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>
     <select class="filter-select" onchange="state.filters.fqdnGeoFilter=this.value;renderContent()"><option value="">Geo (All)</option>${Array.from(geos).sort().map(g => `<option value="${esc(g)}" ${state.filters.fqdnGeoFilter === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>
+    <select class="filter-select" onchange="state.filters.fqdnTtlFilter=this.value;renderContent()"><option value="">TTL (All)</option>${Array.from(ttls).sort((a,b)=>a-b).map(t => `<option value="${t}" ${state.filters.fqdnTtlFilter === String(t) ? 'selected' : ''}>${t}</option>`).join('')}</select>
   </div>`;
       const colPickerHtml = FQDN_COPY_FIELDS.map((f, i) => `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;color:var(--text)"><input type="checkbox" ${f.selected ? 'checked' : ''} onchange="FQDN_COPY_FIELDS[${i}].selected=this.checked" style="accent-color:var(--accent);cursor:pointer">${f.label}</label>`).join('');
       return filterHtml + `<div class="stats-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${filtered.length > 2000 ? T('statsFqdnCapped', filtered.length) : T('statsFqdn', filtered.length)}<details style="position:relative;display:inline-block"><summary style="list-style:none;cursor:pointer;padding:2px 7px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;color:var(--text-muted);background:var(--bg-card)">Copy Columns ▾</summary><div style="position:absolute;top:calc(100% + 4px);left:0;z-index:300;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4)">${colPickerHtml}</div></details><button class="rule-copy-btn" onclick="copyFqdnTSV()" title="Copy filtered results as TSV">${SVG_COPY} Copy</button></div>
@@ -6627,7 +6636,7 @@
     }
 
     function clearAllFilters() {
-      state.filters = { sourceDevice: '', fromZone: '', toZone: '', tag: '', scheduleFilter: '', filterSource: false, filterDest: false, secHideDisabled: false, secShowDisabledOnly: false, natHideDisabled: false, natShowDisabledOnly: false, showDisabledMembersOnly: false, fqdnTypeFilter: '', fqdnOwnerFilter: '', fqdnGeoFilter: '' };
+      state.filters = { sourceDevice: '', fromZone: '', toZone: '', tag: '', scheduleFilter: '', filterSource: false, filterDest: false, secHideDisabled: false, secShowDisabledOnly: false, natHideDisabled: false, natShowDisabledOnly: false, showDisabledMembersOnly: false, fqdnTypeFilter: '', fqdnOwnerFilter: '', fqdnGeoFilter: '', fqdnTtlFilter: '' };
       state.disabledHosts = new Set();
       document.getElementById('fromZoneFilter').value = '';
       document.getElementById('toZoneFilter').value = '';
