@@ -4,6 +4,17 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.5.1] - 2026-05-14
+
+### Fixed
+- **FortiGate VIP group search — merge vipgrpMap into groups** — VIP group names (e.g. `vs2405_OFC_CSP_Log_API`) are now registered in `parsed.groups`, enabling proper destination-side matching through the search index, `resolveObject`, and `fqdnDeviceCidrRanges`
+- **FortiGate source-only CIDR match suppressed for VIP rules** — when searching an exact IP, FortiGate rules with VIP destinations no longer false-positive on source CIDR containment alone; the destination VIP extip must also match
+
+### Added
+- **TTL column in FQDN tab** — new column between TYPE and IP showing DNS TTL values; right-aligned with tabular-nums, sortable, included in Copy Columns picker and Copy tab FQDN field group
+
+---
+
 ## [2.5.0] - 2026-05-11
 
 ### Fixed
