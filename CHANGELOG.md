@@ -12,6 +12,7 @@ All notable changes to NetSearch are documented here.
 
 ### Added
 - **TTL column in FQDN tab** — new column between TYPE and IP showing DNS TTL values; right-aligned with tabular-nums, sortable, included in Copy Columns picker and Copy tab FQDN field group
+- **TTL filter dropdown in FQDN tab** — dropdown after the Geo filter populated with distinct TTL values sorted numerically; AND-combined with Type, Owner, and Geo filters; reset on Clear
 
 ---
 
