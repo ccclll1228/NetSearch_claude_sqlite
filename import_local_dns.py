@@ -42,6 +42,7 @@ def sync_file(conn, csv_path, now):
                 host    = row.get('HostName', '').strip()
                 rtype   = row.get('Type',     '').strip().upper()
                 rdata   = row.get('Data',     '').strip()
+                ttl_raw = row.get('TTL',      '').strip()
                 dns_srv = row.get('Server',   '').strip()
 
                 if rtype in HIDDEN_TYPES:
@@ -56,10 +57,10 @@ def sync_file(conn, csv_path, now):
                 if is_hidden(fqdn):
                     continue
 
-                # ip field: A record fills IP, otherwise original RecordData
-                ip = rdata if rtype == 'A' else rdata
+                ip = rdata
+                ttl = int(ttl_raw) if ttl_raw.isdigit() else None
 
-                rows.append((fqdn, ip, 'localDNS', zone, rtype, None, None, now))
+                rows.append((fqdn, ip, 'localDNS', zone, rtype, ttl, None, now))
 
             conn.executemany(
                 "INSERT INTO fqdn (fqdn, ip, owner, domain, type, ttl, geo_info, synced_at) VALUES (?,?,?,?,?,?,?,?)",
