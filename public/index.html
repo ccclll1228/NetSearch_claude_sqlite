@@ -5157,6 +5157,7 @@
       { key: 'domain', label: 'Domain', selected: false },
       { key: 'fqdn', label: 'FQDN', selected: true },
       { key: 'type', label: 'Type', selected: false },
+      { key: 'ttl', label: 'TTL', selected: false },
       { key: 'ip', label: 'IP', selected: true },
       { key: 'geo_info', label: 'Geo', selected: false },
     ];
@@ -5812,16 +5813,17 @@
 
       const rows = display.map(r => {
         const d = stripDot(r.domain), fq = stripDot(r.fqdn), ip = stripDot(r.ip);
-        return `<tr><td>${esc(r.owner||'')}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type||'')}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td class="fqdn-geo-cell">${esc(r.geo_info||'')}</td><td></td></tr>`;
+        return `<tr><td>${esc(r.owner||'')}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type||'')}</td><td style="text-align:right;font-feature-settings:'tnum'">${r.ttl != null ? r.ttl : ''}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td class="fqdn-geo-cell">${esc(r.geo_info||'')}</td><td></td></tr>`;
       }).join('');
 
       return controlBar + statsBar + `<table class="fqdn-table">
-        <colgroup><col style="width:7%"><col style="width:16%"><col style="width:34%"><col style="width:8%"><col style="width:20%"><col style="width:15%"></colgroup>
+        <colgroup><col style="width:7%"><col style="width:14%"><col style="width:30%"><col style="width:7%"><col style="width:6%"><col style="width:18%"><col style="width:14%"></colgroup>
         <thead><tr>
           <th onclick="sortFqdn('owner')">Owner${arrow('owner')}</th>
           <th onclick="sortFqdn('domain')">Domain${arrow('domain')}</th>
           <th onclick="sortFqdn('fqdn')">FQDN${arrow('fqdn')}</th>
           <th onclick="sortFqdn('type')">Type${arrow('type')}</th>
+          <th style="text-align:right" onclick="sortFqdn('ttl')">TTL${arrow('ttl')}</th>
           <th onclick="sortFqdn('ip')">IP${arrow('ip')}</th>
           <th class="fqdn-geo-cell" onclick="sortFqdn('geo_info')">Geo${arrow('geo_info')}</th>
           <th></th>
@@ -5870,15 +5872,16 @@
   </div>`;
       const colPickerHtml = FQDN_COPY_FIELDS.map((f, i) => `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;color:var(--text)"><input type="checkbox" ${f.selected ? 'checked' : ''} onchange="FQDN_COPY_FIELDS[${i}].selected=this.checked" style="accent-color:var(--accent);cursor:pointer">${f.label}</label>`).join('');
       return filterHtml + `<div class="stats-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${filtered.length > 2000 ? T('statsFqdnCapped', filtered.length) : T('statsFqdn', filtered.length)}<details style="position:relative;display:inline-block"><summary style="list-style:none;cursor:pointer;padding:2px 7px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;color:var(--text-muted);background:var(--bg-card)">Copy Columns ▾</summary><div style="position:absolute;top:calc(100% + 4px);left:0;z-index:300;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4)">${colPickerHtml}</div></details><button class="rule-copy-btn" onclick="copyFqdnTSV()" title="Copy filtered results as TSV">${SVG_COPY} Copy</button></div>
-    <table class="fqdn-table"><colgroup><col style="width:7%"><col style="width:16%"><col style="width:34%"><col style="width:8%"><col style="width:20%"><col style="width:15%"></colgroup><thead><tr>
+    <table class="fqdn-table"><colgroup><col style="width:7%"><col style="width:14%"><col style="width:30%"><col style="width:7%"><col style="width:6%"><col style="width:18%"><col style="width:14%"></colgroup><thead><tr>
       <th onclick="sortFqdn('owner')">Owner${arrow('owner')}</th>
       <th onclick="sortFqdn('domain')">Domain${arrow('domain')}</th>
       <th onclick="sortFqdn('fqdn')">FQDN${arrow('fqdn')}</th>
       <th onclick="sortFqdn('type')">Type${arrow('type')}</th>
+      <th style="text-align:right" onclick="sortFqdn('ttl')">TTL${arrow('ttl')}</th>
       <th onclick="sortFqdn('ip')">IP${arrow('ip')}</th>
       <th class="fqdn-geo-cell" onclick="sortFqdn('geoInfo')">Geo${arrow('geoInfo')}</th>
       <th></th>
-    </tr></thead><tbody>${display.map(r => { const d = stripDot(r.domain), fq = stripDot(r.fqdn), ip = stripDot(r.ip); return `<tr${r._chainedFromRule ? ' style="border-left:3px solid var(--yellow)"' : ''}><td>${esc(r.owner)}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type)}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td class="fqdn-geo-cell">${esc(r.geoInfo)}</td><td></td></tr>`; }).join('')}</tbody></table>`;
+    </tr></thead><tbody>${display.map(r => { const d = stripDot(r.domain), fq = stripDot(r.fqdn), ip = stripDot(r.ip); return `<tr${r._chainedFromRule ? ' style="border-left:3px solid var(--yellow)"' : ''}><td>${esc(r.owner)}</td><td>${esc(d)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(d)}')" title="Search">${SVG_QS}</button></td><td>${esc(fq)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(fq)}')" title="Search">${SVG_QS}</button></td><td>${esc(r.type)}</td><td style="text-align:right;font-feature-settings:'tnum'">${r.ttl != null ? r.ttl : ''}</td><td>${esc(ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(ip)}')" title="Search">${SVG_QS}</button></td><td class="fqdn-geo-cell">${esc(r.geoInfo)}</td><td></td></tr>`; }).join('')}</tbody></table>`;
     }
 
     function copyFqdnTSV() {
@@ -5899,6 +5902,7 @@
       { key: 'ip', label: 'FQDN IP', group: 'FQDN', selected: true },
       { key: 'domain', label: 'Domain', group: 'FQDN', selected: false },
       { key: 'fqdn_type', label: 'DNS Type', group: 'FQDN', selected: false },
+      { key: 'fqdn_ttl', label: 'TTL', group: 'FQDN', selected: false },
       { key: 'fqdn_owner', label: 'Owner', group: 'FQDN', selected: false },
       { key: 'fqdn_geo', label: 'GeoInfo', group: 'FQDN', selected: false },
       // Security Rules
@@ -6133,7 +6137,7 @@
 
       const buildRow = (fqdn, sec, nat, vsList = []) => {
         const row = {
-          fqdn: '', ip: '', domain: '', fqdn_type: '', fqdn_owner: '', fqdn_geo: '',
+          fqdn: '', ip: '', domain: '', fqdn_type: '', fqdn_ttl: '', fqdn_owner: '', fqdn_geo: '',
           hostname: '', rule_name: '', action: '', from: '', to: '',
           source: '', destination: '', service: '', application: '', url_category: '',
           nat_name: '', nat_from: '', nat_to: '', nat_orig_src: '', nat_orig_dst: '', nat_snat: '', nat_dnat: '',
@@ -6141,7 +6145,7 @@
         };
         if (fqdn) {
           row.fqdn = fqdn.fqdn || ''; row.ip = fqdn.ip || ''; row.domain = fqdn.domain || '';
-          row.fqdn_type = fqdn.type || ''; row.fqdn_owner = fqdn.owner || ''; row.fqdn_geo = fqdn.geoInfo || '';
+          row.fqdn_type = fqdn.type || ''; row.fqdn_ttl = fqdn.ttl != null ? String(fqdn.ttl) : ''; row.fqdn_owner = fqdn.owner || ''; row.fqdn_geo = fqdn.geoInfo || '';
         }
         if (sec) {
           row.hostname = sec.hostname || '';
