@@ -3441,6 +3441,7 @@
       }
       const toArr = s => s instanceof Set ? Array.from(s) : (Array.isArray(s) ? s : []);
       const groups = {}; Object.entries(acc.groups).forEach(([k, v]) => groups[k] = Array.from(v));
+      Object.entries(acc.vipgrpMap || {}).forEach(([k, v]) => { if (!groups[k]) groups[k] = v.members || []; });
       const serviceGroups = {}; Object.entries(acc.serviceGroups).forEach(([k, v]) => serviceGroups[k] = Array.from(v));
       const resolveVip = (name, vipMap, vipgrpMap) => {
         if (vipgrpMap[name]) return vipgrpMap[name].members.flatMap(m => vipMap[m] ? [{ name: m, extip: vipMap[m].extip, mappedip: vipMap[m].mappedip }] : []);
@@ -4091,12 +4092,34 @@
                 const md = !searchSrcOnly ? (r.destination || []).some(obj => mkeys.has(`${hn}|${obj}`)) : false;
                 const svcDirect = (!searchSrcOnly && !searchDstOnly) ? serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am) : false;
                 direct = ms || md || svcDirect;
+                if (direct && ms && !md && !svcDirect && parsed.type === 'FortiGate' && isExactIP(term)) {
+                  const _vm = parsed.vipMap || {}, _vg = parsed.vipgrpMap || {};
+                  if ((r.destination || []).some(d => _vm[d] || _vg[d])) {
+                    const _ext = new Set();
+                    (r.destination || []).forEach(d => {
+                      if (_vm[d]) _ext.add(_vm[d].extip);
+                      if (_vg[d]) (_vg[d].members || []).forEach(m => { if (_vm[m]) _ext.add(_vm[m].extip); });
+                    });
+                    if (!_ext.has(term)) direct = false;
+                  }
+                }
               } else {
                 // Source / destination (full address-object resolution — keyword fallback)
                 const ms = !searchDstOnly ? objectListMatchesSearch(r.source, term, parsed.addresses, parsed.groups, am, ignoreCIDR) : false;
                 const md = !searchSrcOnly ? objectListMatchesSearch(r.destination, term, parsed.addresses, parsed.groups, am, ignoreCIDR) : false;
                 const svcFallback = (!searchSrcOnly && !searchDstOnly) ? serviceListMatchesSearch(r.service, term, parsed.services, parsed.serviceGroups, am) : false;
                 direct = ms || md || svcFallback;
+                if (direct && ms && !md && !svcFallback && parsed.type === 'FortiGate' && isExactIP(term)) {
+                  const _vm = parsed.vipMap || {}, _vg = parsed.vipgrpMap || {};
+                  if ((r.destination || []).some(d => _vm[d] || _vg[d])) {
+                    const _ext = new Set();
+                    (r.destination || []).forEach(d => {
+                      if (_vm[d]) _ext.add(_vm[d].extip);
+                      if (_vg[d]) (_vg[d].members || []).forEach(m => { if (_vm[m]) _ext.add(_vm[m].extip); });
+                    });
+                    if (!_ext.has(term)) direct = false;
+                  }
+                }
               }
               if (direct) return true;
               // Per-term FQDN chain: only this term's FQDN-resolved IPs may satisfy it.
@@ -4106,6 +4129,17 @@
                 for (const fip of fqdnIps) {
                   const fms = !searchDstOnly ? objectListMatchesFqdnIp(r.source, fip, parsed.addresses, parsed.groups, ignoreCIDR) : false;
                   const fmd = !searchSrcOnly ? objectListMatchesFqdnIp(r.destination, fip, parsed.addresses, parsed.groups, ignoreCIDR) : false;
+                  if (fms && !fmd && parsed.type === 'FortiGate') {
+                    const _vm = parsed.vipMap || {}, _vg = parsed.vipgrpMap || {};
+                    if ((r.destination || []).some(d => _vm[d] || _vg[d])) {
+                      const _ext = new Set();
+                      (r.destination || []).forEach(d => {
+                        if (_vm[d]) _ext.add(_vm[d].extip);
+                        if (_vg[d]) (_vg[d].members || []).forEach(m => { if (_vm[m]) _ext.add(_vm[m].extip); });
+                      });
+                      if (!_ext.has(fip)) continue;
+                    }
+                  }
                   if (fms || fmd) { chainedFromFqdn = true; return true; }
                 }
               }
