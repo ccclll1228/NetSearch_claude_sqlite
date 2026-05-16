@@ -685,7 +685,7 @@
     .tab-btn {
       padding: 12px 16px;
       font-size: 14px;
-      font-weight: 400;
+      font-weight: 600;
       color: var(--cds-text-placeholder);
       border: none;
       background: none;
@@ -693,7 +693,7 @@
       transition: color .15s, border-color .15s, background .15s;
       white-space: nowrap;
       font-family: var(--cds-font-sans);
-      letter-spacing: 0;
+      letter-spacing: 0.01em;
       position: relative;
     }
 
@@ -703,9 +703,9 @@
     }
 
     .tab-btn.active {
-      color: #cc785c;
-      border-bottom-color: #cc785c;
-      font-weight: 500;
+      color: var(--cds-interactive);
+      border-bottom-color: var(--cds-interactive);
+      font-weight: 700;
     }
 
     .tab-count {
@@ -714,14 +714,16 @@
       padding: 1px 6px;
       border-radius: var(--cds-radius-tag);
       font-size: 11px;
-      font-weight: 400;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
       margin-left: 4px;
       font-family: var(--cds-font-mono);
+      letter-spacing: 0;
     }
 
     .tab-btn.active .tab-count {
       background: rgba(204, 120, 92, 0.12);
-      color: #cc785c;
+      color: var(--cds-interactive);
     }
 
     /* ── Content ── */
