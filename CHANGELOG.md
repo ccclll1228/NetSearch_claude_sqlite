@@ -17,6 +17,9 @@ All notable changes to NetSearch are documented here.
 - **Cascading FQDN filter dropdowns** — Geo and TTL dropdown options now depend on the selected Owner filter; changing Owner rebuilds the available Geo/TTL values from the owner-filtered subset and auto-resets stale selections; applied across all three FQDN render paths (fqdnDb, initial state, main)
 - **Local font serving** — Inter, Cormorant Garamond, and JetBrains Mono woff2 files downloaded to `public/fonts/` with a local `fonts.css`; removes Google Fonts CDN dependency so the app works on isolated networks without internet access
 
+### Changed
+- **Tab bar readability** — inactive tabs use font-weight 600, active tab 700; badge counts use font-weight 700 with `tabular-nums` for clean alignment; horizontal padding reduced from 16px to 10px for a more compact layout
+
 ---
 
 ## [2.5.0] - 2026-05-11
