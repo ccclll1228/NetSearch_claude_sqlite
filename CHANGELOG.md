@@ -15,6 +15,7 @@ All notable changes to NetSearch are documented here.
 - **TTL column in FQDN tab** — new column between TYPE and IP showing DNS TTL values; right-aligned with tabular-nums, sortable, included in Copy Columns picker and Copy tab FQDN field group
 - **TTL filter dropdown in FQDN tab** — dropdown after the Geo filter populated with distinct TTL values sorted numerically; AND-combined with Type, Owner, and Geo filters; reset on Clear
 - **Cascading FQDN filter dropdowns** — Geo and TTL dropdown options now depend on the selected Owner filter; changing Owner rebuilds the available Geo/TTL values from the owner-filtered subset and auto-resets stale selections; applied across all three FQDN render paths (fqdnDb, initial state, main)
+- **Local font serving** — Inter, Cormorant Garamond, and JetBrains Mono woff2 files downloaded to `public/fonts/` with a local `fonts.css`; removes Google Fonts CDN dependency so the app works on isolated networks without internet access
 
 ---
 
