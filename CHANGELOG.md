@@ -10,6 +10,7 @@ All notable changes to NetSearch are documented here.
 - **FortiGate VIP group search — merge vipgrpMap into groups** — VIP group names (e.g. `vs2405_OFC_CSP_Log_API`) are now registered in `parsed.groups`, enabling proper destination-side matching through the search index, `resolveObject`, and `fqdnDeviceCidrRanges`
 - **FortiGate source-only CIDR match suppressed for VIP rules** — when searching an exact IP, FortiGate rules with VIP destinations no longer false-positive on source CIDR containment alone; the destination VIP extip must also match
 - **`import_local_dns.py` now reads TTL from CSV** — the local DNS CSV format added a TTL column; the sync script now parses it as an integer and stores it in `fqdn.ttl` instead of hardcoding `NULL`
+- **FortiGate Sec Rules display order** — rules now render in config file order instead of ascending by policy ID; switched `acc.secRules` from plain Object (which auto-sorts numeric keys) to Map (which preserves insertion order) in both client and server parsers
 
 ### Added
 - **TTL column in FQDN tab** — new column between TYPE and IP showing DNS TTL values; right-aligned with tabular-nums, sortable, included in Copy Columns picker and Copy tab FQDN field group
