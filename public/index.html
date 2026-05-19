@@ -3366,7 +3366,7 @@
     // FortiGate Parser
     const parseFortiGateConfig = (text) => {
       const lines = String(text).split('\n');
-      const acc = { type: 'FortiGate', hostname: 'Unknown-FortiGate', tags: {}, addresses: {}, groups: {}, services: {}, serviceGroups: {}, urlCategories: {}, secRules: {}, natRules: {}, routes: {}, schedules: {}, vipMap: {}, vipgrpMap: {}, unparsed: [] };
+      const acc = { type: 'FortiGate', hostname: 'Unknown-FortiGate', tags: {}, addresses: {}, groups: {}, services: {}, serviceGroups: {}, urlCategories: {}, secRules: new Map(), natRules: {}, routes: {}, schedules: {}, vipMap: {}, vipgrpMap: {}, unparsed: [] };
       const parseFGTValue = (str) => (str.match(/"[^"]+"|'[^']+'|\S+/g) || []).map(s => s.replace(/['"]/g, ''));
       let cs = null, ce = null, co = null;
       for (let i = 0; i < lines.length; i++) {
@@ -3389,7 +3389,7 @@
               if (co.status) { const sv = Array.isArray(co.status) ? co.status[0] : co.status; rule.disabled = (sv === 'disable'); }
               if (co.comments) rule.name = String(co.comments);
               if (co.schedule) rule.schedule = co.schedule;
-              acc.secRules[ce] = rule;
+              acc.secRules.set(ce, rule);
             } else if (cs === 'firewall address') {
               if (co.subnet) { const parts = parseFGTValue(co.subnet.join ? co.subnet.join(' ') : co.subnet); if (parts.length >= 2) { const ip = parts[0], mask = parts[1]; const bits = mask.split('.').reduce((a, o) => a + parseInt(o, 10).toString(2).split('').filter(b => b === '1').length, 0); acc.addresses[ce] = { type: 'ip-netmask', value: `${ip}/${bits}` }; } }
               if (co.fqdn) acc.addresses[ce] = { type: 'fqdn', value: String(Array.isArray(co.fqdn) ? co.fqdn[0] : co.fqdn) };
@@ -3448,7 +3448,7 @@
         if (vipMap[name]) return [{ name, extip: vipMap[name].extip, mappedip: vipMap[name].mappedip }];
         return null;
       };
-      const secRules = Object.values(acc.secRules).map(r => {
+      const secRules = Array.from(acc.secRules.values()).map(r => {
         const base = { name: String(r.name), disabled: r.disabled, action: r.action, from: toArr(r.from), to: toArr(r.to), source: toArr(r.source), destination: toArr(r.destination), application: toArr(r.application), service: toArr(r.service), category: toArr(r.category), tag: toArr(r.tag), schedule: r.schedule || null };
         const dstVips = toArr(r.destination).flatMap(a => { const v = resolveVip(a, acc.vipMap, acc.vipgrpMap); return v || []; });
         if (dstVips.length) base.dstVips = dstVips;
