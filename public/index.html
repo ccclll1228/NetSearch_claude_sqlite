@@ -5289,9 +5289,9 @@
             }
           });
           return annots.length ? `<div>${annots.join('')}</div>` : '';
-        })()}</div>
+        })()}${r.poolname ? `<div style="margin-top:3px"><div class="rule-field-label" style="margin:0;font-size:0.7em">sNAT POOL</div><div class="pool-pill"><span class="pool-value">${esc(r.poolname)}</span></div></div>` : ''}</div>
         <div class="rule-field">${renderPills(r.service, r._parsed, 'service', ruleKey)}</div>
-        <div class="rule-field">${r.application && r.application.length > 0 ? renderPills(r.application, r._parsed, 'object', ruleKey) : ''}${r.poolname ? `<div class="pills" style="margin-top:2px"><div class="pool-pill"><span class="pool-label">POOL</span><span class="pool-value">${esc(r.poolname)}</span></div></div>` : ''}</div>
+        <div class="rule-field">${r.application && r.application.length > 0 ? renderPills(r.application, r._parsed, 'object', ruleKey) : ''}</div>
         <div class="rule-field">${r.category && r.category.length > 0 ? `<div class="pills">${r.category.map(c => renderUrlCategoryPill(c, r._parsed)).join('')}</div>` : ''}${r.webfilterProfile ? `<div class="pills" style="margin-top:2px"><span class="pill">${esc(r.webfilterProfile)}</span></div>` : ''}</div>
       </div>
     </div>
