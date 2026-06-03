@@ -3388,6 +3388,8 @@
               if (co.status) { const sv = Array.isArray(co.status) ? co.status[0] : co.status; rule.disabled = (sv === 'disable'); }
               if (co.comments) rule.name = String(co.comments);
               if (co.schedule) rule.schedule = co.schedule;
+              if (co['webfilter-profile']) rule.webfilterProfile = String(co['webfilter-profile']);
+              if (co.poolname) rule.poolname = String(co.poolname);
               acc.secRules.set(ce, rule);
             } else if (cs === 'firewall address') {
               if (co.subnet) { const parts = parseFGTValue(co.subnet.join ? co.subnet.join(' ') : co.subnet); if (parts.length >= 2) { const ip = parts[0], mask = parts[1]; const bits = mask.split('.').reduce((a, o) => a + parseInt(o, 10).toString(2).split('').filter(b => b === '1').length, 0); acc.addresses[ce] = { type: 'ip-netmask', value: `${ip}/${bits}` }; } }
@@ -5283,8 +5285,8 @@
           return annots.length ? `<div>${annots.join('')}</div>` : '';
         })()}</div>
         <div class="rule-field">${renderPills(r.service, r._parsed, 'service', ruleKey)}</div>
-        <div class="rule-field">${r.application && r.application.length > 0 ? renderPills(r.application, r._parsed, 'object', ruleKey) : ''}</div>
-        <div class="rule-field">${r.category && r.category.length > 0 ? `<div class="pills">${r.category.map(c => renderUrlCategoryPill(c, r._parsed)).join('')}</div>` : ''}</div>
+        <div class="rule-field">${r.application && r.application.length > 0 ? renderPills(r.application, r._parsed, 'object', ruleKey) : ''}${r.poolname ? `<div class="pills" style="margin-top:2px"><span class="pill" style="background:var(--cds-layer-02);color:var(--cds-text-secondary);font-size:0.75rem"><span style="opacity:0.6">POOL:</span> ${esc(r.poolname)}</span></div>` : ''}</div>
+        <div class="rule-field">${r.category && r.category.length > 0 ? `<div class="pills">${r.category.map(c => renderUrlCategoryPill(c, r._parsed)).join('')}</div>` : ''}${r.webfilterProfile ? `<div class="pills" style="margin-top:2px"><span class="pill">${esc(r.webfilterProfile)}</span></div>` : ''}</div>
       </div>
     </div>
   `;
