@@ -853,6 +853,10 @@
       line-height: 1.6;
     }
 
+    .pool-pill { display: flex; flex-direction: column; align-items: flex-start; background: var(--cds-layer-02); color: var(--cds-text-secondary); border: 1px solid var(--cds-border-subtle); border-radius: 9999px; padding: 2px 8px; }
+    .pool-label { font-size: 0.7em; font-weight: bold; color: #666; line-height: 1.2; }
+    .pool-value { font-size: 0.85em; word-break: break-all; white-space: normal; }
+
     .rule-name {
       font-weight: 600;
       font-size: 13px;
@@ -5287,7 +5291,7 @@
           return annots.length ? `<div>${annots.join('')}</div>` : '';
         })()}</div>
         <div class="rule-field">${renderPills(r.service, r._parsed, 'service', ruleKey)}</div>
-        <div class="rule-field">${r.application && r.application.length > 0 ? renderPills(r.application, r._parsed, 'object', ruleKey) : ''}${r.poolname ? `<div class="pills" style="margin-top:2px"><span class="pill" style="background:var(--cds-layer-02);color:var(--cds-text-secondary);font-size:0.75rem"><span style="opacity:0.6">POOL:</span> ${esc(r.poolname)}</span></div>` : ''}</div>
+        <div class="rule-field">${r.application && r.application.length > 0 ? renderPills(r.application, r._parsed, 'object', ruleKey) : ''}${r.poolname ? `<div class="pills" style="margin-top:2px"><div class="pool-pill"><span class="pool-label">POOL</span><span class="pool-value">${esc(r.poolname)}</span></div></div>` : ''}</div>
         <div class="rule-field">${r.category && r.category.length > 0 ? `<div class="pills">${r.category.map(c => renderUrlCategoryPill(c, r._parsed)).join('')}</div>` : ''}${r.webfilterProfile ? `<div class="pills" style="margin-top:2px"><span class="pill">${esc(r.webfilterProfile)}</span></div>` : ''}</div>
       </div>
     </div>
