@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.6.4] - 2026-06-10
+
+### Changed
+- **Brand title color** — "NetSearch" text changed from cream `#faf9f5` to coral `#cc785c`, matching the dinosaur logo SVG fill
+
+---
+
 ## [2.6.3] - 2026-06-10
 
 ### Changed
