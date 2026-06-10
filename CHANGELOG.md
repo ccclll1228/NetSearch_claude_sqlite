@@ -4,6 +4,19 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.6.1] - 2026-06-10
+
+### Added
+- **Ignore CIDR checkmark toggle button** — replaced the checkbox+label with a toolbar-style toggle button showing × (OFF) and ✓ (ON) icons; `clearAllFilters()` resets it
+
+### Changed
+- **Brand header typography** — "NetSearch" title uses Cormorant Garamond weight 500 with `-0.02em` letter-spacing per DESIGN.md; removed "Config Visualizer" subtitle; enlarged title to 22px
+- **EXACT/KEYWORD toggle restyled** — replaced coral/orange active state with toolbar-btn pattern: muted OFF state (`#6c6a64` text, `#e6dfd8` border), dark ON state (`#141413` text/border, weight 600)
+- **EXACT/KEYWORD toggle instant response** — removed CSS transition and `renderContent()` call on click; toggle only updates button UI, search mode takes effect on next Enter press
+- **Uniform toolbar spacing** — all five right toolbar buttons (Ignore CIDR, Bulk, Import, Reload, EN) now share a single `gap: 6px` flex container
+
+---
+
 ## [2.6.0] - 2026-06-10
 
 ### Added
