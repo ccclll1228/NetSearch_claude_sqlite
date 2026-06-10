@@ -2155,23 +2155,55 @@
     .bulk-textarea {
       width: 100%;
       min-height: 150px;
-      padding: 10px;
-      border: none;
-      border-bottom: 1px solid var(--cds-border-strong);
-      border-radius: 0;
-      font-family: var(--cds-font-mono);
-      font-size: 12px;
+      padding: 10px 14px;
+      border: 1px solid #e6dfd8;
+      border-radius: 8px;
+      font-family: StyreneB, Inter, sans-serif;
+      font-size: 14px;
+      font-weight: 400;
       resize: vertical;
-      background: var(--cds-background);
-      color: var(--cds-text-primary);
+      background: #faf9f5;
+      color: #141413;
       outline: none;
+      box-sizing: border-box;
+      margin-bottom: 16px;
     }
+    .bulk-textarea::placeholder { color: #8e8b82; }
 
     .bulk-textarea:focus {
-      border-bottom-color: var(--cds-focus);
+      border-color: var(--cds-focus);
       outline: 2px solid var(--cds-focus);
       outline-offset: -2px;
     }
+
+    /* Bulk Search modal overrides */
+    #bulkSearchModal .modal {
+      background: #faf9f5;
+      border-radius: 12px;
+      padding: 24px;
+      min-width: 480px;
+    }
+    #bulkSearchModal .modal-header {
+      padding: 0;
+      margin-bottom: 16px;
+      background: none;
+      border-bottom: none;
+    }
+    #bulkSearchModal .modal-header h2 {
+      font-size: 18px;
+      font-weight: 500;
+      color: #141413;
+      font-family: StyreneB, Inter, sans-serif;
+    }
+    #bulkSearchModal .modal-close {
+      font-size: 18px;
+      color: #6c6a64;
+      background: none;
+      border: none;
+      line-height: 1;
+      padding: 2px 4px;
+    }
+    #bulkSearchModal .modal-body { padding: 0; }
 
     /* ── Scrollbar ── */
     ::-webkit-scrollbar {
@@ -2797,19 +2829,17 @@
       <div class="modal-body">
         <textarea class="bulk-textarea" id="bulkInput"
           placeholder="Enter one search term per line (IP, FQDN, keyword)...&#10;&#10;Example:&#10;192.168.1.0/24&#10;example.com&#10;vs_web_prod"></textarea>
-        <div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-          <span class="text-sm text-muted" id="lblBulkLogic">Logic:</span>
-          <label class="filter-toggle"><input type="radio" name="bulkMode" value="OR" checked /> <span id="lblBulkOr">OR
-              (any match)</span></label>
-          <label class="filter-toggle"><input type="radio" name="bulkMode" value="AND" /> <span id="lblBulkAnd">AND (all
-              match)</span></label>
-          <label class="filter-toggle"><input type="radio" name="bulkMode" value="AND NOT" /> <span
-              id="lblBulkAndNot">AND NOT (exclude)</span></label>
+        <div style="margin-bottom:8px">
+          <span style="font-size:13px;font-weight:500;color:#6c6a64;display:block;margin-bottom:8px" id="lblBulkLogic">Logic:</span>
+          <div style="display:flex;flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:20px">
+            <label style="font-size:13px;font-weight:400;color:#3d3d3a;display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="bulkMode" value="OR" checked /> <span id="lblBulkOr">OR (any match)</span></label>
+            <label style="font-size:13px;font-weight:400;color:#3d3d3a;display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="bulkMode" value="AND" /> <span id="lblBulkAnd">AND (all match)</span></label>
+            <label style="font-size:13px;font-weight:400;color:#3d3d3a;display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="bulkMode" value="AND NOT" /> <span id="lblBulkAndNot">AND NOT (exclude)</span></label>
+          </div>
         </div>
-        <div style="margin-top:12px;display:flex;gap:8px">
-          <button class="btn btn-primary" id="btnBulkRun" onclick="applyBulkSearch()" style="flex:1">Run Search</button>
-          <button class="btn" id="btnBulkNew" onclick="applyBulkSearchNew()" style="flex:1"
-            title="Clear current search and run new">New Search</button>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button id="btnBulkRun" onclick="applyBulkSearch()" style="flex:1;height:36px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;background:#cc785c;color:#fff;border:none">Run Search</button>
+          <button id="btnBulkNew" onclick="applyBulkSearchNew()" style="flex:1;height:36px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;background:#faf9f5;color:#141413;border:1px solid #e6dfd8" title="Clear current search and run new">New Search</button>
         </div>
       </div>
     </div>
