@@ -5644,21 +5644,25 @@
     function fqdnDbFiltered() {
       let r = _fqdnBaseFilter(fqdnDb.results);
 
-      // Local text filter (search box inside FQDN tab) — supports OR splitting
-      const q = fqdnDb.query.trim().toLowerCase();
+      // Local text filter (search box inside FQDN tab) — Boolean search via parseSearch/evaluateAST
+      const q = fqdnDb.query.trim();
       if (q) {
-        const isLocalExact = state.searchMode === 'exact';
-        const terms = q.split(/\s+or\s+/).map(t => t.trim()).filter(Boolean);
-        r = r.filter(row =>
-          terms.some(t =>
-            isLocalExact
-              ? (row.fqdn || '').toLowerCase() === t || (row.ip || '').toLowerCase() === t
-              : (row.fqdn     || '').toLowerCase().includes(t) ||
-                (row.ip       || '').toLowerCase().includes(t) ||
-                (row.domain   || '').toLowerCase().includes(t) ||
-                (row.geo_info || '').toLowerCase().includes(t)
-          )
-        );
+        const ast = parseSearch(q);
+        if (ast) {
+          const isLocalExact = state.searchMode === 'exact';
+          r = r.filter(row => evaluateAST(ast, (term, forceExact) => {
+            const tl = term.toLowerCase();
+            const exact = isLocalExact || forceExact;
+            if (exact) {
+              return (row.fqdn || '').toLowerCase() === tl ||
+                     (row.ip   || '').toLowerCase() === tl;
+            }
+            return (row.fqdn     || '').toLowerCase().includes(tl) ||
+                   (row.ip       || '').toLowerCase().includes(tl) ||
+                   (row.domain   || '').toLowerCase().includes(tl) ||
+                   (row.geo_info || '').toLowerCase().includes(tl);
+          }));
+        }
       }
       if (fqdnDb.typeFilter)  r = r.filter(row => row.type     === fqdnDb.typeFilter);
       if (fqdnDb.ownerFilter) r = r.filter(row => row.owner    === fqdnDb.ownerFilter);
@@ -5667,11 +5671,19 @@
       return r;
     }
 
+    let _fqdnFilterTimer = null;
     function fqdnDbInput(val) {
-      fqdnDb.query = val; // track current value without re-rendering
+      fqdnDb.query = val;
+      clearTimeout(_fqdnFilterTimer);
+      _fqdnFilterTimer = setTimeout(() => { renderContent(); }, 150);
     }
     function fqdnDbCommit() {
+      clearTimeout(_fqdnFilterTimer);
       renderContent();
+    }
+    function toggleFqdnSearchHelp() {
+      const el = document.getElementById('searchHelpPopup');
+      el.classList.toggle('hidden');
     }
 
     function _normalizeLocalDnsRow(r) {
@@ -5767,10 +5779,11 @@
 
       const controlBar = `<div class="flex gap-2 items-center" style="flex-wrap:wrap;padding:8px 0 10px">
         <input type="text" class="filter-select fqdn-filter-input"
-          placeholder="Filter FQDN, IP, domain… (press Enter)" value="${esc(fqdnDb.query)}"
+          placeholder="Filter FQDN, IP, domain… (Boolean supported)" value="${esc(fqdnDb.query)}"
           autocomplete="off"
           oninput="fqdnDbInput(this.value)"
           onkeydown="if(event.key==='Enter'){fqdnDbInput(this.value);fqdnDbCommit();}">
+        <button class="search-help-btn" onclick="toggleFqdnSearchHelp()" title="Search syntax help" style="flex-shrink:0">?</button>
         <select class="filter-select" onchange="fqdnDb.typeFilter=this.value;renderContent()">
           <option value="">Type (All)</option>
           ${Array.from(types).sort().map(t => `<option value="${esc(t)}"${fqdnDb.typeFilter===t?' selected':''}>${esc(t)}</option>`).join('')}
