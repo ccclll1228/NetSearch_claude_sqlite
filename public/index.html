@@ -2679,8 +2679,8 @@
           </div>
         </div>
         <button id="btn-ignore-cidr" class="toolbar-btn" onclick="toggleIgnoreCIDR(this)">
-          <svg id="cidr-check-icon" width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:none; flex-shrink:0">
-            <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg id="cidr-state-icon" width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+            <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
           <span id="lblIgnoreCidr">Ignore CIDR</span>
         </button>
@@ -6759,7 +6759,12 @@
     // Search — handled by history-aware listener below
     function toggleIgnoreCIDR(btn) {
       const isActive = btn.classList.toggle('active');
-      document.getElementById('cidr-check-icon').style.display = isActive ? 'inline-block' : 'none';
+      const icon = document.getElementById('cidr-state-icon');
+      if (isActive) {
+        icon.innerHTML = '<path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>';
+      } else {
+        icon.innerHTML = '<path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
+      }
       state.ignoreCIDR = isActive;
       if (state.appliedSearch) renderContent();
     }
@@ -6872,7 +6877,7 @@
       document.getElementById('f5DisabledFilter').value = '';
       state.ignoreCIDR = false;
       const cidrBtn = document.getElementById('btn-ignore-cidr');
-      if (cidrBtn) { cidrBtn.classList.remove('active'); document.getElementById('cidr-check-icon').style.display = 'none'; }
+      if (cidrBtn) { cidrBtn.classList.remove('active'); document.getElementById('cidr-state-icon').innerHTML = '<path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'; }
       renderContent();
     }
 
