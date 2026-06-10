@@ -97,6 +97,55 @@ All four parsers return the same normalized object:
 
 ---
 
+## Navbar Component Structure
+
+```mermaid
+flowchart LR
+    subgraph Navbar[".header — top navbar"]
+        direction LR
+        subgraph Brand[".logo"]
+            ICON["Dino SVG icon\n32×32"]
+            TITLE[".logo-title\n'NetSearch'\nStyreneB/Inter 22px w600"]
+        end
+        subgraph SearchBar[".header-search"]
+            subgraph Wrap[".search-input-wrap\n#252320 bg, 8px top radius"]
+                direction LR
+                MODE[".search-mode-btn\nKeyword / Exact\n58px fixed width\nfont-mono 14px\nbottom-border 2px"]
+                DIV[".search-mode-divider\n1px × 60% height"]
+                subgraph InputArea[".search-input-area"]
+                    ICON2[".search-icon\nSVG magnifier"]
+                    INPUT[".search-input\nfont-mono 14px\nbottom-border 2px #6c6a64"]
+                    HL[".search-hl-btn\nhighlight toggle ✦"]
+                    CLEAR[".search-clear\n× button"]
+                    HIST[".search-history\ndropdown"]
+                end
+            end
+            HELP[".search-help-wrap\n? help popup"]
+        end
+        subgraph Toolbar[".header-actions\nflex, gap 6px"]
+            CIDR["#btn-ignore-cidr\n× OFF / ✓ ON\n28px height"]
+            BULK["#btnBulk\nSVG icon + label"]
+            IMPORT["#btnImportHeader\nSVG icon + label"]
+            RELOAD["#reloadBtn\n↺ Reload + timestamp\ntwo-line 28px"]
+            LANG["#langBtn\nEN / 中"]
+        end
+    end
+```
+
+### Navbar Key Details
+
+| Element | ID / Class | Current Style |
+|---------|-----------|---------------|
+| Brand title | `.logo-title` | `StyreneB, Inter` 22px weight 600, `#faf9f5` on dark bg |
+| Search mode toggle | `.search-mode-btn` | Embedded in search bar, `var(--cds-font-mono)` 14px, fixed 58px width, `#6c6a64` text, `border-bottom: 2px solid #6c6a64`, no state color change |
+| Search input | `.search-input` | `var(--cds-font-mono)` 14px, `#252320` bg (via parent), `border-bottom: 2px solid #6c6a64` |
+| Mode divider | `.search-mode-divider` | `1px` wide, `60%` height, `#6c6a64`, `align-self: center` |
+| Ignore CIDR | `#btn-ignore-cidr` | Toggle button: × icon OFF (muted `#6c6a64`), ✓ icon ON (dark `#141413` border) |
+| Toolbar buttons | `.header-actions .btn` | 28px height, 12px font, `#faf9f5` bg, `1px solid #e6dfd8` border, 6px radius |
+| Reload button | `#reloadBtn` | Two-line: `#reloadLabel` (12px) top, `#serverStatusBar` (9px timestamp) bottom |
+
+---
+
 ## Frontend Search Engine
 
 ```mermaid
@@ -148,6 +197,8 @@ flowchart TD
 | `fqdnFilterPickHistory()` | Fill input from history, execute search immediately |
 | `getFilteredData()` | Main filter engine for all tabs (sec/nat/routes/objects/f5/fqdn) |
 | `renderContent()` | Dispatch to per-tab renderers based on active tab |
+| `toggleSearchMode()` | Swap Keyword/Exact label and `.active` class; no re-render on click |
+| `toggleIgnoreCIDR()` | Toggle × / ✓ icon and `.active` class on `#btn-ignore-cidr`; re-renders if search active |
 
 ---
 
