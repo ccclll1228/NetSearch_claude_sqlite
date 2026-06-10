@@ -4,6 +4,30 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.6.0] - 2026-06-10
+
+### Added
+- **FQDN tab Boolean Search local filter** — the FQDN tab filter input now supports full Boolean operators (`NOT`, `AND`, `OR`, parentheses, `"quotes"`) via `parseSearch()`/`evaluateAST()`, matching against `fqdn`, `ip`, `domain`, and `geo_info` fields
+- **FQDN filter search history** — last 10 unique queries persisted in `localStorage` (`fqdnFilterHistory`); dropdown appears on focus when input is empty; click to re-execute or delete individual entries
+- **FQDN filter clear (×) button** — inline clear button appears when the filter input has text; resets filter and results
+- **FQDN filter dedicated ? help popup** — Boolean syntax reference popup specific to the FQDN filter, separate from the global search help
+- **Combined Reload+timestamp button** — merged the standalone timestamp text and Reload button into a single two-line button: "↺ Reload" label on top, data timestamp below
+
+### Changed
+- **FQDN filter Enter-to-search** — FQDN local filter only executes on Enter press; removed live filtering on keystroke (previously 150ms debounce)
+- **FQDN filter input width** — increased by 50% (400px → 600px, max 600px → 900px)
+- **Right toolbar compact styling** — Bulk, Import, Reload, EN buttons resized to 28px height, 12px font, 6px gap, 6px border-radius per DESIGN.md compact toolbar spec
+- **Import button matches toolbar style** — removed coral primary styling; Import now uses the same secondary button style as Bulk, Reload, and EN
+- **Toolbar emoji → inline SVG** — Bulk (list bars) and Import (arrow-into-tray) icons replaced with `currentColor` inline SVGs that inherit button text color
+- **Bulk Search modal redesigned** — canvas background (`#faf9f5`), 12px border-radius, 24px padding, 480px min-width; textarea with 8px radius and `#8e8b82` placeholder; radio group in single row with 20px gap; Run Search (coral) and New Search (secondary) buttons at 36px height
+
+### Documentation
+- Updated README.md with FQDN tab features, Boolean search syntax table, and dedicated FQDN section
+- Added FQDN local filter pipeline diagram and key functions table to `docs/architecture.md`
+- Created `docs/changelog.md` for recent changes summary
+
+---
+
 ## [2.5.1] - 2026-05-14
 
 ### Fixed
