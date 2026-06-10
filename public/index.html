@@ -223,24 +223,29 @@
 
     /* Search mode button — Claude ghost on dark bg */
     .search-mode-btn {
-      background: transparent;
-      border: 1px solid #cc785c;
+      display: inline-flex;
+      align-items: center;
+      background: #faf9f5;
+      border: 1px solid #e6dfd8;
       border-radius: 6px;
       font-size: 11px;
       font-weight: 500;
-      color: #cc785c;
+      color: #6c6a64;
       padding: 0 12px;
       height: 32px;
       font-family: var(--cds-font-mono);
       letter-spacing: 0.32px;
       text-transform: uppercase;
-      transition: background .1s, color .1s;
+      cursor: pointer;
+      transition: border-color 0.1s, color 0.1s;
     }
-
     .search-mode-btn:hover {
-      background: rgba(204, 120, 92, 0.15);
-      color: #e8a078;
-      border-color: #e8a078;
+      background: var(--cds-layer-hover);
+    }
+    .search-mode-btn.active {
+      color: #141413;
+      border: 1px solid #141413;
+      font-weight: 600;
     }
 
     /* Search input — Claude field on dark, bottom-border only */
@@ -3129,7 +3134,7 @@
       state.search = value; state.appliedSearch = value; state.searchAST = parseSearch(value);
       fqdnDb._loadedQuery = null;
       state.searchMode = 'exact';
-      document.getElementById('searchModeBtn').textContent = T('searchModeExact');
+      const _smBtn = document.getElementById('searchModeBtn'); _smBtn.textContent = T('searchModeExact'); _smBtn.classList.add('active');
       copyData = [];
       addToSearchHistory(value);
       renderContent();
@@ -6710,7 +6715,7 @@
 
     // ===== EVENT HANDLERS =====
     function switchTab(id) { state.activeTab = id; updateTagFilter(); if (id === 'fqdn') fqdnDbAutoLoad(); renderContent(!_filterCacheDirty && !!_cachedFilterData); }
-    function toggleSearchMode() { state.searchMode = state.searchMode === 'keyword' ? 'exact' : 'keyword'; document.getElementById('searchModeBtn').textContent = T(state.searchMode === 'keyword' ? 'searchModeKeyword' : 'searchModeExact'); renderContent(); }
+    function toggleSearchMode() { state.searchMode = state.searchMode === 'keyword' ? 'exact' : 'keyword'; const btn = document.getElementById('searchModeBtn'); btn.textContent = T(state.searchMode === 'keyword' ? 'searchModeKeyword' : 'searchModeExact'); btn.classList.toggle('active', state.searchMode === 'exact'); renderContent(); }
     function toggleHighlight() { state.highlightEnabled = !state.highlightEnabled; const btn = document.getElementById('searchHlBtn'); if (btn) { btn.classList.toggle('on', state.highlightEnabled); btn.title = T(state.highlightEnabled ? 'hlOn' : 'hlOff'); } renderContent(); }
     function toggleSearchHelp() { const el = document.getElementById('searchHelpPopup'); el.classList.toggle('hidden'); }
     // Close search help on outside click
