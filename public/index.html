@@ -6715,7 +6715,7 @@
 
     // ===== EVENT HANDLERS =====
     function switchTab(id) { state.activeTab = id; updateTagFilter(); if (id === 'fqdn') fqdnDbAutoLoad(); renderContent(!_filterCacheDirty && !!_cachedFilterData); }
-    function toggleSearchMode() { state.searchMode = state.searchMode === 'keyword' ? 'exact' : 'keyword'; const btn = document.getElementById('searchModeBtn'); btn.textContent = T(state.searchMode === 'keyword' ? 'searchModeKeyword' : 'searchModeExact'); btn.classList.toggle('active', state.searchMode === 'exact'); renderContent(); }
+    function toggleSearchMode() { state.searchMode = state.searchMode === 'keyword' ? 'exact' : 'keyword'; const btn = document.getElementById('searchModeBtn'); btn.textContent = T(state.searchMode === 'keyword' ? 'searchModeKeyword' : 'searchModeExact'); btn.classList.toggle('active', state.searchMode === 'exact'); }
     function toggleHighlight() { state.highlightEnabled = !state.highlightEnabled; const btn = document.getElementById('searchHlBtn'); if (btn) { btn.classList.toggle('on', state.highlightEnabled); btn.title = T(state.highlightEnabled ? 'hlOn' : 'hlOff'); } renderContent(); }
     function toggleSearchHelp() { const el = document.getElementById('searchHelpPopup'); el.classList.toggle('hidden'); }
     // Close search help on outside click
