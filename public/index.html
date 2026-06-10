@@ -5671,14 +5671,10 @@
       return r;
     }
 
-    let _fqdnFilterTimer = null;
     function fqdnDbInput(val) {
       fqdnDb.query = val;
-      clearTimeout(_fqdnFilterTimer);
-      _fqdnFilterTimer = setTimeout(() => { renderContent(); }, 150);
     }
     function fqdnDbCommit() {
-      clearTimeout(_fqdnFilterTimer);
       renderContent();
     }
     function toggleFqdnSearchHelp() {
@@ -5782,7 +5778,7 @@
           placeholder="Filter FQDN, IP, domain… (Boolean supported)" value="${esc(fqdnDb.query)}"
           autocomplete="off"
           oninput="fqdnDbInput(this.value)"
-          onkeydown="if(event.key==='Enter'){fqdnDbInput(this.value);fqdnDbCommit();}">
+          onkeydown="if(event.key==='Enter'){fqdnDbInput(this.value);fqdnDbCommit();}else if(event.key==='Escape'){this.value='';fqdnDbInput('');fqdnDbCommit();}">
         <button class="search-help-btn" onclick="toggleFqdnSearchHelp()" title="Search syntax help" style="flex-shrink:0">?</button>
         <select class="filter-select" onchange="fqdnDb.typeFilter=this.value;renderContent()">
           <option value="">Type (All)</option>
