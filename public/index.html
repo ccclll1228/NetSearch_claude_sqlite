@@ -197,19 +197,13 @@
     .logo-title {
       font-family: var(--cds-font-serif);
       font-weight: 500;
-      font-size: 18px;
+      font-size: 22px;
       line-height: 1.2;
       letter-spacing: -0.02em;
       color: #faf9f5;
     }
 
-    .logo-sub {
-      font-size: 11px;
-      color: #a09d96;
-      font-weight: 400;
-      font-family: var(--cds-font-sans);
-      letter-spacing: 0.04em;
-    }
+
 
     .logo-icon {
       width: 32px;
@@ -2638,7 +2632,7 @@
             <rect x="10" y="22" width="4" height="1" />
           </svg>
         </div>
-        <div class="logo-title">NetSearch<br><span class="logo-sub" id="logoSub">Config Visualizer</span></div>
+        <div class="logo-title">NetSearch</div>
       </div>
       <div class="header-search">
         <button class="search-mode-btn" id="searchModeBtn" onclick="toggleSearchMode()"
@@ -2925,7 +2919,6 @@
     // ===== I18N =====
     const i18n = {
       en: {
-        logoSub: 'Config Visualizer',
         searchModeKeyword: 'Keyword', searchModeExact: 'Exact',
         searchPlaceholder: 'Enter IP, CIDR, Port, or Keyword, then press Enter...',
         ignoreCidr: 'Ignore CIDR',
@@ -3017,7 +3010,6 @@
         devMgrErrDupe: 'Duplicate device name.',
       },
       zh: {
-        logoSub: '設定檔視覺化',
         searchModeKeyword: '關鍵字', searchModeExact: '精確',
         searchPlaceholder: '輸入 IP、CIDR、Port 或關鍵字，按 Enter 搜尋...',
         ignoreCidr: '忽略 CIDR',
@@ -6726,7 +6718,6 @@
     function toggleLang() { state.lang = state.lang === 'en' ? 'zh' : 'en'; document.getElementById('langBtn').textContent = state.lang === 'en' ? 'EN' : '中文'; applyLang(); renderContent(); }
     function applyLang() {
       const L = (id, key, ...args) => { const el = document.getElementById(id); if (el) el.textContent = T(key, ...args); };
-      L('logoSub', 'logoSub');
       const smBtn = document.getElementById('searchModeBtn');
       if (smBtn) smBtn.textContent = T(state.searchMode === 'keyword' ? 'searchModeKeyword' : 'searchModeExact');
       const si = document.getElementById('searchInput'); if (si) si.placeholder = T('searchPlaceholder');
