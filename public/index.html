@@ -2644,8 +2644,8 @@
             CIDR</span></label>
       </div>
       <div class="header-actions">
-        <button class="btn btn-icon" id="btnBulk" onclick="openBulkSearch()">📋 Bulk</button>
-        <button class="btn btn-icon" id="btnImportHeader" onclick="openImportModal()">📥 Import</button>
+        <button class="btn btn-icon" id="btnBulk" onclick="openBulkSearch()" style="gap:4px"></button>
+        <button class="btn btn-icon" id="btnImportHeader" onclick="openImportModal()" style="gap:4px"></button>
         <button id="reloadBtn" onclick="triggerReload()" class="btn" style="height:28px;padding:1px 10px;flex-direction:column;line-height:1.2;text-align:center;justify-content:center;gap:0">
           <span id="reloadLabel" style="font-size:12px;font-weight:500;color:#141413;white-space:nowrap">↺ Reload</span>
           <span id="serverStatusBar" style="font-size:9px;font-weight:400;color:#8e8b82;white-space:nowrap">Loading...</span>
@@ -2877,6 +2877,8 @@
 
     // ===== SVG ICONS =====
     const SVG_COPY = `<svg width="10" height="10" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="1" width="6.5" height="7.5" rx="1"/><rect x="1" y="3.5" width="6.5" height="7.5" rx="1"/></svg>`;
+    const SVG_BULK = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="1" y="2" width="14" height="2" rx="1" fill="currentColor"/><rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor"/><rect x="1" y="12" width="14" height="2" rx="1" fill="currentColor"/></svg>`;
+    const SVG_IMPORT = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
     const SVG_QS = `<svg width="10" height="10" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="4.5" cy="4.5" r="3.2"/><line x1="6.8" y1="6.8" x2="10.5" y2="10.5"/></svg>`;
     const SVG_RELOAD = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5.5A4 4 0 1 0 5.5 1.5"/><polyline points="7,0.5 5.5,1.5 7,2.5"/></svg>`;
 
@@ -2887,7 +2889,7 @@
         searchModeKeyword: 'Keyword', searchModeExact: 'Exact',
         searchPlaceholder: 'Enter IP, CIDR, Port, or Keyword, then press Enter...',
         ignoreCidr: 'Ignore CIDR',
-        btnBulk: `${SVG_COPY} Bulk`, btnImport: '📥 Import',
+        btnBulk: `${SVG_BULK} Bulk`, btnImport: `${SVG_IMPORT} Import`,
         btnReload: `${SVG_RELOAD} Reload`, btnReloading: 'Reloading...',
         statusLoading: 'Loading...', statusNotLoaded: 'Not loaded',
         statusData: 'Data: {0}',
@@ -2979,7 +2981,7 @@
         searchModeKeyword: '關鍵字', searchModeExact: '精確',
         searchPlaceholder: '輸入 IP、CIDR、Port 或關鍵字，按 Enter 搜尋...',
         ignoreCidr: '忽略 CIDR',
-        btnBulk: `${SVG_COPY} 批次搜尋`, btnImport: '📥 匯入',
+        btnBulk: `${SVG_BULK} 批次搜尋`, btnImport: `${SVG_IMPORT} 匯入`,
         btnReload: `${SVG_RELOAD} 重載`, btnReloading: '重載中...',
         statusLoading: '載入中...', statusNotLoaded: '尚未載入',
         statusData: '資料版本：{0}',
@@ -6691,7 +6693,7 @@
       const pa = document.getElementById('pasteArea'); if (pa) pa.placeholder = T('pastePlaceholder');
       L('lblIgnoreCidr', 'ignoreCidr');
       const btnB = document.getElementById('btnBulk'); if (btnB) btnB.innerHTML = T('btnBulk');
-      const btnI = document.getElementById('btnImportHeader'); if (btnI) btnI.textContent = T('btnImport');
+      const btnI = document.getElementById('btnImportHeader'); if (btnI) btnI.innerHTML = T('btnImport');
       const lblR = document.getElementById('reloadLabel'); if (lblR) { const btn = document.getElementById('reloadBtn'); if (!btn || !btn.disabled) lblR.innerHTML = T('btnReload'); }
       const sfEl = document.getElementById('scheduleFilter');
       if (sfEl) { sfEl.options[0].text = T('scheduleAll'); sfEl.options[1].text = T('scheduleOnly'); sfEl.options[2].text = T('scheduleNone'); }
