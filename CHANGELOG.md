@@ -4,6 +4,19 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.6.3] - 2026-06-10
+
+### Changed
+- **Search mode button bottom border** — added `border-bottom: 2px solid #6c6a64` matching the search input's bottom line; `border-radius: 0` for a straight edge
+- **Search mode button text color** — changed from muted `#6c6a64` to white `#ffffff` for better visibility on dark search bar background
+
+### Documentation
+- Added Navbar Component Structure Mermaid diagram and Key Details table to `docs/architecture.md`
+- Added `toggleSearchMode()` and `toggleIgnoreCIDR()` to Key Frontend Functions table
+- Updated `docs/changelog.md` [Unreleased] section with all navbar/toolbar changes
+
+---
+
 ## [2.6.2] - 2026-06-10
 
 ### Changed
