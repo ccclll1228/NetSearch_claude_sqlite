@@ -661,20 +661,26 @@
       accent-color: var(--cds-interactive);
     }
 
-    /* Ignore CIDR lives in the dark header — force visible text and checkbox */
-    label:has(#ignoreCidr) {
-      color: #ffffff;
+    /* Ignore CIDR toggle button */
+    #btn-ignore-cidr {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 28px;
+      padding: 0 10px;
       font-size: 12px;
-      font-weight: 400;
+      font-weight: 500;
+      font-family: StyreneB, Inter, sans-serif;
+      color: #6c6a64;
+      background: #faf9f5;
+      border: 1px solid #e6dfd8;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: border-color 0.1s, color 0.1s;
     }
-
-    label:has(#ignoreCidr):hover {
-      color: #161616;
-    }
-
-    #ignoreCidr {
-      color-scheme: dark;
-      accent-color: #cc785c;
+    #btn-ignore-cidr.active {
+      color: #141413;
+      border: 1px solid #141413;
     }
 
     /* Device toggle chips — Carbon Tag style */
@@ -2672,8 +2678,12 @@
             </ul>
           </div>
         </div>
-        <label class="filter-toggle"><input type="checkbox" id="ignoreCidr" /> <span id="lblIgnoreCidr">Ignore
-            CIDR</span></label>
+        <button id="btn-ignore-cidr" class="toolbar-btn" onclick="toggleIgnoreCIDR(this)">
+          <svg id="cidr-check-icon" width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:none; flex-shrink:0">
+            <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="lblIgnoreCidr">Ignore CIDR</span>
+        </button>
       </div>
       <div class="header-actions">
         <button class="btn btn-icon" id="btnBulk" onclick="openBulkSearch()" style="gap:4px"></button>
@@ -6747,7 +6757,12 @@
 
     // Search
     // Search — handled by history-aware listener below
-    document.getElementById('ignoreCidr').addEventListener('change', e => { state.ignoreCIDR = e.target.checked; if (state.appliedSearch) renderContent(); });
+    function toggleIgnoreCIDR(btn) {
+      const isActive = btn.classList.toggle('active');
+      document.getElementById('cidr-check-icon').style.display = isActive ? 'inline-block' : 'none';
+      state.ignoreCIDR = isActive;
+      if (state.appliedSearch) renderContent();
+    }
     // Source device now uses toggle buttons
     document.getElementById('fromZoneFilter').addEventListener('change', e => { state.filters.fromZone = e.target.value; renderContent(); });
     document.getElementById('toZoneFilter').addEventListener('change', e => { state.filters.toZone = e.target.value; renderContent(); });
@@ -6855,6 +6870,9 @@
       document.getElementById('ipFilter').value = '';
       document.getElementById('ruleDisabledFilter').value = '';
       document.getElementById('f5DisabledFilter').value = '';
+      state.ignoreCIDR = false;
+      const cidrBtn = document.getElementById('btn-ignore-cidr');
+      if (cidrBtn) { cidrBtn.classList.remove('active'); document.getElementById('cidr-check-icon').style.display = 'none'; }
       renderContent();
     }
 
