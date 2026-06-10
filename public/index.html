@@ -557,9 +557,6 @@
     }
 
     .fqdn-filter-input {
-      width: 600px;
-      max-width: 900px;
-      flex: none;
       padding: 0 12px 0 34px;
       border: 1px solid var(--cds-border-strong);
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Ccircle cx='10' cy='10' r='6' fill='none' stroke='%238d8d8d' stroke-width='2'/%3E%3Cline x1='14.5' y1='14.5' x2='20' y2='20' stroke='%238d8d8d' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -570,6 +567,53 @@
     .fqdn-filter-input:focus {
       border-color: var(--cds-focus);
     }
+    .fqdn-filter-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      flex: none;
+    }
+    .fqdn-filter-wrap .fqdn-filter-input { width: 100%; }
+    .fqdn-filter-clear {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px; height: 18px;
+      border: none; background: transparent;
+      color: var(--cds-text-placeholder);
+      font-size: 15px; line-height: 1;
+      cursor: pointer; display: none;
+      align-items: center; justify-content: center;
+      border-radius: 50%;
+    }
+    .fqdn-filter-clear:hover { color: var(--cds-text-primary); background: var(--cds-layer-hover); }
+    #fqdnFilterHistoryDropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: var(--cds-radius);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      z-index: 200;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+    #fqdnFilterHistoryDropdown .fqdn-hist-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px; cursor: pointer;
+      font-size: 13px; color: var(--cds-text-primary);
+    }
+    #fqdnFilterHistoryDropdown .fqdn-hist-item:hover { background: var(--cds-layer-hover); }
+    #fqdnFilterHistoryDropdown .fqdn-hist-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #fqdnFilterHistoryDropdown .fqdn-hist-del {
+      flex-shrink: 0; border: none; background: transparent;
+      color: var(--cds-text-placeholder); cursor: pointer; font-size: 14px; line-height: 1;
+      padding: 0 2px;
+    }
+    #fqdnFilterHistoryDropdown .fqdn-hist-del:hover { color: var(--cds-support-error); }
 
     /* Carbon inline checkbox label */
     .filter-toggle {
@@ -5673,9 +5717,67 @@
 
     function fqdnDbInput(val) {
       fqdnDb.query = val;
+      _fqdnFilterUpdateClear();
+      _fqdnFilterHideHistory();
     }
     function fqdnDbCommit() {
+      _fqdnFilterSaveHistory(fqdnDb.query.trim());
+      _fqdnFilterHideHistory();
       renderContent();
+    }
+    function _fqdnFilterUpdateClear() {
+      const btn = document.getElementById('fqdnFilterClearBtn');
+      if (btn) btn.style.display = fqdnDb.query ? 'flex' : 'none';
+    }
+    function fqdnFilterClear() {
+      const inp = document.querySelector('.fqdn-filter-input');
+      if (inp) inp.value = '';
+      fqdnDb.query = '';
+      _fqdnFilterUpdateClear();
+      renderContent();
+    }
+    function _fqdnFilterGetHistory() {
+      try { return JSON.parse(localStorage.getItem('fqdnFilterHistory') || '[]'); } catch { return []; }
+    }
+    function _fqdnFilterSaveHistory(q) {
+      if (!q) return;
+      let h = _fqdnFilterGetHistory().filter(x => x !== q);
+      h.unshift(q);
+      if (h.length > 10) h = h.slice(0, 10);
+      localStorage.setItem('fqdnFilterHistory', JSON.stringify(h));
+    }
+    function _fqdnFilterDeleteHistory(q) {
+      const h = _fqdnFilterGetHistory().filter(x => x !== q);
+      localStorage.setItem('fqdnFilterHistory', JSON.stringify(h));
+      _fqdnFilterShowHistory();
+    }
+    function _fqdnFilterShowHistory() {
+      const wrap = document.querySelector('.fqdn-filter-wrap');
+      if (!wrap) return;
+      let dd = document.getElementById('fqdnFilterHistoryDropdown');
+      const h = _fqdnFilterGetHistory();
+      if (h.length === 0 || fqdnDb.query.trim()) { if (dd) dd.remove(); return; }
+      if (!dd) { dd = document.createElement('div'); dd.id = 'fqdnFilterHistoryDropdown'; wrap.appendChild(dd); }
+      dd.innerHTML = h.map(q => `<div class="fqdn-hist-item" onmousedown="fqdnFilterPickHistory('${esc(q).replace(/'/g,'\\&#39;')}')"><span>${esc(q)}</span><button class="fqdn-hist-del" onmousedown="event.stopPropagation();_fqdnFilterDeleteHistory('${esc(q).replace(/'/g,'\\&#39;')}')" title="Remove">&times;</button></div>`).join('');
+    }
+    function _fqdnFilterHideHistory() {
+      const dd = document.getElementById('fqdnFilterHistoryDropdown');
+      if (dd) dd.remove();
+    }
+    function fqdnFilterPickHistory(q) {
+      const inp = document.querySelector('.fqdn-filter-input');
+      if (inp) inp.value = q;
+      fqdnDb.query = q;
+      _fqdnFilterUpdateClear();
+      _fqdnFilterHideHistory();
+      _fqdnFilterSaveHistory(q);
+      renderContent();
+    }
+    function _fqdnFilterOnFocus() {
+      if (!fqdnDb.query.trim()) _fqdnFilterShowHistory();
+    }
+    function _fqdnFilterOnBlur() {
+      setTimeout(_fqdnFilterHideHistory, 150);
     }
     function toggleFqdnFilterHelp(e) {
       if (e) e.stopPropagation();
@@ -5781,11 +5883,17 @@
       if (fqdnDb.ttlFilter && !ttls.has(Number(fqdnDb.ttlFilter))) fqdnDb.ttlFilter = '';
 
       const controlBar = `<div class="flex gap-2 items-center" style="flex-wrap:wrap;padding:8px 0 10px">
-        <input type="text" class="filter-select fqdn-filter-input"
-          placeholder="Filter FQDN, IP, domain… (press Enter)" value="${esc(fqdnDb.query)}"
-          autocomplete="off"
-          oninput="fqdnDbInput(this.value)"
-          onkeydown="if(event.key==='Enter'){fqdnDbInput(this.value);fqdnDbCommit();}else if(event.key==='Escape'){this.value='';fqdnDbInput('');fqdnDbCommit();}">
+        <div class="fqdn-filter-wrap" style="width:600px;max-width:900px;">
+          <input type="text" class="filter-select fqdn-filter-input"
+            placeholder="Filter FQDN, IP, domain… (press Enter)" value="${esc(fqdnDb.query)}"
+            style="padding-right:28px"
+            autocomplete="off"
+            oninput="fqdnDbInput(this.value)"
+            onfocus="_fqdnFilterOnFocus()"
+            onblur="_fqdnFilterOnBlur()"
+            onkeydown="if(event.key==='Enter'){fqdnDbInput(this.value);fqdnDbCommit();}else if(event.key==='Escape'){this.value='';fqdnDbInput('');fqdnDbCommit();}">
+          <button class="fqdn-filter-clear" id="fqdnFilterClearBtn" onclick="fqdnFilterClear()" title="Clear" style="${fqdnDb.query ? 'display:flex' : ''}">&times;</button>
+        </div>
         <div class="search-help-wrap" style="flex-shrink:0">
           <button class="search-help-btn" onclick="toggleFqdnFilterHelp(event)" title="Search syntax help">?</button>
           <div class="search-help-popup hidden" id="fqdnFilterHelpPopup" style="left:0;right:auto;">
