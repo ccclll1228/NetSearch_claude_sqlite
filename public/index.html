@@ -423,9 +423,29 @@
     /* Header actions */
     .header-actions {
       display: flex;
-      gap: 12px;
+      gap: 6px;
       align-items: center;
-      height: 40px;
+    }
+    .header-actions .btn {
+      height: 28px;
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: 1px solid #e6dfd8;
+      background: #faf9f5;
+      color: #141413;
+    }
+    .header-actions .btn:hover {
+      background: var(--cds-layer-hover);
+    }
+    .header-actions .btn-primary {
+      background: #cc785c;
+      color: #ffffff;
+      border: none;
+    }
+    .header-actions .btn-primary:hover {
+      background: #a9583e;
     }
 
     /* ── Carbon Buttons ── */
@@ -644,9 +664,8 @@
     /* Ignore CIDR lives in the dark header — force visible text and checkbox */
     label:has(#ignoreCidr) {
       color: #ffffff;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 400;
-      height: 40px;
     }
 
     label:has(#ignoreCidr):hover {
@@ -2628,7 +2647,7 @@
         <button class="btn btn-icon" id="btnBulk" onclick="openBulkSearch()">📋 Bulk</button>
         <button class="btn btn-primary btn-icon" id="btnImportHeader" onclick="openImportModal()">📥 Import</button>
         <div id="serverStatusBar"
-          style="font-size:13px;font-weight:500;color:var(--cds-text-placeholder);font-family:var(--cds-font-mono);white-space:nowrap;border:none;background:none;">Loading...
+          style="font-size:11px;font-weight:400;color:#6c6a64;white-space:nowrap;border:none;background:none;">Loading...
         </div>
         <button id="reloadBtn" onclick="triggerReload()" class="btn" style="">🔄
           Reload</button>
