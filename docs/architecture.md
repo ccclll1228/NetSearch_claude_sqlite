@@ -109,6 +109,46 @@ flowchart LR
     RO --> WM["WeakMap cache\nkeyed on groups obj"]
 ```
 
+### FQDN Tab Local Filter Pipeline
+
+```mermaid
+flowchart TD
+    subgraph "FQDN Tab Local Filter"
+        FI["Filter input\n(Enter to search)"] --> FPS["parseSearch()\nBoolean AST"]
+        FPS --> FEV["evaluateAST()\nmatchFn per row"]
+        FEV --> FIELDS["Match against:\nfqdn, ip, domain, geo_info"]
+        FIELDS --> FOUT["fqdnDbFiltered()\nfiltered rows"]
+    end
+
+    subgraph "FQDN Data Source"
+        API["/api/fqdn + /api/local_dns"] --> LOAD["fqdnDbAutoLoad()"]
+        LOAD --> BASE["_fqdnBaseFilter()\nglobal search + device filter"]
+        BASE --> FOUT
+    end
+
+    subgraph "Local Storage"
+        LS["fqdnFilterHistory\n(max 10 entries)"] --> HIST["History dropdown\non focus when empty"]
+        HIST --> FI
+    end
+```
+
+### Key Frontend Functions
+
+| Function | Responsibility |
+|----------|---------------|
+| `parseSearch()` | Tokenize and parse Boolean query into AST (AND/OR/NOT/quotes/parens) |
+| `evaluateAST()` | Recursively evaluate AST against a record using a matchFn callback |
+| `fqdnDbAutoLoad()` | Fetch FQDN data from `/api/fqdn` and `/api/local_dns`, merge results |
+| `_fqdnBaseFilter()` | Apply global search keyword + device CIDR filter to fqdnDb rows |
+| `fqdnDbFiltered()` | Apply FQDN local filter (Boolean AST) + type/owner/geo/ttl dropdowns |
+| `fqdnDbInput()` | Track FQDN filter input value, update clear button visibility |
+| `fqdnDbCommit()` | Save query to history, hide history dropdown, trigger render |
+| `_fqdnFilterGetHistory()` | Read search history from `localStorage` (`fqdnFilterHistory`) |
+| `_fqdnFilterSaveHistory()` | Deduplicate and save query to history (max 10 entries) |
+| `fqdnFilterPickHistory()` | Fill input from history, execute search immediately |
+| `getFilteredData()` | Main filter engine for all tabs (sec/nat/routes/objects/f5/fqdn) |
+| `renderContent()` | Dispatch to per-tab renderers based on active tab |
+
 ---
 
 ## Symmetric Chaining & FQDN IP Matching

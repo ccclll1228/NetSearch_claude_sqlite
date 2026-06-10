@@ -8,11 +8,18 @@ Parse and search across FortiGate, Palo Alto, Juniper SRX, and F5 LTM configurat
 ## Features
 
 - Multi-device support: FortiGate, Palo Alto, Juniper SRX, F5 LTM
-- Full-text search with boolean operators (`AND`, `OR`, `NOT`)
+- Full-text search with boolean operators (`AND`, `OR`, `NOT`, parentheses, `"quotes"`)
 - Filter by From Zone / To Zone / Tag / Schedule / Source / Destination
 - Tabs: Sec Rules, NAT Rules, Routes, Objects, LTM VS, Pools, FQDN, Copy, Raw Config, Debug
 - Symmetric chaining — find related rules by shared IPs
 - FQDN lookup backed by SQLite (`db/fqdn.db`): UltraDNS cloud records via `ultradns.py` and on-premise DNS via `import_local_dns.py` — both merged in the same results table
+- **FQDN tab local filter** — dedicated Boolean Search filter box with:
+  - Full Boolean operators (`NOT`, `AND`, `OR`, parentheses, `"quotes"`) via `parseSearch()`/`evaluateAST()`
+  - Enter-to-search only (no live filtering while typing)
+  - Clear (×) button inside the input to reset the filter
+  - Search history dropdown (max 10 entries, persisted in `localStorage`)
+  - Dedicated `?` help popup with Boolean syntax reference
+- **FortiGate poolname in DESTINATION column** — `set poolname` rendered as an sNAT POOL pill in the DESTINATION column (DNAT-style, below destination addresses and VIP annotations) with word-wrap
 - Device Manager — add, edit, and delete server-configured devices from the browser; persists to `config/settings.json` and triggers a live reload without SSH access
 - Loading indicator (spinner + "Searching…") flashes on every search trigger across all tabs
 - Disabled rule dimming, tag badges, resizable NAT columns
@@ -95,14 +102,28 @@ curl http://localhost:3002/api/status
 
 ### Search syntax
 
-| Example | Meaning |
-|---------|---------|
-| `10.0.0.1` | Match any field containing this IP |
-| `"exact-name"` | Exact match |
-| `web AND untrust` | Both terms must match |
-| `web OR mail` | Either term matches |
-| `NOT disabled` | Exclude matches |
-| `192.168.1.0/24` | CIDR range match |
+Both the **global search bar** and the **FQDN tab local filter** support the same Boolean syntax:
+
+| Operator | Example | Meaning |
+|----------|---------|---------|
+| keyword | `10.0.0.1` | Match any field containing this IP |
+| `"quotes"` | `"exact-name"` | Exact match |
+| space (implicit AND) | `myggpro.com 183.177` | Both terms must match |
+| `AND` | `web AND untrust` | Both terms must match (explicit) |
+| `OR` | `web OR mail` | Either term matches |
+| `NOT` | `NOT disabled` | Exclude matches |
+| `()` | `(188bet OR gmm88) NOT 45.136` | Grouping for precedence |
+| CIDR | `192.168.1.0/24` | CIDR range match (global search only) |
+
+### FQDN tab local filter
+
+The filter input inside the FQDN tab is independent of the global search bar:
+
+- **Boolean Search** — parses input through `parseSearch()` → `evaluateAST()`, matching against `fqdn`, `ip`, `domain`, and `geo_info` fields
+- **Enter-to-search** — filter only executes on Enter; typing alone does not trigger a search
+- **Clear (×) button** — appears when input has text; clears the filter and resets results
+- **Search history** — last 10 unique queries saved to `localStorage` (`fqdnFilterHistory`); shown as a dropdown on focus when the input is empty; click to re-execute, or delete individual entries
+- **`?` help popup** — dedicated Boolean syntax reference popup next to the filter input
 
 ---
 
