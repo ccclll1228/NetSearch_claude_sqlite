@@ -423,14 +423,15 @@
     /* Header actions */
     .header-actions {
       display: flex;
-      gap: 8px;
+      gap: 12px;
       align-items: center;
+      height: 40px;
     }
 
     /* ── Carbon Buttons ── */
     .btn {
-      padding: 0 16px;
-      height: 32px;
+      padding: 0 20px;
+      height: 40px;
       border-radius: 8px;
       font-size: 14px;
       font-weight: 500;
@@ -643,6 +644,9 @@
     /* Ignore CIDR lives in the dark header — force visible text and checkbox */
     label:has(#ignoreCidr) {
       color: #ffffff;
+      font-size: 14px;
+      font-weight: 400;
+      height: 40px;
     }
 
     label:has(#ignoreCidr):hover {
@@ -2624,11 +2628,11 @@
         <button class="btn btn-icon" id="btnBulk" onclick="openBulkSearch()">📋 Bulk</button>
         <button class="btn btn-primary btn-icon" id="btnImportHeader" onclick="openImportModal()">📥 Import</button>
         <div id="serverStatusBar"
-          style="font-size:11px;color:var(--text-secondary);font-family:var(--font-mono);white-space:nowrap;">Loading...
+          style="font-size:13px;font-weight:500;color:var(--cds-text-placeholder);font-family:var(--cds-font-mono);white-space:nowrap;border:none;background:none;">Loading...
         </div>
-        <button id="reloadBtn" onclick="triggerReload()" class="btn btn-sm" style="font-size:11px;padding:3px 10px;">🔄
+        <button id="reloadBtn" onclick="triggerReload()" class="btn" style="">🔄
           Reload</button>
-        <button class="btn btn-sm" onclick="toggleLang()" id="langBtn">EN</button>
+        <button class="btn" onclick="toggleLang()" id="langBtn">EN</button>
       </div>
     </div>
 
