@@ -217,55 +217,65 @@
     .header-search {
       flex: 1;
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
     }
 
-    /* Search mode button — Claude ghost on dark bg */
-    .search-mode-btn {
-      display: inline-flex;
+    /* Search input — Claude field on dark, bottom-border only */
+    .search-input-wrap {
+      flex: 1;
+      display: flex;
       align-items: center;
-      background: #faf9f5;
-      border: 1px solid #e6dfd8;
-      border-radius: 6px;
-      font-size: 12px;
+      background: #252320;
+      border-radius: 8px 8px 0 0;
+    }
+
+    /* Search mode button — flat inline prefix inside search bar */
+    .search-mode-btn {
+      display: flex;
+      align-items: center;
+      background: transparent;
+      border: none;
+      border-right: 1px solid #6c6a64;
+      border-radius: 0;
+      font-size: 11px;
       font-weight: 500;
       color: #6c6a64;
       padding: 0 10px;
-      height: 28px;
+      height: 40px;
       font-family: StyreneB, Inter, sans-serif;
       letter-spacing: 0.32px;
       text-transform: uppercase;
       cursor: pointer;
       transition: none;
+      flex-shrink: 0;
     }
     .search-mode-btn:hover {
-      background: var(--cds-layer-hover);
+      background: rgba(255,255,255,0.06);
     }
     .search-mode-btn.active {
-      color: #141413;
-      border: 1px solid #141413;
+      color: #faf9f5;
       font-weight: 600;
     }
 
-    /* Search input — Claude field on dark, bottom-border only */
-    .search-input-wrap {
+    .search-input-area {
       position: relative;
       flex: 1;
+      min-width: 0;
     }
 
     .search-input {
       width: 100%;
-      padding: 0 68px 0 40px !important;
+      padding: 0 68px 0 32px !important;
       height: 40px;
       line-height: 40px;
       border: none;
       border-bottom: 2px solid #6c6a64;
-      border-radius: 8px 8px 0 0;
+      border-radius: 0 8px 0 0;
       font-size: 14px;
       outline: none;
       color: #faf9f5;
-      background: #252320;
+      background: transparent;
       font-family: var(--cds-font-mono);
       letter-spacing: 0;
       transition: border-color .15s;
@@ -2640,21 +2650,23 @@
         <div class="logo-title">NetSearch</div>
       </div>
       <div class="header-search">
-        <button class="search-mode-btn" id="searchModeBtn" onclick="toggleSearchMode()"
-          title="Toggle search mode">Keyword</button>
         <div class="search-input-wrap" id="searchWrap">
-          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2">
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-          <input class="search-input" id="searchInput"
-            placeholder="Enter IP, CIDR, Port, or Keyword, then press Enter..." autocomplete="off" />
-          <div class="search-spinner" id="searchSpinner"></div>
-          <button class="search-hl-btn on" id="searchHlBtn" onclick="toggleHighlight()"
-            title="Toggle highlight">✦</button>
-          <button class="search-clear" id="searchClear" onclick="clearSearch()" title="Clear search">&times;</button>
-          <div class="search-history hidden" id="searchHistory"></div>
+          <button class="search-mode-btn" id="searchModeBtn" onclick="toggleSearchMode()"
+            title="Toggle search mode">Keyword</button>
+          <div class="search-input-area">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <input class="search-input" id="searchInput"
+              placeholder="Enter IP, CIDR, Port, or Keyword, then press Enter..." autocomplete="off" />
+            <div class="search-spinner" id="searchSpinner"></div>
+            <button class="search-hl-btn on" id="searchHlBtn" onclick="toggleHighlight()"
+              title="Toggle highlight">✦</button>
+            <button class="search-clear" id="searchClear" onclick="clearSearch()" title="Clear search">&times;</button>
+            <div class="search-history hidden" id="searchHistory"></div>
+          </div>
         </div>
         <div class="search-help-wrap">
           <button class="search-help-btn" id="searchHelpBtn" onclick="toggleSearchHelp()"
