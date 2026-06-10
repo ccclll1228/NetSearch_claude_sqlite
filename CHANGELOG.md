@@ -4,6 +4,15 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.6.2] - 2026-06-10
+
+### Changed
+- **EXACT/KEYWORD toggle embedded in search bar** — moved from standalone navbar button into the search bar as an inline left-side prefix with a 60%-height vertical divider; shares the dark `#252320` background with the input
+- **EXACT/KEYWORD toggle polish** — fixed width `58px` (no layout shift between states), `font-family: var(--cds-font-mono)` and `font-size: 14px` matching the search input, single muted color `#6c6a64` for both states, removed `text-transform: uppercase`
+- **NetSearch brand font** — switched from Cormorant Garamond serif to `StyreneB, Inter` sans-serif at weight 600 to match the toolbar UI font
+
+---
+
 ## [2.6.1] - 2026-06-10
 
 ### Added
