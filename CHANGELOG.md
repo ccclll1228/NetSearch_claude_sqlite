@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.6.5] - 2026-06-10
+
+### Changed
+- **Clear button restyled** — removed red/danger styling (`--cds-support-error` color and border); now matches Expand/Collapse buttons with neutral `.btn .btn-sm` inherited styles
+
+---
+
 ## [2.6.4] - 2026-06-10
 
 ### Changed
