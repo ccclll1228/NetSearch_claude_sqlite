@@ -4,6 +4,16 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.6.6] - 2026-06-11
+
+### Added
+- **Top progress bar** — coral `#cc785c` fixed bar at `top: 0` replaces the old search spinner during data reload; animates to 80% on start, snaps to 100% on completion, then fades out
+
+### Changed
+- **Progress bar enhanced** — 5px height, dual box-shadow (`12px` + `4px`), pulsing `progress-glow` keyframe animation (8px↔20px glow at 1s interval) while loading
+
+---
+
 ## [2.6.5] - 2026-06-10
 
 ### Changed
