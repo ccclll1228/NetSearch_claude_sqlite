@@ -2608,6 +2608,24 @@
       max-width: 420px;
     }
 
+    @keyframes brand-loading-pulse {
+      0%, 100% {
+        filter: drop-shadow(0 0 4px rgba(204, 120, 92, 0.4));
+        opacity: 1;
+      }
+      50% {
+        filter: drop-shadow(0 0 16px rgba(204, 120, 92, 1)) drop-shadow(0 0 30px rgba(255, 154, 108, 0.7));
+        opacity: 0.85;
+      }
+    }
+    .brand-loading .logo-icon,
+    .brand-loading .logo-title {
+      animation: brand-loading-pulse 1s ease-in-out infinite;
+    }
+    .brand-loading .logo-title {
+      animation-delay: 0.15s;
+    }
+
     #reload-progress-bar {
       position: fixed;
       top: 0;
@@ -6705,6 +6723,7 @@
       const bar = document.getElementById('reload-progress-bar');
       bar.style.width = '0%';
       bar.classList.add('loading');
+      document.querySelector('.logo').classList.add('brand-loading');
       requestAnimationFrame(() => {
         bar.style.transition = 'width 0.8s ease';
         bar.style.width = '80%';
@@ -6715,6 +6734,7 @@
       const bar = document.getElementById('reload-progress-bar');
       bar.style.transition = 'width 0.2s ease, opacity 0.4s ease 0.3s';
       bar.style.width = '100%';
+      document.querySelector('.logo').classList.remove('brand-loading');
       setTimeout(() => {
         bar.classList.remove('loading');
         setTimeout(() => { bar.style.width = '0%'; }, 500);
