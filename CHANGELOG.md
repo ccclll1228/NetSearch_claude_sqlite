@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.6.7] - 2026-06-11
+
+### Changed
+- **Progress bar enhanced** — 8px height, coral-to-peach gradient with `progress-shimmer` animation (1.2s), intensified `progress-glow` pulsing (10px↔50px spread at 0.8s)
+
+---
+
 ## [2.6.6] - 2026-06-11
 
 ### Added
