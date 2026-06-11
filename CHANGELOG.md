@@ -4,6 +4,13 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [2.6.8] - 2026-06-11
+
+### Changed
+- **Progress bar height** — reduced from 8px to 4px for a subtler appearance
+
+---
+
 ## [2.6.7] - 2026-06-11
 
 ### Changed
