@@ -2612,22 +2612,27 @@
       position: fixed;
       top: 0;
       left: 0;
-      height: 5px;
+      height: 8px;
       width: 0%;
-      background: #cc785c;
+      background: linear-gradient(90deg, #cc785c, #ff9a6c, #cc785c);
+      background-size: 200% 100%;
       z-index: 9999;
       transition: width 0.3s ease, opacity 0.4s ease;
       opacity: 0;
       border-radius: 0 2px 2px 0;
-      box-shadow: 0 0 12px rgba(204, 120, 92, 0.9), 0 0 4px rgba(204, 120, 92, 1);
+      box-shadow: 0 0 10px 2px rgba(204,120,92,0.9), 0 0 30px 4px rgba(255,154,108,0.6);
+    }
+    @keyframes progress-shimmer {
+      0%   { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
     }
     @keyframes progress-glow {
-      0%, 100% { box-shadow: 0 0 8px rgba(204, 120, 92, 0.8), 0 0 3px rgba(204, 120, 92, 1); }
-      50%       { box-shadow: 0 0 20px rgba(204, 120, 92, 1),  0 0 8px rgba(204, 120, 92, 1); }
+      0%, 100% { box-shadow: 0 0 10px 2px rgba(204,120,92,0.9), 0 0 30px 4px rgba(255,154,108,0.6); }
+      50%       { box-shadow: 0 0 20px 6px rgba(255,154,108,1),  0 0 50px 10px rgba(204,120,92,0.8); }
     }
     #reload-progress-bar.loading {
       opacity: 1;
-      animation: progress-glow 1s ease-in-out infinite;
+      animation: progress-shimmer 1.2s linear infinite, progress-glow 0.8s ease-in-out infinite;
     }
   </style>
 </head>
