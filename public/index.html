@@ -2612,17 +2612,22 @@
       position: fixed;
       top: 0;
       left: 0;
-      height: 3px;
+      height: 5px;
       width: 0%;
       background: #cc785c;
       z-index: 9999;
       transition: width 0.3s ease, opacity 0.4s ease;
       opacity: 0;
       border-radius: 0 2px 2px 0;
-      box-shadow: 0 0 8px rgba(204, 120, 92, 0.6);
+      box-shadow: 0 0 12px rgba(204, 120, 92, 0.9), 0 0 4px rgba(204, 120, 92, 1);
+    }
+    @keyframes progress-glow {
+      0%, 100% { box-shadow: 0 0 8px rgba(204, 120, 92, 0.8), 0 0 3px rgba(204, 120, 92, 1); }
+      50%       { box-shadow: 0 0 20px rgba(204, 120, 92, 1),  0 0 8px rgba(204, 120, 92, 1); }
     }
     #reload-progress-bar.loading {
       opacity: 1;
+      animation: progress-glow 1s ease-in-out infinite;
     }
   </style>
 </head>
