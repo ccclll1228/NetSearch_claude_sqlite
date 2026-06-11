@@ -2607,10 +2607,28 @@
     #confirmDialog .modal {
       max-width: 420px;
     }
+
+    #reload-progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      width: 0%;
+      background: #cc785c;
+      z-index: 9999;
+      transition: width 0.3s ease, opacity 0.4s ease;
+      opacity: 0;
+      border-radius: 0 2px 2px 0;
+      box-shadow: 0 0 8px rgba(204, 120, 92, 0.6);
+    }
+    #reload-progress-bar.loading {
+      opacity: 1;
+    }
   </style>
 </head>
 
 <body>
+  <div id="reload-progress-bar"></div>
   <div class="app" id="app">
     <!-- Header -->
     <div class="header">
@@ -6673,10 +6691,29 @@
     }
 
     // ── Server integration ────────────────────────────────────────────────────────
+    function showReloadProgress() {
+      const bar = document.getElementById('reload-progress-bar');
+      bar.style.width = '0%';
+      bar.classList.add('loading');
+      requestAnimationFrame(() => {
+        bar.style.transition = 'width 0.8s ease';
+        bar.style.width = '80%';
+      });
+    }
+
+    function finishReloadProgress() {
+      const bar = document.getElementById('reload-progress-bar');
+      bar.style.transition = 'width 0.2s ease, opacity 0.4s ease 0.3s';
+      bar.style.width = '100%';
+      setTimeout(() => {
+        bar.classList.remove('loading');
+        setTimeout(() => { bar.style.width = '0%'; }, 500);
+      }, 300);
+    }
+
     async function loadFromServer() {
-      const spinner = document.getElementById('searchSpinner');
       const searchInput = document.getElementById('searchInput');
-      if (spinner) spinner.classList.add('active');
+      showReloadProgress();
       if (searchInput) searchInput.disabled = true;
       try {
         const res = await fetch('/api/data');
@@ -6693,7 +6730,7 @@
       } catch (err) {
         console.error('[client] Failed to load from server:', err.message);
       } finally {
-        if (spinner) spinner.classList.remove('active');
+        finishReloadProgress();
         if (searchInput) searchInput.disabled = false;
       }
     }
