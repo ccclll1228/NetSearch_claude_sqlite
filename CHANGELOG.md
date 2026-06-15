@@ -4,6 +4,22 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [Unreleased] — 2026-06-15
+
+### Fixed
+- EXACT/KEYWORD button height now matches toolbar buttons
+- NetSearch brand text font unified with toolbar button font
+
+### Added
+- Full responsive layout support for all screen sizes (320px – 1920px)
+- Mobile navbar: 2-row layout — logo + scrollable toolbar on row 1, search bar on row 2
+- Horizontal scroll on Sec Rules and NAT Rules tables on mobile
+- Tab bar horizontal scroll on narrow screens
+- Filter rows use flex-wrap on mobile to prevent overflow
+- Viewport meta tag added for correct mobile scaling
+
+---
+
 ## [2.6.8] - 2026-06-11
 
 ### Changed
