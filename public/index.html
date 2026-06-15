@@ -2688,6 +2688,25 @@
         display: flex;
         flex-wrap: nowrap;
       }
+      .rule-card {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .rule-body,
+      .rule-body-header,
+      .nat-rule-body {
+        min-width: 700px;
+        flex-shrink: 0;
+      }
+      .rule-field {
+        flex-shrink: 0;
+        min-width: 0;
+      }
+      .rule-field .pill,
+      .rule-field span {
+        white-space: nowrap;
+        overflow: visible;
+      }
       .content { padding: 10px 8px; }
       .filter-bar { padding: 6px 8px; gap: 6px; }
       .obj-panels-grid { grid-template-columns: 1fr; }
