@@ -191,7 +191,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      flex-shrink: 0;
+      flex: 0 0 auto;
     }
 
     .logo-title {
@@ -215,7 +215,9 @@
     }
 
     .header-search {
-      flex: 1;
+      flex: 1 1 0;
+      min-width: 60px;
+      overflow: hidden;
       display: flex;
       gap: 6px;
       align-items: center;
@@ -440,6 +442,8 @@
       display: flex;
       gap: 6px;
       align-items: center;
+      flex: 0 0 auto;
+      overflow: visible;
     }
     .header-actions .btn {
       height: 28px;
@@ -1000,6 +1004,7 @@
       grid-template-columns: 12% 12% 21% 21% 10% 8% 16%;
       gap: 0;
       align-items: start;
+      min-width: 700px;
     }
 
     .rule-body-header {
@@ -1011,6 +1016,7 @@
       top: 0;
       z-index: 10;
       background: var(--cds-layer-02);
+      min-width: 700px;
       border-bottom: 1px solid var(--cds-border-subtle);
       font-size: 12px;
       font-weight: 600;
@@ -1433,6 +1439,8 @@
 
     .device-group-body {
       transition: opacity .2s;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .device-group-body.collapsed {
@@ -1461,12 +1469,14 @@
     .route-table,
     .f5-ltm-table {
       width: 100%;
+      min-width: 700px;
       border-collapse: collapse;
       font-size: 12px;
     }
 
     .fqdn-table {
       width: 100%;
+      min-width: 700px;
       border-collapse: collapse;
       font-size: 12px;
       table-layout: fixed;
@@ -2633,6 +2643,22 @@
     #reload-progress-bar.loading {
       opacity: 1;
       animation: progress-shimmer 1.2s linear infinite, progress-glow 0.8s ease-in-out infinite;
+    }
+
+    /* ── Responsive — mobile/tablet ── */
+    @media (max-width: 768px) {
+      .header-actions {
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      .header-actions::-webkit-scrollbar { height: 0; }
+      .header { gap: 8px; padding: 0 8px; }
+      .content { padding: 10px 8px; }
+      .filter-bar { padding: 6px 8px; gap: 6px; }
+      .obj-panels-grid { grid-template-columns: 1fr; }
+      .obj-panel + .obj-panel { border-left: none; padding-left: 0; border-top: 1px solid var(--cds-border-subtle); padding-top: 16px; }
+      #bulkSearchModal .modal { min-width: unset; }
     }
   </style>
 </head>
