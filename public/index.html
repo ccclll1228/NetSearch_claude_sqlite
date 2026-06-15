@@ -2647,13 +2647,47 @@
 
     /* ── Responsive — mobile/tablet ── */
     @media (max-width: 768px) {
+      .header {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 8px 10px;
+        gap: 8px;
+      }
+      .logo {
+        flex: 0 0 auto;
+        order: 1;
+      }
       .header-actions {
+        flex: 0 0 auto;
+        order: 2;
+        margin-left: auto;
         overflow-x: auto;
+        overflow-y: visible;
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
+        max-width: calc(100vw - 140px);
       }
-      .header-actions::-webkit-scrollbar { height: 0; }
-      .header { gap: 8px; padding: 0 8px; }
+      .header-actions::-webkit-scrollbar {
+        display: none;
+      }
+      .header-search {
+        flex: 0 0 100%;
+        order: 3;
+        min-width: 0;
+        overflow: visible;
+      }
+      .tabs,
+      .tab-bar,
+      [class*="tab-nav"],
+      [class*="result-tabs"] {
+        overflow-x: auto;
+        overflow-y: visible;
+        scrollbar-width: none;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        display: flex;
+        flex-wrap: nowrap;
+      }
       .content { padding: 10px 8px; }
       .filter-bar { padding: 6px 8px; gap: 6px; }
       .obj-panels-grid { grid-template-columns: 1fr; }
