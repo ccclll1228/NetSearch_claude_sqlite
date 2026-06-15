@@ -2707,6 +2707,24 @@
         white-space: nowrap;
         overflow: visible;
       }
+      /* Sec Rules — horizontal scroll wrapper */
+      .rule-body-header,
+      .rule-body {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        min-width: 700px;
+        flex-shrink: 0;
+      }
+      .nat-rule-body {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        min-width: 700px;
+        flex-shrink: 0;
+      }
+      .rule-header {
+        min-width: 700px;
+        flex-shrink: 0;
+      }
       .content { padding: 10px 8px; }
       .filter-bar { padding: 6px 8px; gap: 6px; }
       .obj-panels-grid { grid-template-columns: 1fr; }
