@@ -30,5 +30,9 @@ For the full changelog, see [CHANGELOG.md](../CHANGELOG.md) in the project root.
 ### Fixed
 - EXACT/KEYWORD button height now matches toolbar buttons
 - NetSearch brand text font unified with toolbar button font
+- Mobile rule table min-width increased from 700px to 900px for wider, more readable columns
+- Removed `overflow: hidden` from `.app` wrapper that blocked horizontal scroll on mobile
+- Added `min-width` to `.rule-card` in mobile media query to prevent column compression
+- Added right padding and `nowrap` to pills/tags to prevent clipping at scroll edge
 - FortiGate poolname pill moved from APPLICATION column to DESTINATION column (DNAT-style)
 - FortiGate poolname pill text wrapping (no longer truncated)

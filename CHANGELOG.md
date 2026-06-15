@@ -9,6 +9,10 @@ All notable changes to NetSearch are documented here.
 ### Fixed
 - EXACT/KEYWORD button height now matches toolbar buttons
 - NetSearch brand text font unified with toolbar button font
+- Mobile rule table min-width increased from 700px to 900px for wider, more readable columns
+- Removed `overflow: hidden` from `.app` wrapper that blocked horizontal scroll on mobile
+- Added `min-width` to `.rule-card` in mobile media query to prevent column compression
+- Added right padding and `nowrap` to pills/tags to prevent clipping at scroll edge
 
 ### Added
 - Full responsive layout support for all screen sizes (320px – 1920px)
