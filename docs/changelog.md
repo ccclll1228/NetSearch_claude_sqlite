@@ -4,9 +4,15 @@ For the full changelog, see [CHANGELOG.md](../CHANGELOG.md) in the project root.
 
 ---
 
-## [Unreleased]
+## [Unreleased] — 2026-06-15
 
 ### Added
+- Full responsive layout support for all screen sizes (320px – 1920px)
+- Mobile navbar: 2-row layout — logo + scrollable toolbar on row 1, search bar on row 2
+- Horizontal scroll on Sec Rules and NAT Rules tables on mobile
+- Tab bar horizontal scroll on narrow screens
+- Filter rows use flex-wrap on mobile to prevent overflow
+- Viewport meta tag added for correct mobile scaling
 - FQDN filter: search history dropdown (`localStorage`, max 10 unique entries)
 - FQDN filter: clear (×) button inside input
 - FQDN filter: dedicated Boolean Search `?` help popup
@@ -22,5 +28,7 @@ For the full changelog, see [CHANGELOG.md](../CHANGELOG.md) in the project root.
 - Toolbar buttons unified: 28px height, 6px gap, inline SVG icons, Bulk Search modal redesigned
 
 ### Fixed
+- EXACT/KEYWORD button height now matches toolbar buttons
+- NetSearch brand text font unified with toolbar button font
 - FortiGate poolname pill moved from APPLICATION column to DESTINATION column (DNAT-style)
 - FortiGate poolname pill text wrapping (no longer truncated)
