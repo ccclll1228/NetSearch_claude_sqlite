@@ -2826,9 +2826,9 @@
         </div>
       </div>
       <div class="header-actions">
-        <button id="btn-ignore-cidr" class="toolbar-btn" onclick="toggleIgnoreCIDR(this)">
+        <button id="btn-ignore-cidr" class="toolbar-btn active" onclick="toggleIgnoreCIDR(this)">
           <svg id="cidr-state-icon" width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
-            <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <span id="lblIgnoreCidr">Ignore CIDR</span>
         </button>
@@ -3026,7 +3026,7 @@
       appliedSearch: '',
       searchAST: null,
       searchMode: 'keyword',
-      ignoreCIDR: false,
+      ignoreCIDR: true,
       highlightEnabled: true,
       disabledHosts: new Set(),
       lang: 'en',
