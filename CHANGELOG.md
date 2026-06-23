@@ -15,6 +15,9 @@ All notable changes to NetSearch are documented here.
 - Added right padding and `nowrap` to pills/tags to prevent clipping at scroll edge
 - Search history dropdown not appearing on input focus — `overflow: hidden` on `.header-search` was clipping the absolute-positioned dropdown
 
+### Changed
+- Ignore CIDR toggle now defaults to ON — CIDR containment checks are skipped unless explicitly disabled
+
 ### Added
 - Full responsive layout support for all screen sizes (320px – 1920px)
 - Mobile navbar: 2-row layout — logo + scrollable toolbar on row 1, search bar on row 2

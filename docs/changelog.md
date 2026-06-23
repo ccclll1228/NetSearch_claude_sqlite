@@ -6,6 +6,9 @@ For the full changelog, see [CHANGELOG.md](../CHANGELOG.md) in the project root.
 
 ## [Unreleased] — 2026-06-15
 
+### Changed
+- Ignore CIDR toggle now defaults to ON — CIDR containment checks are skipped unless explicitly disabled
+
 ### Added
 - Full responsive layout support for all screen sizes (320px – 1920px)
 - Mobile navbar: 2-row layout — logo + scrollable toolbar on row 1, search bar on row 2
