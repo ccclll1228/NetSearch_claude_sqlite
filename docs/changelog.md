@@ -34,5 +34,6 @@ For the full changelog, see [CHANGELOG.md](../CHANGELOG.md) in the project root.
 - Removed `overflow: hidden` from `.app` wrapper that blocked horizontal scroll on mobile
 - Added `min-width` to `.rule-card` in mobile media query to prevent column compression
 - Added right padding and `nowrap` to pills/tags to prevent clipping at scroll edge
+- Search history dropdown not appearing on input focus — `overflow: hidden` on `.header-search` was clipping the absolute-positioned dropdown
 - FortiGate poolname pill moved from APPLICATION column to DESTINATION column (DNAT-style)
 - FortiGate poolname pill text wrapping (no longer truncated)

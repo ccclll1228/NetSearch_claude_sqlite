@@ -13,6 +13,7 @@ All notable changes to NetSearch are documented here.
 - Removed `overflow: hidden` from `.app` wrapper that blocked horizontal scroll on mobile
 - Added `min-width` to `.rule-card` in mobile media query to prevent column compression
 - Added right padding and `nowrap` to pills/tags to prevent clipping at scroll edge
+- Search history dropdown not appearing on input focus — `overflow: hidden` on `.header-search` was clipping the absolute-positioned dropdown
 
 ### Added
 - Full responsive layout support for all screen sizes (320px – 1920px)
