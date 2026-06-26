@@ -6611,21 +6611,29 @@
       renderContent();
     }
 
+    function escapeTsvCell(val) {
+      if (val == null) return '';
+      const s = String(val);
+      if (s.includes('\n') || s.includes('\r') || s.includes('\t') || s.includes('"')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }
+
     function copyTSV() {
       if (copyData.length === 0) return;
       const selFields = copyFields.filter(f => f.selected);
-      const header = selFields.map(f => f.label).join('\t');
+      const header = selFields.map(f => escapeTsvCell(f.label)).join('\t');
       const body = copyData.map(row =>
         selFields.map(f => {
-          const val = String(row[f.key] || '');
+          let val = String(row[f.key] || '');
           if (MULTILINE_KEYS.has(f.key) && val.includes(', ')) {
-            const lines = val.split(', ').join('\n');
-            return `"${lines.replace(/"/g, '""')}"`;
+            val = val.split(', ').join('\n');
           }
-          return val.replace(/\t/g, ' ');
+          return escapeTsvCell(val);
         }).join('\t')
-      ).join('\n');
-      const tsv = header + '\n' + body;
+      ).join('\r\n');
+      const tsv = header + '\r\n' + body;
       copyToClipboard(tsv).then(() => showCopyFeedback());
     }
 
