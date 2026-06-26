@@ -14,6 +14,7 @@ All notable changes to NetSearch are documented here.
 - Added `min-width` to `.rule-card` in mobile media query to prevent column compression
 - Added right padding and `nowrap` to pills/tags to prevent clipping at scroll edge
 - Search history dropdown not appearing on input focus — `overflow: hidden` on `.header-search` was clipping the absolute-positioned dropdown
+- **Excel-compatible TSV copy** — multi-line cell values (e.g. Source/Destination with multiple IPs) no longer break across rows when pasted into Excel; added shared `escapeTsvCell()` helper that wraps any cell containing newlines, tabs, or quotes in double quotes (escaping embedded quotes as `""`) and switched row separators to CRLF (`\r\n`). Applied to all three copy functions: Copy tab (`copyTSV`), FQDN tab (`copyFqdnTSV`), and per-rule copy (`copyRuleTSV`)
 
 ### Changed
 - Ignore CIDR toggle now defaults to ON — CIDR containment checks are skipped unless explicitly disabled
