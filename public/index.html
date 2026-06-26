@@ -5396,13 +5396,13 @@
 
     function copyRuleTSV(ruleData) {
       const fields = ['name', 'action', 'from', 'to', 'source', 'destination', 'service', 'application'];
-      const header = fields.join('\t');
+      const header = fields.map(f => escapeTsvCell(f)).join('\t');
       const row = fields.map(f => {
         const v = ruleData[f];
-        if (Array.isArray(v)) return v.join(', ');
-        return String(v || '');
+        if (Array.isArray(v)) return escapeTsvCell(v.join('\n'));
+        return escapeTsvCell(v);
       }).join('\t');
-      const tsv = header + '\n' + row;
+      const tsv = header + '\r\n' + row;
       copyToClipboard(tsv).then(() => showCopyFeedback());
     }
 
@@ -6258,10 +6258,10 @@
       if (_lastFilteredFqdnRows.length === 0) return;
       const sel = FQDN_COPY_FIELDS.filter(f => f.selected);
       if (sel.length === 0) return;
-      const header = sel.map(f => f.label).join('\t');
+      const header = sel.map(f => escapeTsvCell(f.label)).join('\t');
       const DOT_KEYS = new Set(['domain', 'fqdn', 'ip']);
-      const body = _lastFilteredFqdnRows.map(r => sel.map(f => (DOT_KEYS.has(f.key) ? stripDot(r[f.key]) : String(r[f.key] || '')).replace(/\t/g, ' ')).join('\t')).join('\n');
-      const tsv = header + '\n' + body;
+      const body = _lastFilteredFqdnRows.map(r => sel.map(f => escapeTsvCell(DOT_KEYS.has(f.key) ? stripDot(r[f.key]) : String(r[f.key] || ''))).join('\t')).join('\r\n');
+      const tsv = header + '\r\n' + body;
       copyToClipboard(tsv).then(() => showCopyFeedback());
     }
 
