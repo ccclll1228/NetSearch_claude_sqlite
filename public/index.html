@@ -4105,6 +4105,9 @@
         }
         pos = ei + 1;
       }
+      // Reverse index: member IP -> [pool names] for indirect VS-by-pool-member search
+      acc.poolMemberIndex = {};
+      acc.pools.forEach(pool => { (pool.members || []).forEach(m => { if (!m.ip) return; if (!acc.poolMemberIndex[m.ip]) acc.poolMemberIndex[m.ip] = []; if (!acc.poolMemberIndex[m.ip].includes(pool.name)) acc.poolMemberIndex[m.ip].push(pool.name); }); });
       return acc;
     };
 
@@ -4570,14 +4573,31 @@
         });
 
         // F5 Virtuals — with FQDN + Rule IP chaining
+        // Lazy-build the pool-member reverse index (member IP -> [pool names]) if a stale
+        // cache predates the parser change. Indirect match: IP -> pool member -> pool -> VS.
+        let pmIndex = parsed.poolMemberIndex;
+        if (!pmIndex) {
+          pmIndex = parsed.poolMemberIndex = {};
+          (parsed.pools || []).forEach(pool => { (pool.members || []).forEach(m => { if (!m.ip) return; if (!pmIndex[m.ip]) pmIndex[m.ip] = []; if (!pmIndex[m.ip].includes(pool.name)) pmIndex[m.ip].push(pool.name); }); });
+        }
         (parsed.virtuals || []).forEach(vs => {
           let match = true;
           let chainedFromRule = false;
           if (searchAST) {
             match = evaluateAST(searchAST, (term, forceExact) => {
               const s = String(term).toLowerCase(), isEx = forceExact || searchMode === 'exact';
-              if (isEx) return String(vs.name).toLowerCase() === s || String(vs.ip) === s || String(vs.port) === s || (vs.pool && String(vs.pool).toLowerCase() === s);
-              return String(vs.name).toLowerCase().includes(s) || String(vs.ip).toLowerCase().includes(s) || String(vs.port) === s || (vs.pool && String(vs.pool).toLowerCase().includes(s));
+              const direct = isEx
+                ? (String(vs.name).toLowerCase() === s || String(vs.ip) === s || String(vs.port) === s || (vs.pool && String(vs.pool).toLowerCase() === s))
+                : (String(vs.name).toLowerCase().includes(s) || String(vs.ip).toLowerCase().includes(s) || String(vs.port) === s || (vs.pool && String(vs.pool).toLowerCase().includes(s)));
+              if (direct) return true;
+              // Indirect: term is an IP that is a member of this VS's pool
+              if (vs.pool) {
+                if (pmIndex[term] && pmIndex[term].includes(vs.pool)) return true;
+                if (!ignoreCIDR && isCIDR(term)) {
+                  for (const mip in pmIndex) { if (pmIndex[mip].includes(vs.pool) && ipInCIDR(mip, term)) return true; }
+                }
+              }
+              return false;
             });
             // Chain from rule IPs → F5 VS IP
             if (!match && allRuleIps.size > 0) {
