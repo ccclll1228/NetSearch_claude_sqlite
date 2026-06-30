@@ -15,6 +15,7 @@ All notable changes to NetSearch are documented here.
 - Added right padding and `nowrap` to pills/tags to prevent clipping at scroll edge
 - Search history dropdown not appearing on input focus — `overflow: hidden` on `.header-search` was clipping the absolute-positioned dropdown
 - **Excel-compatible TSV copy** — multi-line cell values (e.g. Source/Destination with multiple IPs) no longer break across rows when pasted into Excel; added shared `escapeTsvCell()` helper that wraps any cell containing newlines, tabs, or quotes in double quotes (escaping embedded quotes as `""`) and switched row separators to CRLF (`\r\n`). Applied to all three copy functions: Copy tab (`copyTSV`), FQDN tab (`copyFqdnTSV`), and per-rule copy (`copyRuleTSV`)
+- **LTM search via pool member IP** — searching an IP now also returns virtual servers whose referenced pool contains that IP as a member (chain: IP → pool member → pool name → VS), not just VS with a direct destination-IP match. The F5 parser builds a `poolMemberIndex` (member IP → pool names) reverse index; the VS match function adds the indirect path while leaving direct matches unchanged. Indirect matches feed the same results list, so the LTM badge count reflects the combined total and VS matching both paths are deduplicated
 
 ### Changed
 - Ignore CIDR toggle now defaults to ON — CIDR containment checks are skipped unless explicitly disabled
