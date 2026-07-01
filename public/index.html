@@ -1812,6 +1812,12 @@
       transform: rotate(90deg);
     }
 
+    .f5-ltm-expand-cell {
+      cursor: pointer;
+      text-align: center;
+      user-select: none;
+    }
+
     .f5-ltm-members {
       background: var(--bg);
       padding: 8px 12px 8px 36px;
@@ -5793,8 +5799,8 @@
           const isChained = vs._chainedFromRule;
           const dot = `<span class="ltm-dot ${vs.status === 'enabled' ? 'enabled' : 'disabled'}"></span>`;
           const _n = vs.name.replace(/'/g, "\\'"), _i = (vs.ip || '').replace(/'/g, "\\'"), _po = (vs.port || '').replace(/'/g, "\\'"), _pl = (vs.pool || '').replace(/'/g, "\\'"), _hn = (vs._hostname || '').replace(/'/g, "\\'");
-          let row = `<tr class="${isChained ? 'chained' : ''}" style="cursor:pointer" onclick="toggleF5LtmRow('${esc(vs.name)}')">
-        <td><span class="f5-ltm-expand ${isExp ? 'open' : ''}">▶</span></td>
+          let row = `<tr class="${isChained ? 'chained' : ''}" style="cursor:pointer" onmousedown="_ltmRowMouseDown(event)" onclick="toggleF5LtmRow('${esc(vs.name)}', event)">
+        <td class="f5-ltm-expand-cell" onclick="event.stopPropagation();toggleF5LtmRowForce('${esc(vs.name)}')"><span class="f5-ltm-expand ${isExp ? 'open' : ''}">▶</span></td>
         <td onclick="event.stopPropagation()"><button class="rule-copy-btn" onclick="copyF5VsRow('${_n}','${_i}','${_po}','${_pl}','${_hn}')" title="Copy row">${SVG_COPY}</button></td>
         <td><b>${esc(vs.name)}</b>${isChained ? '<span class="chain-pill dnat">DNAT → IP</span>' : ''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(vs.name)}')" title="Search">${SVG_QS}</button></td>
         <td style="font-family:monospace">${esc(vs.ip)}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(vs.ip)}')" title="Search">${SVG_QS}</button></td>
@@ -5822,7 +5828,18 @@
     }
 
     function sortF5Ltm(key) { if (f5LtmSort.key === key) f5LtmSort.dir = f5LtmSort.dir === 'asc' ? 'desc' : 'asc'; else { f5LtmSort.key = key; f5LtmSort.dir = 'asc'; } renderContent(); }
-    function toggleF5LtmRow(name) { if (f5LtmExpandedRows.has(name)) f5LtmExpandedRows.delete(name); else f5LtmExpandedRows.add(name); renderContent(); }
+    let _ltmMdX = 0, _ltmMdY = 0;
+    function _ltmRowMouseDown(e) { _ltmMdX = e.clientX; _ltmMdY = e.clientY; }
+    function _toggleF5LtmRowState(name) { if (f5LtmExpandedRows.has(name)) f5LtmExpandedRows.delete(name); else f5LtmExpandedRows.add(name); renderContent(); }
+    // Guarded row toggle: skip when the click concludes a text selection or a drag (>4px),
+    // so selecting text in a cell no longer accidentally expands/collapses the row.
+    function toggleF5LtmRow(name, e) {
+      if (e && (Math.abs(e.clientX - _ltmMdX) > 4 || Math.abs(e.clientY - _ltmMdY) > 4)) return;
+      if (window.getSelection && window.getSelection().toString().length > 0) return;
+      _toggleF5LtmRowState(name);
+    }
+    // Dedicated expand-arrow toggle: always fires, regardless of selection/drag state.
+    function toggleF5LtmRowForce(name) { _toggleF5LtmRowState(name); }
 
     function renderF5Pools(pools) {
       let filtered = pools;
