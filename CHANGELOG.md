@@ -22,6 +22,7 @@ All notable changes to NetSearch are documented here.
 - Ignore CIDR toggle now defaults to ON — CIDR containment checks are skipped unless explicitly disabled
 
 ### Added
+- **Raw Config tab line filter** — an Enter-triggered filter bar atop the Raw Config tab shows only config lines containing the keyword (case-insensitive, plain text, line-level show-only-matching). Device cards with zero matches are hidden, the matched keyword is highlighted with a warm `<mark>`, and a `N devices · M lines` counter is shown while active. Includes a clear (×) button; clearing/empty restores the full view and switching tabs resets the filter. Purely additive — the original render path is unchanged when no filter is active
 - **Raw Config tab shows server-loaded configs** — the Raw Config tab now also displays configs loaded from the server backup directory (Oxidized), not just manually uploaded files. New read-only `GET /api/rawconfig?devices=<names>` endpoint reuses the existing device-discovery logic to read raw backup file content (per-device errors return `content: null` + `error` instead of throwing); the tab renders each server config in the same card style with a "Server Config" badge. Purely additive — manual-import rendering, existing endpoints, search/parse/filter, and all other tabs are unchanged; fetch failure or empty result falls back to the existing "No configuration files imported." message
 - Full responsive layout support for all screen sizes (320px – 1920px)
 - Mobile navbar: 2-row layout — logo + scrollable toolbar on row 1, search bar on row 2
