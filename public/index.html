@@ -2193,7 +2193,7 @@
     .raw-filter-input {
       width: 100%;
       box-sizing: border-box;
-      padding: 7px 30px 7px 12px;
+      padding: 7px 12px;
       font-family: var(--cds-font-mono);
       font-size: 12px;
       color: var(--cds-text-primary);
@@ -2203,21 +2203,63 @@
       outline: none;
     }
     .raw-filter-input:focus { border-color: var(--cds-focus); }
+    .raw-help-btn {
+      width: 24px;
+      height: 26px;
+      flex-shrink: 0;
+      border: 1px solid var(--cds-border-subtle);
+      background: var(--cds-layer-01);
+      color: var(--cds-text-placeholder);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: help;
+      border-radius: var(--cds-radius);
+    }
+    .raw-help-btn:hover { background: var(--cds-layer-hover); color: var(--cds-text-primary); }
+    .raw-ctx-toggle {
+      flex-shrink: 0;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-family: var(--cds-font-sans);
+      cursor: pointer;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: var(--cds-radius);
+      background: var(--cds-layer-01);
+      color: var(--cds-text-secondary);
+      white-space: nowrap;
+    }
+    .raw-ctx-toggle:hover { background: var(--cds-layer-hover); }
+    .raw-ctx-toggle.active {
+      background: var(--cds-interactive);
+      border-color: var(--cds-interactive);
+      color: #fff;
+    }
+    .raw-ctx-n-wrap { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    .raw-ctx-n {
+      width: 48px;
+      box-sizing: border-box;
+      padding: 5px 6px;
+      font-size: 12px;
+      font-family: var(--cds-font-mono);
+      color: var(--cds-text-primary);
+      background: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: var(--cds-radius);
+      outline: none;
+    }
+    .raw-ctx-n:focus { border-color: var(--cds-focus); }
+    .raw-ctx-suffix { font-size: 12px; color: var(--cds-text-secondary); font-family: var(--cds-font-sans); }
     .raw-filter-clear {
-      position: absolute;
-      right: 6px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 18px;
-      height: 18px;
-      line-height: 16px;
-      text-align: center;
-      border: none;
-      background: transparent;
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      line-height: 1;
+      border: 1px solid var(--cds-border-subtle);
+      background: var(--cds-layer-01);
       color: var(--cds-text-placeholder);
       font-size: 15px;
       cursor: pointer;
-      border-radius: 50%;
+      border-radius: var(--cds-radius);
     }
     .raw-filter-clear:hover { background: var(--cds-layer-hover); color: var(--cds-text-primary); }
     .raw-filter-count {
@@ -2231,6 +2273,10 @@
       color: #141413;
       border-radius: 2px;
       padding: 0 1px;
+    }
+    .raw-ctx-divider {
+      color: var(--cds-text-placeholder);
+      user-select: none;
     }
 
     .raw-config-pre {
@@ -3167,6 +3213,10 @@
         loadingConfigs: 'Loading server configs…',
         rawFilterPlaceholder: 'Filter config lines... (press Enter)',
         rawFilterCount: '{0} devices · {1} lines',
+        rawFilterHelp: 'Type a keyword and press Enter to show only matching config lines. Toggle Context to also show surrounding lines.',
+        rawCtxLabel: 'Context',
+        rawCtxLines: 'lines',
+        rawCtxTip: 'Show {0} lines above and below each match (like grep -C)',
         fqdnPrompt: 'Enter a keyword above or select filters to view FQDN records.',
         fqdnShowAll: 'Show All FQDN ({0} records)',
         statsSecRules: 'Total: {0} matching rule(s), from {1} device(s)',
@@ -3262,6 +3312,10 @@
         loadingConfigs: '正在載入伺服器組態…',
         rawFilterPlaceholder: '篩選設定行... (按 Enter)',
         rawFilterCount: '{0} 台設備 · {1} 行',
+        rawFilterHelp: '輸入關鍵字並按 Enter 只顯示符合的設定行。開啟「上下文」可同時顯示前後行。',
+        rawCtxLabel: '上下文',
+        rawCtxLines: '行',
+        rawCtxTip: '在每個符合行的上下各顯示 {0} 行（類似 grep -C）',
         fqdnPrompt: '請輸入關鍵字或選擇篩選條件以檢視 FQDN 記錄。',
         fqdnShowAll: '顯示全部 FQDN（{0} 筆）',
         statsSecRules: '共 {0} 條符合規則，來自 {1} 台設備',
@@ -6757,6 +6811,8 @@
     // cards, highlights the match. Layered on top of the existing renderers below —
     // when no filter is active the original output is returned unchanged.
     let _rawFilterTerm = '';
+    let _rawCtxOn = false;   // context-lines toggle (persists across tab switches)
+    let _rawCtxN = 2;        // number of context lines above/below each match (0–20)
 
     function renderRawConfig() {
       if (!_rawFilterTerm) {
@@ -6768,15 +6824,13 @@
       const term = _rawFilterTerm.toLowerCase();
       let deviceCount = 0, lineCount = 0;
       const blocks = sources.map(src => {
-        const matched = String(src.text || '').split('\n').filter(l => l.toLowerCase().includes(term));
-        if (matched.length === 0) return '';
-        deviceCount++; lineCount += matched.length;
-        const body = matched.slice(0, 50000).map(l => _highlightRawLine(l, term)).join('\n')
-          + (matched.length > 50000 ? '\n\n' + T('truncated') : '');
+        const { html, matchCount } = _rawFilterLines(src.text, term, _rawCtxOn, _rawCtxN);
+        if (matchCount === 0) return '';
+        deviceCount++; lineCount += matchCount;   // counter counts matching lines only
         return `
     <div class="raw-config-block">
       <div class="raw-config-header"><span>${esc(src.name)}</span>${src.isServer ? `<span class="server-config-badge">${T('serverConfigBadge')}</span>` : ''}</div>
-      <pre class="raw-config-pre">${body}</pre>
+      <pre class="raw-config-pre">${html}</pre>
     </div>
   `;
       }).join('');
@@ -6785,13 +6839,18 @@
       return _rawFilterBarHtml(counter) + content;
     }
 
-    // Filter-bar chrome; counter hidden unless a filter is active.
+    // Filter-bar chrome. Layout: [ input ] [?] [ Context ± ] [ N lines ] [×] [ counter ].
+    // Counter hidden unless a filter is active; N input shown only when context is ON.
     function _rawFilterBarHtml(counterText) {
+      const ctxTip = esc(T('rawCtxTip', _rawCtxN));
       return `<div class="raw-filter-bar">
       <div class="raw-filter-input-wrap">
         <input id="rawFilterInput" class="raw-filter-input" type="text" placeholder="${esc(T('rawFilterPlaceholder'))}" value="${esc(_rawFilterTerm)}" onkeydown="if(event.key==='Enter'){event.preventDefault();applyRawFilter(this.value);}">
-        <button class="raw-filter-clear" onclick="clearRawFilter()" title="Clear">×</button>
       </div>
+      <button class="raw-help-btn" title="${esc(T('rawFilterHelp'))}">?</button>
+      <button class="raw-ctx-toggle ${_rawCtxOn ? 'active' : ''}" title="${ctxTip}" onclick="toggleRawCtx()">± ${esc(T('rawCtxLabel'))}</button>
+      ${_rawCtxOn ? `<span class="raw-ctx-n-wrap"><input id="rawCtxN" class="raw-ctx-n" type="number" min="0" max="20" value="${_rawCtxN}" title="${ctxTip}" oninput="setRawCtxN(this.value)"><span class="raw-ctx-suffix">${esc(T('rawCtxLines'))}</span></span>` : ''}
+      <button class="raw-filter-clear" onclick="clearRawFilter()" title="Clear">×</button>
       <span class="raw-filter-count"${_rawFilterTerm ? '' : ' style="display:none"'}>${esc(counterText || '')}</span>
     </div>`;
     }
@@ -6826,6 +6885,67 @@
         i = idx + tl;
       }
       return out;
+    }
+
+    // Build a device's filtered <pre> body. Returns { html, matchCount }.
+    // matchCount = matching lines only (context lines are display-only, not counted).
+    // When ctxOn, each match is expanded by ±ctxN lines, overlapping/adjacent ranges
+    // merge, and non-adjacent blocks are separated by a muted divider row.
+    function _rawFilterLines(text, lowerTerm, ctxOn, ctxN) {
+      const lines = String(text || '').split('\n');
+      const matchIdx = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].toLowerCase().includes(lowerTerm)) matchIdx.push(i);
+      }
+      if (matchIdx.length === 0) return { html: '', matchCount: 0 };
+      const CAP = 50000;
+      // Context OFF → matching lines only (original behavior).
+      if (!ctxOn || ctxN <= 0) {
+        const html = matchIdx.slice(0, CAP).map(i => _highlightRawLine(lines[i], lowerTerm)).join('\n')
+          + (matchIdx.length > CAP ? '\n\n' + T('truncated') : '');
+        return { html, matchCount: matchIdx.length };
+      }
+      // Context ON → expand each match ±ctxN, merge overlapping/adjacent ranges.
+      const matchSet = new Set(matchIdx);
+      const ranges = [];
+      for (const i of matchIdx) {
+        const lo = Math.max(0, i - ctxN), hi = Math.min(lines.length - 1, i + ctxN);
+        const last = ranges[ranges.length - 1];
+        if (last && lo <= last.hi + 1) last.hi = Math.max(last.hi, hi);
+        else ranges.push({ lo, hi });
+      }
+      const parts = [];
+      ranges.forEach((r, ri) => {
+        if (parts.length >= CAP) return;
+        if (ri > 0) parts.push('<span class="raw-ctx-divider">···</span>');
+        for (let i = r.lo; i <= r.hi && parts.length < CAP; i++) {
+          parts.push(matchSet.has(i) ? _highlightRawLine(lines[i], lowerTerm) : esc(lines[i]));
+        }
+      });
+      const html = parts.join('\n') + (parts.length >= CAP ? '\n\n' + T('truncated') : '');
+      return { html, matchCount: matchIdx.length };
+    }
+
+    // Toggle context on/off; re-render so the N input appears and (if a filter is
+    // active) context lines are applied.
+    function toggleRawCtx() {
+      _rawCtxOn = !_rawCtxOn;
+      const el = document.getElementById('content');
+      if (el) el.innerHTML = renderRawConfig();
+    }
+
+    // Update context count (clamped 0–20). Re-runs the filter immediately when a
+    // term is active — no need to press Enter again.
+    function setRawCtxN(val) {
+      let n = parseInt(val, 10);
+      if (isNaN(n)) n = 0;
+      _rawCtxN = Math.max(0, Math.min(20, n));
+      if (_rawFilterTerm) {
+        const el = document.getElementById('content');
+        if (el) el.innerHTML = renderRawConfig();
+        const inp = document.getElementById('rawCtxN');
+        if (inp) inp.focus();
+      }
     }
 
     function applyRawFilter(val) {
