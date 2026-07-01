@@ -2179,6 +2179,60 @@
       letter-spacing: 0.02em;
     }
 
+    .raw-filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .raw-filter-input-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 420px;
+    }
+    .raw-filter-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 7px 30px 7px 12px;
+      font-family: var(--cds-font-mono);
+      font-size: 12px;
+      color: var(--cds-text-primary);
+      background: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: var(--cds-radius);
+      outline: none;
+    }
+    .raw-filter-input:focus { border-color: var(--cds-focus); }
+    .raw-filter-clear {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      line-height: 16px;
+      text-align: center;
+      border: none;
+      background: transparent;
+      color: var(--cds-text-placeholder);
+      font-size: 15px;
+      cursor: pointer;
+      border-radius: 50%;
+    }
+    .raw-filter-clear:hover { background: var(--cds-layer-hover); color: var(--cds-text-primary); }
+    .raw-filter-count {
+      font-size: 12px;
+      color: var(--cds-text-secondary);
+      font-family: var(--cds-font-sans);
+      white-space: nowrap;
+    }
+    .raw-hl {
+      background: #f5c842;
+      color: #141413;
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+
     .raw-config-pre {
       background: var(--cds-layer-01);
       border: 1px solid var(--cds-border-subtle);
@@ -3111,6 +3165,8 @@
         noConfigs: 'No configuration files imported.',
         serverConfigBadge: 'Server Config',
         loadingConfigs: 'Loading server configs…',
+        rawFilterPlaceholder: 'Filter config lines... (press Enter)',
+        rawFilterCount: '{0} devices · {1} lines',
         fqdnPrompt: 'Enter a keyword above or select filters to view FQDN records.',
         fqdnShowAll: 'Show All FQDN ({0} records)',
         statsSecRules: 'Total: {0} matching rule(s), from {1} device(s)',
@@ -3204,6 +3260,8 @@
         noConfigs: '尚未匯入設定檔。',
         serverConfigBadge: '伺服器組態',
         loadingConfigs: '正在載入伺服器組態…',
+        rawFilterPlaceholder: '篩選設定行... (按 Enter)',
+        rawFilterCount: '{0} 台設備 · {1} 行',
         fqdnPrompt: '請輸入關鍵字或選擇篩選條件以檢視 FQDN 記錄。',
         fqdnShowAll: '顯示全部 FQDN（{0} 筆）',
         statsSecRules: '共 {0} 條符合規則，來自 {1} 台設備',
@@ -6694,7 +6752,99 @@
       document.body.appendChild(el); setTimeout(() => el.remove(), 1500);
     }
 
+    // ── Raw Config line filter (additive) ────────────────────────────────────────
+    // Enter-to-filter: shows only config lines containing the keyword, hides empty
+    // cards, highlights the match. Layered on top of the existing renderers below —
+    // when no filter is active the original output is returned unchanged.
+    let _rawFilterTerm = '';
+
     function renderRawConfig() {
+      if (!_rawFilterTerm) {
+        // No active filter → filter bar (counter hidden) + original unchanged render.
+        return _rawFilterBarHtml('') + _renderRawConfigOriginal();
+      }
+      const sources = _rawConfigSources();
+      if (sources === null) return _rawFilterBarHtml('') + `<div class="empty-state">${T('loadingConfigs')}</div>`;
+      const term = _rawFilterTerm.toLowerCase();
+      let deviceCount = 0, lineCount = 0;
+      const blocks = sources.map(src => {
+        const matched = String(src.text || '').split('\n').filter(l => l.toLowerCase().includes(term));
+        if (matched.length === 0) return '';
+        deviceCount++; lineCount += matched.length;
+        const body = matched.slice(0, 50000).map(l => _highlightRawLine(l, term)).join('\n')
+          + (matched.length > 50000 ? '\n\n' + T('truncated') : '');
+        return `
+    <div class="raw-config-block">
+      <div class="raw-config-header"><span>${esc(src.name)}</span>${src.isServer ? `<span class="server-config-badge">${T('serverConfigBadge')}</span>` : ''}</div>
+      <pre class="raw-config-pre">${body}</pre>
+    </div>
+  `;
+      }).join('');
+      const counter = T('rawFilterCount', deviceCount, lineCount);
+      const content = deviceCount === 0 ? `<div class="empty-state">${T('noConfigs')}</div>` : blocks;
+      return _rawFilterBarHtml(counter) + content;
+    }
+
+    // Filter-bar chrome; counter hidden unless a filter is active.
+    function _rawFilterBarHtml(counterText) {
+      return `<div class="raw-filter-bar">
+      <div class="raw-filter-input-wrap">
+        <input id="rawFilterInput" class="raw-filter-input" type="text" placeholder="${esc(T('rawFilterPlaceholder'))}" value="${esc(_rawFilterTerm)}" onkeydown="if(event.key==='Enter'){event.preventDefault();applyRawFilter(this.value);}">
+        <button class="raw-filter-clear" onclick="clearRawFilter()" title="Clear">×</button>
+      </div>
+      <span class="raw-filter-count"${_rawFilterTerm ? '' : ' style="display:none"'}>${esc(counterText || '')}</span>
+    </div>`;
+    }
+
+    // Source configs as {name, text, isServer} — reads existing stores only (manual
+    // imports or the server-config cache); triggers the existing fetch when needed.
+    // Returns null while server content is still loading.
+    function _rawConfigSources() {
+      if (state.rawConfigs.length > 0) {
+        return state.rawConfigs.map(c => ({ name: c.filename, text: c.text, isServer: false }));
+      }
+      const names = _activeServerDeviceNames();
+      if (names.length === 0) return [];
+      const key = names.join(',');
+      if (_serverRawCacheKey === key && _serverRawCache) {
+        return _serverRawCache.map(e => ({ name: e.name, text: e.content == null ? '' : e.content, isServer: true }));
+      }
+      _fetchServerRawConfig(key);
+      return null;
+    }
+
+    // Case-insensitive plain-text highlight; escapes both sides, preserves original case.
+    function _highlightRawLine(line, lowerTerm) {
+      const s = String(line);
+      if (!lowerTerm) return esc(s);
+      const low = s.toLowerCase(), tl = lowerTerm.length;
+      let out = '', i = 0;
+      while (i < s.length) {
+        const idx = low.indexOf(lowerTerm, i);
+        if (idx === -1) { out += esc(s.substring(i)); break; }
+        out += esc(s.substring(i, idx)) + `<mark class="raw-hl">${esc(s.substring(idx, idx + tl))}</mark>`;
+        i = idx + tl;
+      }
+      return out;
+    }
+
+    function applyRawFilter(val) {
+      _rawFilterTerm = String(val || '').trim();
+      const el = document.getElementById('content');
+      if (el) el.innerHTML = renderRawConfig();
+      const inp = document.getElementById('rawFilterInput');
+      if (inp) inp.focus();
+    }
+
+    function clearRawFilter() {
+      _rawFilterTerm = '';
+      const el = document.getElementById('content');
+      if (el) el.innerHTML = renderRawConfig();
+      const inp = document.getElementById('rawFilterInput');
+      if (inp) inp.focus();
+    }
+
+    function _renderRawConfigOriginal() {
       // Manual-import render path — unchanged.
       if (state.rawConfigs.length > 0) {
         return state.rawConfigs.map(c => `
@@ -6997,7 +7147,7 @@
     }
 
     // ===== EVENT HANDLERS =====
-    function switchTab(id) { state.activeTab = id; updateTagFilter(); if (id === 'fqdn') fqdnDbAutoLoad(); renderContent(!_filterCacheDirty && !!_cachedFilterData); }
+    function switchTab(id) { _rawFilterTerm = ''; state.activeTab = id; updateTagFilter(); if (id === 'fqdn') fqdnDbAutoLoad(); renderContent(!_filterCacheDirty && !!_cachedFilterData); }
     function toggleSearchMode() { state.searchMode = state.searchMode === 'keyword' ? 'exact' : 'keyword'; const btn = document.getElementById('searchModeBtn'); btn.textContent = T(state.searchMode === 'keyword' ? 'searchModeKeyword' : 'searchModeExact'); btn.classList.toggle('active', state.searchMode === 'exact'); }
     function toggleHighlight() { state.highlightEnabled = !state.highlightEnabled; const btn = document.getElementById('searchHlBtn'); if (btn) { btn.classList.toggle('on', state.highlightEnabled); btn.title = T(state.highlightEnabled ? 'hlOn' : 'hlOff'); } renderContent(); }
     function toggleSearchHelp() { const el = document.getElementById('searchHelpPopup'); el.classList.toggle('hidden'); }
