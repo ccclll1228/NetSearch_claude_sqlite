@@ -129,6 +129,36 @@ app.get('/api/local_dns', (req, res) => {
   res.json({ results: rows, lastSynced: getLocalDnsLastSynced(), total: rows.length });
 });
 
+// Raw config content for server-loaded (Oxidized backup) devices.
+// Additive, read-only: reuses the same discovery logic as parsing; never throws.
+app.get('/api/rawconfig', (req, res) => {
+  try {
+    const allDevices = settings.devices || [];
+    const q = (req.query.devices || '').trim();
+    let requested = allDevices;
+    if (q) {
+      const names = new Set(q.split(',').map(n => n.trim().toLowerCase()).filter(Boolean));
+      requested = allDevices.filter(d => names.has(String(d.name).trim().toLowerCase()));
+    }
+    const out = requested.map(device => {
+      let resolved;
+      try { resolved = resolveDevicePaths([device], settings.backupRoot); }
+      catch (err) { resolved = []; }
+      if (!resolved || resolved.length === 0)
+        return { name: device.name, type: device.type, content: null, error: 'File not found' };
+      try {
+        const content = fs.readFileSync(resolved[0].path, 'utf8');
+        return { name: device.name, type: device.type, content };
+      } catch (err) {
+        return { name: device.name, type: device.type, content: null, error: 'File not found' };
+      }
+    });
+    res.json(out);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/api/reload', async (req, res) => {
   const result = await loadAllConfigs();
   res.json(result);

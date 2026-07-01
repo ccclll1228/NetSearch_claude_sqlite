@@ -2169,6 +2169,16 @@
       color: var(--cds-text-secondary);
     }
 
+    .server-config-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 8px;
+      border-radius: 9999px;
+      background: var(--cds-interactive);
+      color: #fff;
+      letter-spacing: 0.02em;
+    }
+
     .raw-config-pre {
       background: var(--cds-layer-01);
       border: 1px solid var(--cds-border-subtle);
@@ -3099,6 +3109,8 @@
         noF5Pools: 'No matching F5 Pools found.',
         noFqdn: 'No matching FQDN records found.',
         noConfigs: 'No configuration files imported.',
+        serverConfigBadge: 'Server Config',
+        loadingConfigs: 'Loading server configs…',
         fqdnPrompt: 'Enter a keyword above or select filters to view FQDN records.',
         fqdnShowAll: 'Show All FQDN ({0} records)',
         statsSecRules: 'Total: {0} matching rule(s), from {1} device(s)',
@@ -3190,6 +3202,8 @@
         noF5Pools: '找不到符合的 F5 Pool。',
         noFqdn: '找不到符合的 FQDN 記錄。',
         noConfigs: '尚未匯入設定檔。',
+        serverConfigBadge: '伺服器組態',
+        loadingConfigs: '正在載入伺服器組態…',
         fqdnPrompt: '請輸入關鍵字或選擇篩選條件以檢視 FQDN 記錄。',
         fqdnShowAll: '顯示全部 FQDN（{0} 筆）',
         statsSecRules: '共 {0} 條符合規則，來自 {1} 台設備',
@@ -6681,13 +6695,71 @@
     }
 
     function renderRawConfig() {
-      if (state.rawConfigs.length === 0) return `<div class="empty-state">${T('noConfigs')}</div>`;
-      return state.rawConfigs.map(c => `
+      // Manual-import render path — unchanged.
+      if (state.rawConfigs.length > 0) {
+        return state.rawConfigs.map(c => `
     <div class="raw-config-block">
       <div class="raw-config-header"><span>${esc(c.filename)}</span></div>
       <pre class="raw-config-pre">${esc(c.text.substring(0, 50000))}${c.text.length > 50000 ? '\n\n' + T('truncated') : ''}</pre>
     </div>
   `).join('');
+      }
+      // ADDITIVE: no manual imports — show raw configs for active server-loaded devices.
+      const names = _activeServerDeviceNames();
+      if (names.length === 0) return `<div class="empty-state">${T('noConfigs')}</div>`;
+      const key = names.join(',');
+      if (_serverRawCacheKey === key && _serverRawCache) return _renderServerRawBlocks(_serverRawCache);
+      _fetchServerRawConfig(key);
+      return `<div class="empty-state">${T('loadingConfigs')}</div>`;
+    }
+
+    // ── Server raw-config support (additive) ─────────────────────────────────────
+    let _serverRawCache = null;      // last fetched array of {name,type,content,error}
+    let _serverRawCacheKey = null;   // device-name key the cache is valid for
+    let _serverRawFetching = false;
+
+    // Active server-loaded device names (excludes device-bar-disabled hosts), derived
+    // from each config's backup filename (DEVICE_YYYYMMDD-HHMM.txt), falling back to hostname.
+    function _activeServerDeviceNames() {
+      return (state.parsedConfigs || [])
+        .filter(c => c && c.parsed && !(state.disabledHosts && state.disabledHosts.has(c.parsed.hostname)))
+        .map(c => ((c.filename || '').replace(/_\d{8}-\d{4}\.[^.]+$/i, '').trim()) || (c.parsed.hostname || ''))
+        .filter(Boolean);
+    }
+
+    function _renderServerRawBlocks(entries) {
+      if (!entries || entries.length === 0) return `<div class="empty-state">${T('noConfigs')}</div>`;
+      return entries.map(e => {
+        const body = (e.content == null)
+          ? esc(e.error || 'File not found')
+          : esc(e.content.substring(0, 50000)) + (e.content.length > 50000 ? '\n\n' + T('truncated') : '');
+        return `
+    <div class="raw-config-block">
+      <div class="raw-config-header"><span>${esc(e.name)}</span><span class="server-config-badge">${T('serverConfigBadge')}</span></div>
+      <pre class="raw-config-pre">${body}</pre>
+    </div>
+  `;
+      }).join('');
+    }
+
+    async function _fetchServerRawConfig(key) {
+      if (_serverRawFetching) return;
+      _serverRawFetching = true;
+      try {
+        const res = await fetch('/api/rawconfig?devices=' + encodeURIComponent(key));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        _serverRawCache = Array.isArray(data) ? data : [];
+      } catch (err) {
+        _serverRawCache = [];   // fetch failed → empty → falls back to noConfigs message
+      } finally {
+        _serverRawCacheKey = key;
+        _serverRawFetching = false;
+        if (state.activeTab === 'raw') {
+          const el = document.getElementById('content');
+          if (el) el.innerHTML = renderRawConfig();
+        }
+      }
     }
 
     // PA Tag Colors
