@@ -5157,8 +5157,8 @@
       const parsed = state.parsedConfigs.find(c => c.parsed.hostname === e.hostname)?.parsed;
       const groups = parsed?.groups || {};
       const pids = [];
-      e.items.forEach(item => {
-        const pid = `${item}_${e.hostname}_${e.ctx}`;
+      e.items.forEach(({ item, ctx }) => {
+        const pid = `${item}_${e.hostname}_${ctx}`;
         expandedPills.add(pid);
         pids.push(pid);
         if (groups[item]) collectAllGroupTreeIds(item, groups, pid, expandedPills);
@@ -5175,8 +5175,8 @@
           if (!key.startsWith(prefix)) continue;
           const parsed = state.parsedConfigs.find(c => c.parsed.hostname === e.hostname)?.parsed;
           const groups = parsed?.groups || {};
-          e.items.forEach(item => {
-            const pid = `${item}_${e.hostname}_${e.ctx}`;
+          e.items.forEach(({ item, ctx }) => {
+            const pid = `${item}_${e.hostname}_${ctx}`;
             expandedPills.add(pid);
             if (groups[item]) collectAllGroupTreeIds(item, groups, pid, expandedPills);
           });
@@ -5191,8 +5191,8 @@
       const parsed = state.parsedConfigs.find(c => c.parsed.hostname === e.hostname)?.parsed;
       const groups = parsed?.groups || {};
       const pids = [];
-      e.items.forEach(item => {
-        const pid = `${item}_${e.hostname}_${e.ctx}`;
+      e.items.forEach(({ item, ctx }) => {
+        const pid = `${item}_${e.hostname}_${ctx}`;
         pids.push(pid);
         expandedPills.delete(pid);
         if (groups[item]) {
@@ -5638,8 +5638,20 @@
           const globalIdx = _lastFilteredSecRules.indexOf(r);
           const ruleKey = `sec_${globalIdx}`;
           const hn = r._parsed?.hostname || '';
-          const expandableItems = [...(r.source || []), ...(r.destination || []), ...(r.from || []), ...(r.to || []), ...(r.service || []), ...(r.application || [])];
-          _ruleExpandMap[ruleKey] = { hostname: hn, items: expandableItems, ctx: ruleKey };
+          // Per-field pill contexts: each field gets its own ctx namespace so that identical
+          // values across fields (e.g. DESTINATION "any" and APPLICATION "any") produce distinct
+          // pill IDs and no longer share expand/collapse state. FROM/TO use renderZonePills (no
+          // data-ppid) so their ctx only matters for expand-all reconstruction.
+          const ctxSrc = `${ruleKey}#src`, ctxDst = `${ruleKey}#dst`, ctxSvc = `${ruleKey}#svc`, ctxApp = `${ruleKey}#app`, ctxFrom = `${ruleKey}#from`, ctxTo = `${ruleKey}#to`;
+          const expandableItems = [
+            ...(r.source || []).map(item => ({ item, ctx: ctxSrc })),
+            ...(r.destination || []).map(item => ({ item, ctx: ctxDst })),
+            ...(r.from || []).map(item => ({ item, ctx: ctxFrom })),
+            ...(r.to || []).map(item => ({ item, ctx: ctxTo })),
+            ...(r.service || []).map(item => ({ item, ctx: ctxSvc })),
+            ...(r.application || []).map(item => ({ item, ctx: ctxApp })),
+          ];
+          _ruleExpandMap[ruleKey] = { hostname: hn, items: expandableItems };
 
           // Schedule table cell (second column, only when hasSchedule)
           let schedCell = '';
@@ -5682,8 +5694,8 @@
         </div>
         ${schedCell}
         <div class="rule-field"><div style="display:flex;align-items:baseline;gap:5px;margin-bottom:3px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">FROM</span>${renderZonePills(r.from)}</div><div style="display:flex;align-items:baseline;gap:5px"><span class="rule-field-label" style="margin:0;flex-shrink:0;min-width:24px">TO</span>${renderZonePills(r.to)}</div></div>
-        <div class="rule-field">${renderPills(r.source, r._parsed, 'object', ruleKey)}</div>
-        <div class="rule-field">${renderPills(r.destination, r._parsed, 'object', ruleKey)}${r.dstVips && r.dstVips.length ? `<div>${r.dstVips.map(v => `<div class="vip-mapping">${esc(v.extip)} → ${esc(v.mappedip)}</div>`).join('')}</div>` : ''}${(() => {
+        <div class="rule-field">${renderPills(r.source, r._parsed, 'object', ctxSrc)}</div>
+        <div class="rule-field">${renderPills(r.destination, r._parsed, 'object', ctxDst)}${r.dstVips && r.dstVips.length ? `<div>${r.dstVips.map(v => `<div class="vip-mapping">${esc(v.extip)} → ${esc(v.mappedip)}</div>`).join('')}</div>` : ''}${(() => {
           if (r._parsed?.type !== 'FortiGate') return '';
           const annots = [];
           const addrs = r._parsed?.addresses || {};
@@ -5708,8 +5720,8 @@
           });
           return annots.length ? `<div>${annots.join('')}</div>` : '';
         })()}${r.poolname ? `<div style="margin-top:3px"><div class="rule-field-label" style="margin:0;font-size:0.7em">sNAT POOL</div><div class="pool-pill"><span class="pool-value">${esc(r.poolname)}</span></div></div>` : ''}</div>
-        <div class="rule-field">${renderPills(r.service, r._parsed, 'service', ruleKey)}</div>
-        <div class="rule-field">${r.application && r.application.length > 0 ? renderPills(r.application, r._parsed, 'object', ruleKey) : ''}</div>
+        <div class="rule-field">${renderPills(r.service, r._parsed, 'service', ctxSvc)}</div>
+        <div class="rule-field">${r.application && r.application.length > 0 ? renderPills(r.application, r._parsed, 'object', ctxApp) : ''}</div>
         <div class="rule-field">${r.category && r.category.length > 0 ? `<div class="pills">${r.category.map(c => renderUrlCategoryPill(c, r._parsed)).join('')}</div>` : ''}${r.webfilterProfile ? `<div class="pills" style="margin-top:2px"><span class="pill">${esc(r.webfilterProfile)}</span></div>` : ''}</div>
       </div>
     </div>
@@ -5779,8 +5791,10 @@
           const globalIdx = _lastFilteredNatRules.indexOf(r);
           const hn = r._parsed?.hostname || '';
           const ruleKey = `nat_${globalIdx}`;
-          const expandableItems = [...(r.from || []), ...(r.to || []), ...(r.source || []), ...(r.destination || []), ...(r.service || []), ...(r.sourceTranslation || []), ...(r.destinationTranslation || [])];
-          _ruleExpandMap[ruleKey] = { hostname: hn, items: expandableItems, ctx: ruleKey };
+          // NAT keeps a single ctx (ruleKey) across all fields — behavior unchanged. Stored as
+          // {item, ctx} pairs only to match the shared _ruleExpandMap consumer shape used by Sec Rules.
+          const expandableItems = [...(r.from || []), ...(r.to || []), ...(r.source || []), ...(r.destination || []), ...(r.service || []), ...(r.sourceTranslation || []), ...(r.destinationTranslation || [])].map(item => ({ item, ctx: ruleKey }));
+          _ruleExpandMap[ruleKey] = { hostname: hn, items: expandableItems };
           const cells = [
             `<div class="rule-field"><div class="rule-field-label">${T('natFrom')}</div>${renderZonePills(r.from)}</div>`,
             `<div class="rule-field"><div class="rule-field-label">${T('natTo')}</div>${renderZonePills(r.to)}</div>`,
