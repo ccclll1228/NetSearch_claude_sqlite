@@ -5334,7 +5334,7 @@
         const isExp = expandedPills.has(nodeId) || expandedPills.has(`__ALL_${state.activeTab}__`);
         const arrow = isExp ? '▼' : '▶';
         const subHtml = isExp ? members.map(m => renderGroupTree(m, addresses, groups, nodeId, depth + 1)).join('') : '';
-        return `<div class="pill-expand-member" style="${padStyle};cursor:pointer" onclick="event.stopPropagation();togglePill('${nodeId}')"><span style="margin-right:4px;font-size:10px;color:var(--accent)">${arrow}</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button></div>${subHtml}`;
+        return `<div class="pill-expand-member" style="${padStyle};cursor:pointer" onmousedown="_pillMouseDown(event)" onclick="event.stopPropagation();togglePill('${nodeId}',event)"><span style="margin-right:4px;font-size:10px;color:var(--accent)">${arrow}</span><span class="mem-name" style="color:var(--accent)">${esc(name)}</span><span class="mem-value">(${members.length})</span><button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button></div>${subHtml}`;
       }
       const addr = addresses && addresses[name];
       const val = addr && addr.value && addr.value !== name ? addr.value : '';
@@ -5377,7 +5377,7 @@
         if (type === 'object' && grps[item]) {
           const members = grps[item];
           const memberHtml = members.map(m => renderGroupTree(m, addresses, grps, pid, 1)).join('');
-          return `<div class="pill-expand-container" data-ppid="${esc(pid)}"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${members.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
+          return `<div class="pill-expand-container" data-ppid="${esc(pid)}"><div class="pill-expand-header" onmousedown="_pillMouseDown(event)" onclick="togglePill('${esc(pid)}',event)">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${members.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
         }
         const rawResolved = type === 'service' ? resolveService(item, parsed?.services, parsed?.serviceGroups) : resolveObject(item, parsed?.addresses, parsed?.groups);
         const resolved = rawResolved.filter(r => r.type !== 'group');
@@ -5386,10 +5386,10 @@
           const val = r.value && r.value !== r.name && r.value !== '*' ? r.value : '';
           return `<div class="pill-expand-member ${rMatched ? 'matched' : ''}"><span class="mem-name">${esc(r.name)}</span>${val ? `<span class="mem-value">${esc(val)}</span>` : ''}<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(val || r.name)}')" title="Search">${SVG_QS}</button></div>`;
         }).join('');
-        return `<div class="pill-expand-container" data-ppid="${esc(pid)}"><div class="pill-expand-header" onclick="togglePill('${esc(pid)}')">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${resolved.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
+        return `<div class="pill-expand-container" data-ppid="${esc(pid)}"><div class="pill-expand-header" onmousedown="_pillMouseDown(event)" onclick="togglePill('${esc(pid)}',event)">▼ ${esc(item)} <span style="font-weight:400;opacity:.7">(${resolved.length})</span>${qsBtn}${copyBtn}</div><div class="pill-expand-body">${memberHtml}</div></div>`;
       }
 
-      return `<span class="pill expandable ${isMatched ? 'matched' : ''}" data-ppid="${esc(pid)}" onclick="togglePill('${esc(pid)}')" title="Click to expand">${esc(item)}${star}${qsBtn}${copyBtn}</span>`;
+      return `<span class="pill expandable ${isMatched ? 'matched' : ''}" data-ppid="${esc(pid)}" onmousedown="_pillMouseDown(event)" onclick="togglePill('${esc(pid)}',event)" title="Click to expand">${esc(item)}${star}${qsBtn}${copyBtn}</span>`;
     }
 
     function renderPills(list, parsed, type = 'object', ctx = '') {
@@ -5406,8 +5406,21 @@
       return '<div class="pills">' + list.map(z => `<span class="pill">${esc(z)}</span>`).join('') + '</div>';
     }
 
-    function togglePill(pid) {
-      if (window.getSelection()?.toString().length > 0) return;
+    // Shared interaction guards for expandable Sec/NAT rule pills. Skip the toggle when the
+    // click concludes a text selection or a drag (>4px moved between mousedown and click), so
+    // selecting an object name (e.g. copying "ext_SBK_DP") no longer collapses/expands the pill.
+    // Mirrors the LTM row fix (commit aed6c50). The event is optional: call sites that omit it
+    // (e.g. Objects tab group cards) fall back to the selection-only guard, unchanged.
+    let _pillMdX = 0, _pillMdY = 0;
+    function _pillMouseDown(e) { _pillMdX = e.clientX; _pillMdY = e.clientY; }
+    function _pillSelectOrDragGuard(e) {
+      if (e && (Math.abs(e.clientX - _pillMdX) > 4 || Math.abs(e.clientY - _pillMdY) > 4)) return true;
+      if (window.getSelection && window.getSelection().toString().trim().length > 0) return true;
+      return false;
+    }
+
+    function togglePill(pid, e) {
+      if (_pillSelectOrDragGuard(e)) return;
       _materializeSentinel(state.activeTab);
       const wasExpanded = expandedPills.has(pid);
       if (wasExpanded) expandedPills.delete(pid); else expandedPills.add(pid);
@@ -5477,13 +5490,14 @@
       if (isExp) {
         const memberHtml = members.map(m => `<div class="uc-member-row"><span>${esc(m)}</span><button class="rule-copy-btn uc-member-copy" onclick="event.stopPropagation();copyToClipboard('${esc(m)}').then(()=>showCopyFeedback())" title="Copy">${SVG_COPY}</button></div>`).join('');
         return `<div style="display:inline-block;vertical-align:top;margin:2px">
-      <span class="pill expandable" onclick="toggleUrlCat(this,'${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button>${copyGroupBtn}</span>
+      <span class="pill expandable" onmousedown="_pillMouseDown(event)" onclick="toggleUrlCat(this,'${esc(ucid)}',event)" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1v3H1M10 4H7V1M7 10V7h3M1 7h3v3"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button>${copyGroupBtn}</span>
       <div style="padding-left:12px;border-left:2px solid var(--border);margin-left:8px;margin-top:4px">${memberHtml}</div>
     </div>`;
       }
-      return `<span class="pill expandable" onclick="toggleUrlCat(this,'${esc(ucid)}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button>${copyGroupBtn}</span>`;
+      return `<span class="pill expandable" onmousedown="_pillMouseDown(event)" onclick="toggleUrlCat(this,'${esc(ucid)}',event)" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7"/></svg>${esc(name)} (${members.length})<button class="pill-qs" onclick="event.stopPropagation();quickSearch('${esc(name)}')" title="Search">${SVG_QS}</button>${copyGroupBtn}</span>`;
     }
-    function toggleUrlCat(el, ucid) {
+    function toggleUrlCat(el, ucid, e) {
+      if (_pillSelectOrDragGuard(e)) return;
       if (expandedUrlCats.has(ucid)) expandedUrlCats.delete(ucid); else expandedUrlCats.add(ucid);
       const meta = _urlCatMeta.get(ucid);
       if (!meta) { renderContent(true); return; }
