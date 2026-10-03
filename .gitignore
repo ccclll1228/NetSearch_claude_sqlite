@@ -1,7 +1,40 @@
 node_modules/
 cache/
 config/settings.json
-db/fqdn.db
 .env
-dns_records.db
+.env.*
+!.env.example
 local_dns_csv/
+
+# SQLite databases and their sidecar files (never commit DNS/config data)
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
+db/fqdn.db
+dns_records.db
+
+# Sync lock files
+*.lock
+
+# Logs
+*.log
+logs/
+
+# Backups
+*.bak
+*.orig
+*.tmp
+backups/
+*backup*/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/

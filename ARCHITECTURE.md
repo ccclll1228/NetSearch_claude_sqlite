@@ -6,8 +6,9 @@
 NetSearch_claude_sqlite/
 ├── server.js               Express server — in-memory state, API routes
 ├── ultradns.py             UltraDNS → SQLite sync (standalone, crontab-ready)
+├── cloudflare_dns.py       Cloudflare DNS-only → SQLite sync (read-only API, flock-guarded)
 ├── import_local_dns.py     On-premise DNS CSV → SQLite sync
-├── sync_all.sh             Runs ultradns.py then import_local_dns.py (set -e)
+├── sync_all.sh             ultradns.py → cloudflare_dns.py → import_local_dns.py (set -e)
 ├── lib/
 │   ├── discovery.js        Resolves latest backup file per device
 │   ├── parser.js           Config parsers: FortiGate / PaloAlto / SRX / F5
@@ -16,7 +17,7 @@ NetSearch_claude_sqlite/
 ├── public/
 │   └── index.html          Single-file frontend (~6,200 lines: CSS + JS + HTML)
 ├── db/
-│   └── fqdn.db             SQLite — fqdn table (UltraDNS + LocalDNS rows)
+│   └── fqdn.db             SQLite — fqdn table (ultraDNS + Cloudflare + localDNS rows)
 ├── local_dns_csv/          Drop timestamped CSV exports here (gitignored)
 ├── config/
 │   ├── settings.json       Local config (gitignored)
@@ -101,6 +102,46 @@ ultradns.py
                 INSERT all rows           ← synced_at = UTC ISO8601
               COMMIT  (ROLLBACK on error)
               owner = "ultraDNS" · ~7,880 records · runtime ≈ 68 s
+              ⚠ TRUNCATES THE WHOLE TABLE — must run first
+
+Cloudflare API  (read-only, GET only)
+        │
+        │  CLOUDFLARE_API_TOKEN  (Zone:Read + DNS:Read)
+        │  CLOUDFLARE_ACCOUNT_ID (optional, narrows zone listing)
+        ▼
+cloudflare_dns.py
+        │
+        ├── flock on db/fqdn.db.cloudflare-sync.lock  (write mode only)
+        │     second concurrent run aborts
+        │
+        ├── GET /zones?page=N&per_page=50
+        │     result_info cross-check: page / per_page / count /
+        │     total_count / total_pages + duplicate-ID detection
+        │     --zone filters by exact name; missing zone = hard error
+        │
+        ├── GET /zones/{zone_id}/dns_records?page=N&per_page=1000
+        │
+        ├── parse_record()
+        │     proxied=true            → ABORT (deployment is DNS-only)
+        │     A/AAAA                  → IP family validated
+        │     CNAME/NS/PTR            → trailing dot stripped, IDNA
+        │     MX                      → "<priority> <target>"
+        │     SRV                     → "<priority> <weight> <port> <target>"
+        │     TXT and others          → verbatim, full length kept
+        │     ttl=1 = Cloudflare Auto (not 1 second); geo_info = ""
+        │
+        │   ALL zones fetched + validated BEFORE any DB write.
+        │   --dry-run stops here; database untouched, no lock taken.
+        │
+        └── db/fqdn.db  (fqdn table)
+              BEGIN IMMEDIATE
+                DELETE FROM fqdn
+                  WHERE owner='Cloudflare' AND domain=<each fetched zone>
+                INSERT validated rows     ← synced_at = UTC ISO8601
+              COMMIT  (ROLLBACK on any error)
+              owner = "Cloudflare"
+              ⚠ Scoped replace: zones outside this run are preserved;
+                deleted/invisible zones are NOT auto-purged.
 
 local_dns_csv/DNS_Export_Auto_<timestamp>.csv   ← newest file only
         │
@@ -120,7 +161,7 @@ import_local_dns.py
                         on error:  ROLLBACK + continue
               owner = "localDNS" · ~5,800+ records
 
-db/fqdn.db  (fqdn table — both sources)
+db/fqdn.db  (fqdn table — all three sources, keyed by `owner`)
         │
         ▼
 server.js  →  lib/fqdn_db.js
@@ -140,6 +181,44 @@ server.js  →  lib/fqdn_db.js
                                 ▼
                     public/index.html  — FQDN tab
 ```
+
+No server-side or frontend code is owner-aware: `lib/fqdn_db.js` selects from `fqdn`
+without an `owner` predicate, and the FQDN tab's **Owner** dropdown is built by
+collecting `DISTINCT owner` from the returned rows at render time. A new DNS source
+therefore appears in the UI purely by inserting rows with a new `owner` value — no
+change to `server.js`, `lib/fqdn_db.js`, or `public/index.html` is required.
+
+---
+
+## DNS Sync Order and Replacement Scope
+
+```
+sync_all.sh  (set -e — first failure aborts the rest)
+
+  Step 1  ultradns.py         DELETE FROM fqdn                      ← WHOLE TABLE
+  Step 2  cloudflare_dns.py   DELETE WHERE owner='Cloudflare'
+                                    AND domain IN (fetched zones)   ← scoped
+  Step 3  import_local_dns.py DELETE WHERE owner='localDNS'         ← scoped
+```
+
+**Why the order is mandatory:** step 1 is the only unscoped delete. It wipes every
+row regardless of owner, so it has to run before the two owner-scoped steps
+repopulate their own rows. Placing `ultradns.py` anywhere later would erase whatever
+the earlier steps had just written.
+
+**Failure semantics during coexistence:** because `set -e` aborts on first failure
+and step 1 has already truncated the table, a failing step 2 leaves the database with
+**zero Cloudflare rows** for that cycle (deleted by step 1, never reinserted), and
+step 3 is skipped so localDNS rows are missing too. Failures surface as *missing*
+data rather than silently stale data. Re-running `cloudflare_dns.py` alone is enough
+to restore Cloudflare rows.
+
+**Migration policy:** `ultradns.py` stays enabled while any zone is still
+authoritative on UltraDNS. No script auto-purges legacy data — `cloudflare_dns.py`
+never touches `ultraDNS`/`localDNS` rows, nor Cloudflare rows for zones outside the
+current run's scope. Deleting obsolete UltraDNS rows is a deliberate manual step
+taken after the per-zone cutover has been verified. When `ultradns.py` is eventually
+retired, the unscoped truncation goes with it and the ordering constraint relaxes.
 
 ---
 

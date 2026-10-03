@@ -4,6 +4,22 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [Unreleased] — 2026-10-03
+
+### Added
+- **Cloudflare DNS sync (`cloudflare_dns.py`)** — third DNS source alongside UltraDNS and Local DNS. Reads DNS-only (non-proxied) records from the Cloudflare API (read-only `GET`; token needs only `Zone:Read` + `DNS:Read`) into the existing `fqdn` table with `owner='Cloudflare'`. Credentials come from the gitignored project-root `.env` (`CLOUDFLARE_API_TOKEN`, optional `CLOUDFLARE_ACCOUNT_ID`). Replacement is **zone-scoped** — `DELETE FROM fqdn WHERE owner='Cloudflare' AND domain=<zone>` for each zone fetched in that run, inside a single `BEGIN IMMEDIATE` transaction — so UltraDNS/Local DNS rows and Cloudflare rows for out-of-scope zones are preserved, and deleted or token-invisible zones are never auto-purged. All zones are fetched and validated before any database write; `--dry-run` validates and writes nothing; `--zone` limits scope; `--allow-empty-zones` is required before a selected zone may be replaced with zero records. Pagination is cross-checked against `result_info` with duplicate-ID detection, `proxied: true` records abort the run (this deployment is explicitly DNS-only), write mode takes an advisory `flock` on `db/fqdn.db.cloudflare-sync.lock` to prevent overlapping cron/manual runs, and error messages are scrubbed of the token. No server or frontend change was needed: `lib/fqdn_db.js` queries `fqdn` without an owner predicate and the FQDN tab's **Owner** dropdown is built from `DISTINCT owner` at render time, so Cloudflare rows surface automatically.
+
+### Changed
+- **`sync_all.sh` is now a three-step pipeline** — `ultradns.py` → `cloudflare_dns.py` → `import_local_dns.py`. The order is mandatory: `ultradns.py` performs an unscoped `DELETE FROM fqdn` (whole table, every owner), so it must run first or it would erase rows the other steps had just written. With `set -e`, a failing Cloudflare step leaves the cycle with no Cloudflare rows (step 1 deleted them, step 2 never reinserted them) and skips the Local DNS step — failures show up as missing data, not stale data; re-running `cloudflare_dns.py` alone restores the Cloudflare rows.
+- **`.gitignore` hardened** — now also excludes all SQLite databases and their WAL/SHM/journal sidecars, `*.lock` sync locks, logs, backup/temp artifacts, and Python caches (`__pycache__/`, `*.py[cod]`). Verified that no previously tracked file became ignored.
+
+### Documentation
+- `README.md` — new **Cloudflare DNS Sync** section (token permissions, env vars, dry-run vs production usage, all flags, replacement-scope semantics, data-shape notes) and a new **Combined Sync Order** section covering the mandatory three-step order, the failure mode, and the UltraDNS→Cloudflare coexistence/migration policy. Corrected the stale claim that Local DNS lives in the `local_dns` table — all three sources write to the single `fqdn` table, keyed by `owner` (the `local_dns` table remains but is empty).
+- `ARCHITECTURE.md` — Cloudflare pipeline added to the FQDN data flow, plus a new **DNS Sync Order and Replacement Scope** section.
+- `CLAUDE.md` — architecture diagram and feature list updated with the Cloudflare source and its ordering constraint.
+
+---
+
 ## [Unreleased] — 2026-06-15
 
 ### Fixed

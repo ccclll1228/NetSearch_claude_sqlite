@@ -39,10 +39,11 @@ cache/parsed.json  — JSON snapshot written after each reload; read on restart
         ↓  GET /api/data          GET /api/fqdn     GET /api/local_dns
 public/index.html  — ~6200-line single-file frontend (all CSS + JS inline)
 
-db/fqdn.db         — SQLite; fqdn table (UltraDNS + LocalDNS rows)
-        ↑  ultradns.py            (owner='ultraDNS', crontab-ready)
-        ↑  import_local_dns.py   (owner='localDNS',  reads local_dns_csv/)
-        ↑  sync_all.sh            (runs both in sequence, set -e)
+db/fqdn.db         — SQLite; fqdn table (ultraDNS + Cloudflare + localDNS rows)
+        ↑  ultradns.py            (owner='ultraDNS',   DELETEs the WHOLE table)
+        ↑  cloudflare_dns.py      (owner='Cloudflare', scoped to fetched zones)
+        ↑  import_local_dns.py    (owner='localDNS',   reads local_dns_csv/)
+        ↑  sync_all.sh            (ultradns → cloudflare → local, set -e)
 ```
 
 **Core principle:** Parse once on the server, serve to all users. All search/filter logic runs in the browser.
@@ -183,6 +184,7 @@ Do not introduce new ad-hoc CSS variables; always use `--cds-*` tokens.
 ### Features
 
 - **UltraDNS `_parse_rrset` record types** — `ultradns.py` stores: A, CNAME, MX, TXT (≤255 chars), SPF (≤255 chars), APEXALIAS, NS (all rows — both zone-apex and sub-zone delegations). SOA is silently skipped; AAAA/SRV are logged as unhandled and skipped. Profile (geo/IP-pool) records produce one row per `rdataInfo` entry.
+- **Cloudflare DNS sync** (`cloudflare_dns.py`) — read-only Cloudflare API (`Zone:Read` + `DNS:Read`) → `fqdn` table with `owner='Cloudflare'`. Credentials from project-root `.env`: `CLOUDFLARE_API_TOKEN` (required), `CLOUDFLARE_ACCOUNT_ID` (optional, narrows zone listing). Replacement is **scoped**: `DELETE FROM fqdn WHERE owner='Cloudflare' AND domain=<zone>` for each zone fetched in that run, inside one `BEGIN IMMEDIATE` transaction — zones outside the run and other owners are untouched, and deleted/invisible zones are never auto-purged. All zones are fetched and validated before any write; `--dry-run` validates without writing. `proxied: true` records abort the sync (deployment is DNS-only). Write mode holds an advisory `flock` on `db/fqdn.db.cloudflare-sync.lock`. **`ultradns.py` must run first** — it does an unscoped `DELETE FROM fqdn`. No owner-aware code exists in `server.js` / `lib/fqdn_db.js` / `public/index.html`; the FQDN tab's Owner dropdown is built from `DISTINCT owner` at render time, so new sources need no code change.
 - **Local DNS CSV sync** (`import_local_dns.py`) — imports on-premise DNS records from `local_dns_csv/*.csv` into the `fqdn` table (`owner='localDNS'`). Scans for the newest CSV only (alphabetical sort). Hidden domains (`trz.prd`, `trz.uat`, `sso.trz`, `in-addr.arpa`) and hidden types (`PTR`, `SOA`, `WINS`) are dropped at import time. `sync_all.sh` runs `ultradns.py` then `import_local_dns.py` in sequence. `GET /api/local_dns` searches these rows via `lib/fqdn_db.js`; the FQDN tab fetches both endpoints in parallel and union-merges results.
 - **FQDN tab device filter** — when one or more specific devices are selected in the device bar, the FQDN tab only shows records whose IPs fall within the **union** of all selected devices' destination CIDRs (FW: enabled ALLOW rule destinations → address objects + 1-level group expansion; F5: virtual server IPs). `fqdnDeviceCidrRanges` is built with `configs.forEach` over all active devices. Selecting "All" skips the filter entirely.
 - **Ignore CIDR toggle** — when enabled, CIDR containment is skipped across all search and filter operations; only exact-IP matches are used. Affects both the search pipeline and the FQDN device filter gate.
