@@ -4,6 +4,21 @@ All notable changes to NetSearch are documented here.
 
 ---
 
+## [Unreleased] — 2026-10-04
+
+### Added
+- **Cloudflare assigned nameservers imported as apex `NS` rows** — Cloudflare does not expose a full zone's apex NS records through `GET /dns_records` (they are zone metadata, not editable records), so `cloudflare_dns.py` now also reads each zone's `name_servers` array from the `GET /zones` listing it already calls and stores one apex `NS` row per nameserver: `fqdn = domain = zone`, `type='NS'`, `ip =` the nameserver hostname, `owner='Cloudflare'`, `ttl = NULL`.
+  - **No new API permission.** `name_servers` comes from the existing zone-listing response; `Zone:Read` + `DNS:Read` remain the complete requirement, with no new endpoint and no new scope.
+  - **`ttl` is `NULL`, not a placeholder.** Zone metadata publishes no TTL, so none is invented. `NULL` is distinct from `1` (which means Cloudflare "Auto"). Verified null-safe in every consumer — table cell, TTL dropdown options, TTL filter, `smartSort` (`?? ''`), and the Copy tab — so no frontend change was needed. `_normalizeLocalDnsRow()` already emitted `ttl: null`, so the shape predates this change.
+  - **Provenance: assigned, not live.** `name_servers` is imported and `original_name_servers` deliberately is not. An assigned nameserver is **not** evidence that registrar delegation has been switched — a zone at `status: "pending"` whose registrar still points elsewhere will still yield Cloudflare NS rows. Confirm real cutovers at the registrar or with `dig +trace`, never from this table alone; no live DNS lookup is performed.
+  - **Deduplication prefers the real record.** Apex NS rows are deduped per zone on `(fqdn, type, ip)` with both sides normalised identically (lowercase, trailing dot stripped, IDNA), so `NS1.Cloudflare.com.` and `ns1.cloudflare.com` collapse to one row. Merge order is `dns_records` then metadata, so when both describe the same nameserver the DNS record wins and **keeps its published TTL**; the `NULL` duplicate is dropped.
+  - **Child delegations preserved.** Sub-zone NS records keep their own `fqdn` and TTL and are never merged into or displaced by apex rows; the same target under a different name stays a separate row.
+  - **Empty-DNS-response guard not bypassed.** The "zero records" check is evaluated against the raw `GET /dns_records` result *before* metadata rows are merged, so assigned nameservers cannot mask a zone that unexpectedly returned nothing. `--allow-empty-zones` remains the only opt-out.
+  - Atomicity unchanged: DNS records and apex NS metadata are written and replaced in the **same** `BEGIN IMMEDIATE` transaction, scoped to `owner='Cloudflare'` and the fetched zones. Dry-run remains read-only and takes no lock. A missing or malformed `name_servers` field is a hard error that preserves the database, and only zones selected for the run are parsed — so a broken zone outside a `--zone` scope cannot abort it.
+  - Per-zone log line now reports `N DNS records + M assigned nameservers added; T rows`.
+
+---
+
 ## [Unreleased] — 2026-10-03
 
 ### Added

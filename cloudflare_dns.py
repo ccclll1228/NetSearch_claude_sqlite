@@ -26,10 +26,14 @@ One API record becomes one DB row; multiple A records stay separate. The histori
 stored without their final dot; no live DNS lookup or CNAME-chain resolution is
 performed. MX includes priority; SRV includes priority/weight/port/target. Long
 TXT records are kept. ttl=1 is Cloudflare Auto, NOT a one-second effective TTL.
+Zone name_servers are also stored as apex NS rows with ttl=NULL, since the zone
+metadata does not supply a TTL. Matching DNS-record NS rows retain their TTL;
+child delegations are preserved. These are assigned nameservers, not proof that
+the registrar has switched delegation. original_name_servers are not imported.
 geo_info is empty: this script does not collect Load Balancer pools or GEO policy.
 Proxied records abort the sync because this deployment is explicitly DNS-only.
 
-Official references (checked 2026-10-03):
+Official references (checked 2026-10-04):
 https://developers.cloudflare.com/api/resources/zones/methods/list/
 https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/list/
 """
@@ -260,6 +264,22 @@ def parse_record(record: dict[str, Any], zone: str) -> dict[str, Any]:
             "type": kind, "ttl": ttl, "geo_info": ""}
 
 
+def parse_nameservers(entry: dict[str, Any], zone: str) -> list[dict[str, Any]]:
+    """Convert assigned zone nameservers into apex NS rows without inventing TTL."""
+    nameservers = entry.get("name_servers")
+    if not isinstance(nameservers, list):
+        raise SyncError(f"{zone}: missing or invalid name_servers in zone response")
+    targets: set[str] = set()
+    for value in nameservers:
+        target = dns_name(value)
+        if not target or any(char.isspace() for char in target):
+            raise SyncError(f"{zone}: invalid assigned nameserver")
+        targets.add(target)
+    return [{"fqdn": zone, "ip": target, "owner": OWNER, "domain": zone,
+             "type": "NS", "ttl": None, "geo_info": ""}
+            for target in sorted(targets)]
+
+
 def collect(client: CloudflareClient, account_id: str | None,
             requested_zones: list[str], allow_empty: bool = False
             ) -> tuple[list[str], list[dict[str, Any]]]:
@@ -268,14 +288,15 @@ def collect(client: CloudflareClient, account_id: str | None,
         params["account.id"] = account_id
     zones = list(client.paginated("/zones", 50, params))
     wanted = {dns_name(name) for name in requested_zones}
-    selected: dict[str, str] = {}
+    selected: dict[str, tuple[str, list[dict[str, Any]]]] = {}
     for entry in zones:
         name = dns_name(entry.get("name"))
         if wanted and name not in wanted:
             continue
         if name in selected:
             raise SyncError(f"Duplicate zone name {name}; narrow scope with --account-id")
-        selected[name] = identifier(entry.get("id"), "zone ID")
+        selected[name] = (identifier(entry.get("id"), "zone ID"),
+                          parse_nameservers(entry, name))
     missing = wanted - selected.keys()
     if missing:
         raise SyncError("Requested zones not visible to token: " + ", ".join(sorted(missing)))
@@ -283,15 +304,30 @@ def collect(client: CloudflareClient, account_id: str | None,
         raise SyncError("No zones selected/visible; database preserved")
     LOG.info("Fetching records from %d zone(s)", len(selected))
     records: list[dict[str, Any]] = []
-    for index, (zone, zone_id) in enumerate(sorted(selected.items()), 1):
+    for index, (zone, (zone_id, nameserver_rows)) in enumerate(sorted(selected.items()), 1):
         zone_records = [parse_record(r, zone) for r in client.paginated(
             f"/zones/{zone_id}/dns_records", 1000,
             {"order": "name", "direction": "asc"},
         )]
         if not zone_records and not allow_empty:
             raise SyncError(f"{zone}: zero records; use --allow-empty-zones only if intentional")
-        records.extend(zone_records)
-        LOG.info("[%d/%d] %s: %d records", index, len(selected), zone, len(zone_records))
+        # Check the raw DNS-record result above, before adding metadata rows:
+        # assigned nameservers must not hide an unexpectedly empty DNS response.
+        seen_ns: set[tuple[str, str, str]] = set()
+        merged: list[dict[str, Any]] = []
+        added_nameservers = 0
+        for row in zone_records + nameserver_rows:
+            if row["type"] == "NS":
+                key = (row["fqdn"], row["type"], row["ip"])
+                if key in seen_ns:
+                    continue
+                seen_ns.add(key)
+                if row["ttl"] is None:
+                    added_nameservers += 1
+            merged.append(row)
+        records.extend(merged)
+        LOG.info("[%d/%d] %s: %d DNS records + %d assigned nameservers added; %d rows",
+                 index, len(selected), zone, len(zone_records), added_nameservers, len(merged))
     return sorted(selected), records
 
 

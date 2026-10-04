@@ -118,6 +118,18 @@ cloudflare_dns.py
         │     result_info cross-check: page / per_page / count /
         │     total_count / total_pages + duplicate-ID detection
         │     --zone filters by exact name; missing zone = hard error
+        │     yields BOTH the zone id AND its name_servers[]
+        │
+        ├── parse_nameservers()        ← zone metadata, same /zones call
+        │     name_servers[] → one apex NS row each:
+        │       fqdn = domain = zone · type = 'NS'
+        │       ip   = nameserver hostname (normalised, IDNA, no dot)
+        │       ttl  = NULL            ← metadata publishes no TTL
+        │     original_name_servers is NOT imported — assigned NS are
+        │       not proof the registrar switched delegation
+        │     missing / non-list / non-string → hard error, DB preserved
+        │     only SELECTED zones are parsed (a broken zone outside a
+        │       --zone scope cannot abort the run)
         │
         ├── GET /zones/{zone_id}/dns_records?page=N&per_page=1000
         │
@@ -130,6 +142,19 @@ cloudflare_dns.py
         │     TXT and others          → verbatim, full length kept
         │     ttl=1 = Cloudflare Auto (not 1 second); geo_info = ""
         │
+        ├── zero-DNS-record guard      ← evaluated on the RAW dns_records
+        │     result, BEFORE metadata rows are merged, so assigned
+        │     nameservers can never mask an empty DNS response
+        │     (--allow-empty-zones is the only opt-out)
+        │
+        ├── per-zone NS merge / dedup  ← key = (fqdn, type, ip)
+        │     iteration order is dns_records THEN nameserver rows, so a
+        │     real DNS record wins and KEEPS ITS TTL; the duplicate
+        │     metadata row (ttl=NULL) is dropped
+        │     both sides normalised identically, so NS1.Cloudflare.com.
+        │       and ns1.cloudflare.com collapse to one row
+        │     child delegations keep their own fqdn → never merged away
+        │
         │   ALL zones fetched + validated BEFORE any DB write.
         │   --dry-run stops here; database untouched, no lock taken.
         │
@@ -138,6 +163,7 @@ cloudflare_dns.py
                 DELETE FROM fqdn
                   WHERE owner='Cloudflare' AND domain=<each fetched zone>
                 INSERT validated rows     ← synced_at = UTC ISO8601
+                  DNS records + apex NS metadata in the SAME transaction
               COMMIT  (ROLLBACK on any error)
               owner = "Cloudflare"
               ⚠ Scoped replace: zones outside this run are preserved;
@@ -187,6 +213,20 @@ without an `owner` predicate, and the FQDN tab's **Owner** dropdown is built by
 collecting `DISTINCT owner` from the returned rows at render time. A new DNS source
 therefore appears in the UI purely by inserting rows with a new `owner` value — no
 change to `server.js`, `lib/fqdn_db.js`, or `public/index.html` is required.
+
+`ttl = NULL` (used by Cloudflare apex NS rows derived from zone metadata) is likewise
+already safe end to end, and needs no frontend change:
+
+| Consumer | Location | `NULL` behaviour |
+|----------|----------|------------------|
+| FQDN table cell | `index.html` `r.ttl != null ? r.ttl : ''` | renders an empty cell |
+| TTL dropdown options | `if (r.ttl != null) ttls.add(r.ttl)` | `NULL` omitted from the option list |
+| TTL filter | `String(row.ttl) === ttlFilter` | `"null"` never equals a numeric option, so picking a TTL hides metadata rows |
+| TTL sort | `smartSort` `a[key] ?? ''` | coalesced to `''`, sorts before numbers, no crash |
+| Copy tab | `fqdn.ttl != null ? String(fqdn.ttl) : ''` | exports an empty field |
+
+The `_normalizeLocalDnsRow()` path already emitted `ttl: null`, so this shape predates
+the Cloudflare nameserver import.
 
 ---
 

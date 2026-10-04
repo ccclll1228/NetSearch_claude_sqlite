@@ -290,7 +290,7 @@ The script fetches all zones (~1,349) and rrSets concurrently (20 workers), then
 
 ## Cloudflare DNS Sync (`cloudflare_dns.py`)
 
-Reads **DNS-only** (non-proxied) records from the Cloudflare API into the same `fqdn` table with `owner='Cloudflare'`.
+Reads **DNS-only** (non-proxied) records from the Cloudflare API into the same `fqdn` table with `owner='Cloudflare'`. Two things are read per zone: its DNS records (`GET /zones/{zone_id}/dns_records`) and its Cloudflare-assigned nameservers from the zone listing (`GET /zones` → `name_servers`), which are stored as apex `NS` rows.
 
 > **Read-only against Cloudflare.** The script issues GET requests only — no Cloudflare record is ever created, changed, or deleted.
 
@@ -320,6 +320,8 @@ Create a **Custom Token** at *Cloudflare dashboard → My Profile → API Tokens
 | Zone | **DNS** | **Read** |
 
 No write/edit permission of any kind is needed. Do **not** grant `DNS:Edit`, `Zone:Edit`, or any account-level write scope. The script never writes to Cloudflare, so a token with only the two Read permissions above is sufficient — and is the only configuration that should be deployed.
+
+> **Nameserver import needs no additional permission.** The assigned nameservers come from the `name_servers` field of the existing `GET /zones` response — the same call already used to discover zone IDs. `Zone:Read` + `DNS:Read` remain the complete requirement; no new endpoint and no new scope were introduced.
 
 ### Usage
 
@@ -358,16 +360,47 @@ Exit codes: `0` success, `1` sync failure (database untouched), `130` interrupte
 
 ```sql
 DELETE FROM fqdn WHERE owner = 'Cloudflare' AND domain = <each fetched zone>
-INSERT ... -- the records validated for those zones
+INSERT ... -- the records validated for those zones, DNS records and apex NS metadata alike
 ```
 
 Consequences:
 
 - UltraDNS (`owner='ultraDNS'`) and Local DNS (`owner='localDNS'`) rows are **never** touched.
+- Apex `NS` rows derived from zone metadata are written and replaced in the **same** transaction as the zone's DNS records — there is no second pass and no separate commit, so a zone is never left holding nameserver rows without its records (or vice versa).
 - Cloudflare rows for zones **outside** the run's scope are preserved. Running with `--zone a.com` does not remove rows for `b.com`.
 - A zone deleted from Cloudflare, or no longer visible to the token, is **not** automatically purged from the database. Its stale rows persist until removed manually. This is deliberate — a token-permission mistake must not silently delete data.
 - All zones are fetched and fully validated **before** any database change. A failure mid-fetch leaves the database exactly as it was.
 - In write mode an advisory `flock` on `<db>.cloudflare-sync.lock` prevents a cron run and a manual run from overlapping. A second concurrent run exits with "Another Cloudflare sync is already running".
+
+### Assigned nameservers (apex `NS` rows)
+
+Cloudflare does not expose a full zone's apex `NS` records through `GET /dns_records` — they are zone metadata, not editable records. The sync therefore reads each zone's `name_servers` array from the `GET /zones` listing and stores one apex `NS` row per nameserver:
+
+| Column | Value |
+|--------|-------|
+| `fqdn` | the zone name |
+| `domain` | the zone name |
+| `type` | `NS` |
+| `ip` | the nameserver hostname (the existing `ip` column stores record content, not only IPs) |
+| `owner` | `Cloudflare` |
+| `ttl` | **`NULL`** |
+| `geo_info` | `''` |
+
+**Why `ttl` is `NULL`.** Zone metadata carries no TTL, so none is invented. `NULL` means "no TTL was published by the source", which is distinct from any real numeric TTL — including `1`, which means Cloudflare "Auto". Downstream handling is already null-safe: the FQDN table renders an empty TTL cell, the TTL dropdown filter omits `NULL` from its options, and TTL sorting coalesces `NULL` to an empty string.
+
+**Provenance — assigned, not necessarily live.** The script imports `name_servers` (the nameservers Cloudflare has **assigned** to the zone) and deliberately **not** `original_name_servers`. Importantly:
+
+> An assigned nameserver is **not** evidence that registrar delegation has been switched to Cloudflare. A zone can sit at `status: "pending"` with its registrar still delegating elsewhere, and its assigned Cloudflare nameservers will still be imported.
+
+Treat these rows as "what Cloudflare expects delegation to be", not "what the public internet currently resolves". Confirm an actual cutover at the registrar or with a live `dig +trace` — never from this table alone. No live DNS lookup is performed.
+
+**Deduplication.** Apex `NS` rows are deduplicated per zone on the triple (`fqdn`, `type`, `ip`). Both sides are normalised identically first (lowercased, trailing dot stripped, IDNA-encoded), so `NS1.Cloudflare.com.` and `ns1.cloudflare.com` collapse to one row. When a real DNS record and a metadata-derived row describe the same nameserver, **the DNS record wins and keeps its published TTL** — the metadata row is dropped rather than producing a duplicate with `NULL`.
+
+**Child delegations are untouched.** Sub-zone `NS` records (e.g. `child.example.com NS ns-1.awsdns.org`) come from `GET /dns_records` and keep their own TTL. They are never merged into or displaced by apex rows, because the dedup key includes `fqdn`; the same target under a different name is kept as a separate row.
+
+**The empty-DNS-response guard still applies.** The "zero records" check runs against the raw `GET /dns_records` result **before** any metadata row is merged in, so assigned nameservers cannot mask a zone that unexpectedly returned no DNS records. A zone with zero DNS records still aborts the sync unless `--allow-empty-zones` is passed; with that flag it is replaced by its metadata `NS` rows alone.
+
+A missing or malformed `name_servers` field is a hard error that preserves the database, consistent with the rest of the script's fail-loud design. Only zones actually selected for the run are parsed, so a broken zone outside a `--zone` scope does not abort the run.
 
 ### Validation and data-shape notes
 
@@ -377,7 +410,7 @@ Consequences:
 - `CNAME` / `NS` / `PTR` targets are stored without the trailing dot. No live DNS lookup or CNAME-chain resolution is performed.
 - `MX` content is stored as `"<priority> <target>"`; `SRV` as `"<priority> <weight> <port> <target>"`.
 - Long `TXT` values are kept in full (unlike `ultradns.py`, which drops TXT/SPF over 255 chars).
-- `ttl = 1` means **Cloudflare "Auto"**, not a one-second TTL.
+- `ttl = 1` means **Cloudflare "Auto"**, not a one-second TTL. `ttl = NULL` means the row came from zone metadata (assigned nameservers), which publishes no TTL.
 - `geo_info` is always empty — Load Balancer pools and GEO steering policies are not collected.
 - Pagination is cross-checked against `result_info` (page, per_page, count, total_count, total_pages) and duplicate record IDs; any inconsistency aborts the run rather than writing a partial snapshot.
 - Error messages are scrubbed of the token before logging. Raw API responses are never printed.
